@@ -30,12 +30,13 @@ def compile_erlang_action(ctx, srcs=[], hdrs=[]):
     for dir in unique_dirnames(hdrs):
         erl_args.add("-I", dir)
 
-    # the headers of deps should work with `include_lib` calls
-    dep_hdrs = depset(transitive = [dep[ErlangLibInfo].hdrs for dep in ctx.attr.deps])
-    erl_args.add("-I", "external") # a cheat for now since we only include_lib for externals
-    erl_args.add("-I", "deps") # another cheat based on the monorepo/erlang.mk layout
+    # NOTE: the headers of deps should work with `include_lib` calls
+    # a cheat for now since we only include_lib for externals
+    erl_args.add("-I", "external")
+    # another cheat based on the monorepo/erlang.mk layout
+    erl_args.add("-I", "deps")
+    erl_args.add("-I", ctx.bin_dir.path + "/deps")
 
-    # TODO: can this depset be replaced with just the beam_path from the ErlangLibInfo?
     dep_beam_files = depset(transitive = [dep[ErlangLibInfo].beam_files for dep in ctx.attr.deps])
     for dir in unique_dirnames(dep_beam_files.to_list()):
         erl_args.add("-pa", dir)
@@ -48,6 +49,7 @@ def compile_erlang_action(ctx, srcs=[], hdrs=[]):
 
     erl_args.add_all(srcs)
 
+    dep_hdrs = depset(transitive = [dep[ErlangLibInfo].hdrs for dep in ctx.attr.deps])
     dep_beam_files = depset(transitive = [dep[ErlangLibInfo].beam_files for dep in ctx.attr.deps])
 
     # ctx.actions.run(
@@ -55,7 +57,6 @@ def compile_erlang_action(ctx, srcs=[], hdrs=[]):
     #     outputs = outs,
     #     executable = "/Users/kuryloskip/kerl/23.1/bin/erlc",
     #     arguments = [erl_args],
-    #     # progress_message = "Compiling beam files...",
     # )
     ctx.actions.run_shell(
         inputs = srcs + hdrs + dep_beam_files.to_list() + dep_hdrs.to_list(),
