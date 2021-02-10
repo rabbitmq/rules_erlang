@@ -123,6 +123,7 @@ def ct_suite(
         srcs = ["test/{}.erl".format(suite_name)],
         dest = "test",
         deps = [":test_bazel_erlang_lib"] + deps,
+        testonly = True,
     )
 
     ct_test(
