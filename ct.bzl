@@ -21,10 +21,14 @@ def unique_short_dirnames(files):
             dirs.append(dirname)
     return dirs
 
+def code_paths(dep):
+    return [path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
+        for d in unique_short_dirnames(dep[ErlangLibInfo].beam)]
+
 def _impl(ctx):
     paths = []
     for dep in ctx.attr.deps:
-        paths.extend(unique_short_dirnames(dep[ErlangLibInfo].beam))
+        paths.extend(code_paths(dep))
 
     pa_args = " ".join(["-pa {}".format(p) for p in paths])
 
