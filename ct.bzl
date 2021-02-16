@@ -10,20 +10,20 @@ load(":bazel_erlang_lib.bzl", "ErlangLibInfo",
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
 
-def short_dirname(f):
+def _short_dirname(f):
     return f.short_path.rpartition("/")[0]
 
-def unique_short_dirnames(files):
+def _unique_short_dirnames(files):
     dirs = []
     for f in files:
-        dirname = short_dirname(f)
+        dirname = _short_dirname(f)
         if dirname not in dirs:
             dirs.append(dirname)
     return dirs
 
 def code_paths(dep):
     return [path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
-        for d in unique_short_dirnames(dep[ErlangLibInfo].beam)]
+        for d in _unique_short_dirnames(dep[ErlangLibInfo].beam)]
 
 def _impl(ctx):
     paths = []
@@ -76,7 +76,7 @@ def _impl(ctx):
         erlang_version=ctx.attr._erlang_version[ErlangVersionProvider].version,
         pa_args=pa_args,
         filter_tests_args=filter_tests_args,
-        suite_beam_dir=short_dirname(ctx.files.suites[0]),
+        suite_beam_dir=_short_dirname(ctx.files.suites[0]),
         sname=sname,
         test_env=" && ".join(test_env_commands)
     )
@@ -101,7 +101,10 @@ ct_test = rule(
     attrs = {
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
-        "suites": attr.label_list(allow_files=[".beam"]),
+        "suites": attr.label_list(
+            allow_files=[".beam"],
+            mandatory=True,
+        ),
         "data": attr.label_list(allow_files=True),
         "deps": attr.label_list(providers=[ErlangLibInfo]),
         "tools": attr.label_list(),
@@ -114,6 +117,7 @@ ct_test = rule(
 
 def ct_suite(
     suite_name="",
+    additional_srcs=[],
     data=[],
     deps=[],
     runtime_deps=[],
@@ -124,7 +128,7 @@ def ct_suite(
     erlc(
         name = "{}_beam_files".format(suite_name),
         hdrs = native.glob(["include/*.hrl"]),
-        srcs = ["test/{}.erl".format(suite_name)],
+        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         dest = "test",
         deps = [":test_bazel_erlang_lib"] + deps,
         testonly = True,
