@@ -33,8 +33,9 @@ def _impl(ctx):
     pa_args = " ".join(["-pa {}".format(p) for p in paths])
 
     filter_tests_args = ""
-    if len(ctx.attr.groups + ctx.attr.cases) > 0:
-        filter_tests_args = " -suite {}".format(ctx.label.name)
+    if len(ctx.attr.suites + ctx.attr.groups + ctx.attr.cases) > 0:
+        if len(ctx.attr.suites) > 0:
+            filter_tests_args = filter_tests_args + " -suite " + " ".join(ctx.attr.suites)
         if len(ctx.attr.groups) > 0:
             filter_tests_args = filter_tests_args + " -group " + " ".join(ctx.attr.groups)
         if len(ctx.attr.cases) > 0:
@@ -66,7 +67,7 @@ def _impl(ctx):
         -no_auto_compile \\
         -noinput \\
         {pa_args}{filter_tests_args} \\
-        -dir {suite_beam_dir} \\
+        -dir {dir} \\
         -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
         -sname {sname}
     """.format(
@@ -76,7 +77,7 @@ def _impl(ctx):
         erlang_version=ctx.attr._erlang_version[ErlangVersionProvider].version,
         pa_args=pa_args,
         filter_tests_args=filter_tests_args,
-        suite_beam_dir=_short_dirname(ctx.files.suites[0]),
+        dir=_short_dirname(ctx.files.compiled_suites[0]),
         sname=sname,
         test_env=" && ".join(test_env_commands)
     )
@@ -86,7 +87,7 @@ def _impl(ctx):
         content = script,
     )
 
-    runfiles = ctx.runfiles(files = ctx.files.suites + ctx.files.data)
+    runfiles = ctx.runfiles(files = ctx.files.compiled_suites + ctx.files.data)
     for dep in ctx.attr.deps:
         runfiles = runfiles.merge(ctx.runfiles(dep[DefaultInfo].files.to_list()))
     for tool in ctx.attr.tools:
@@ -101,7 +102,7 @@ ct_test = rule(
     attrs = {
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
-        "suites": attr.label_list(
+        "compiled_suites": attr.label_list(
             allow_files=[".beam"],
             mandatory=True,
         ),
@@ -109,6 +110,7 @@ ct_test = rule(
         "deps": attr.label_list(providers=[ErlangLibInfo]),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
+        "suites": attr.string_list(),
         "groups": attr.string_list(),
         "cases": attr.string_list(),
     },
@@ -123,6 +125,7 @@ def ct_suite(
     runtime_deps=[],
     tools=[],
     test_env={},
+    groups=[],
     **kwargs):
 
     erlc(
@@ -134,12 +137,31 @@ def ct_suite(
         testonly = True,
     )
 
-    ct_test(
-        name = suite_name,
-        suites = [":{}_beam_files".format(suite_name)],
-        data = data,
-        deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
-        tools = tools,
-        test_env = test_env,
-        **kwargs
-    )
+    if len(groups) > 1:
+        for group in groups:
+            ct_test(
+                name = "{}-{}".format(suite_name, group),
+                compiled_suites = [":{}_beam_files".format(suite_name)],
+                data = data,
+                deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+                tools = tools,
+                test_env = test_env,
+                suites = [suite_name],
+                groups = [group],
+                **kwargs
+            )
+
+        native.test_suite(
+            name = suite_name,
+            tests = ["{}-{}".format(suite_name, group) for group in groups],
+        )
+    else:
+        ct_test(
+            name = suite_name,
+            compiled_suites = [":{}_beam_files".format(suite_name)],
+            data = data,
+            deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+            tools = tools,
+            test_env = test_env,
+            **kwargs
+        )
