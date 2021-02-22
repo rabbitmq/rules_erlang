@@ -156,8 +156,6 @@ def _erlc_impl(ctx):
     script = """
         set -euo pipefail
 
-        # /usr/local/bin/tree $PWD
-
         mkdir -p {dest_dir}
         export HOME=$PWD
 
