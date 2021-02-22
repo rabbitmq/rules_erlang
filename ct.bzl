@@ -11,7 +11,10 @@ def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
 
 def _short_dirname(f):
-    return f.short_path.rpartition("/")[0]
+    if f.is_directory:
+        return f.short_path
+    else:
+        return f.short_path.rpartition("/")[0]
 
 def _unique_short_dirnames(files):
     dirs = []

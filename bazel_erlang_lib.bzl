@@ -22,8 +22,9 @@ def path_join(*components):
 def unique_dirnames(files):
     dirs = []
     for f in files:
-        if f.dirname not in dirs:
-            dirs.append(f.dirname)
+        dirname = f.path if f.is_directory else f.dirname
+        if dirname not in dirs:
+            dirs.append(dirname)
     return dirs
 
 def _module_name(f):
@@ -111,7 +112,7 @@ app_file = rule(
         "app_registered": attr.string_list(),
         "app_env": attr.string(default = "[]"),
         "extra_apps": attr.string_list(),
-        "app_src": attr.label_list(allow_files=[".app.src"]), # type list > type optional
+        "app_src": attr.label_list(allow_files=[".app.src"]),
         "modules": attr.label_list(allow_files=[".beam"]),
         "deps": attr.label_list(providers=[ErlangLibInfo]),
     },
