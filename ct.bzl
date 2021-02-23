@@ -33,7 +33,9 @@ def _impl(ctx):
     for dep in ctx.attr.deps:
         paths.extend(code_paths(dep))
 
-    pa_args = " ".join(["-pa {}".format(p) for p in paths])
+    package = ctx.label.package
+
+    pa_args = " ".join(["-pa $TEST_SRCDIR/$TEST_WORKSPACE/{}".format(p) for p in paths])
 
     filter_tests_args = ""
     if len(ctx.attr.suites + ctx.attr.groups + ctx.attr.cases) > 0:
@@ -66,16 +68,19 @@ def _impl(ctx):
 
     {test_env}
 
+    cd {package}
+
     {erlang_home}/bin/ct_run \\
         -no_auto_compile \\
         -noinput \\
         {pa_args}{filter_tests_args} \\
-        -dir {dir} \\
+        -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
         -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
         -sname {sname}
     """.format(
         begins_with_fun=BEGINS_WITH_FUN,
         query_erlang_version=QUERY_ERL_VERSION,
+        package=package,
         erlang_home=ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version=ctx.attr._erlang_version[ErlangVersionProvider].version,
         pa_args=pa_args,
