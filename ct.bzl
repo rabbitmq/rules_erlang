@@ -140,12 +140,14 @@ def ct_suite(
         testonly = True,
     )
 
+    data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
+
     if len(groups) > 1:
         for group in groups:
             ct_test(
                 name = "{}-{}".format(suite_name, group),
                 compiled_suites = [":{}_beam_files".format(suite_name)],
-                data = data,
+                data = data_dir_files + data,
                 deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
                 tools = tools,
                 test_env = test_env,
@@ -162,7 +164,7 @@ def ct_suite(
         ct_test(
             name = suite_name,
             compiled_suites = [":{}_beam_files".format(suite_name)],
-            data = data,
+            data = data_dir_files + data,
             deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
             tools = tools,
             test_env = test_env,
