@@ -3,12 +3,12 @@ load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 ErlangLibInfo = provider(
     doc = "Compiled Erlang sources",
     fields = {
-        'lib_name': 'Name of the erlang lib',
-        'lib_version': 'Version of the erlang lib',
-        'erlang_version': 'The erlang version used to produce the beam files',
-        'include': 'Public header files',
-        'beam': 'Compiled bytecode',
-        'priv': 'Additional files',
+        "lib_name": "Name of the erlang lib",
+        "lib_version": "Version of the erlang lib",
+        "erlang_version": "The erlang version used to produce the beam files",
+        "include": "Public header files",
+        "beam": "Compiled bytecode",
+        "priv": "Additional files",
     },
 )
 
@@ -32,7 +32,7 @@ def _module_name(f):
 
 def _app_file_impl(ctx):
     app_file = ctx.actions.declare_file(
-        path_join("ebin", "{}.app".format(ctx.attr.app_name))
+        path_join("ebin", "{}.app".format(ctx.attr.app_name)),
     )
 
     if len(ctx.files.app_src) > 1:
@@ -79,12 +79,12 @@ def _app_file_impl(ctx):
                 "$(PROJECT)": ctx.attr.app_name,
                 "$(PROJECT_DESCRIPTION)": project_description,
                 "$(PROJECT_VERSION)": ctx.attr.app_version,
-                "$(PROJECT_ID_TERM)": "", # {id$(comma)$(space)"$(1)"}$(comma))
+                "$(PROJECT_ID_TERM)": "",  # {id$(comma)$(space)"$(1)"}$(comma))
                 "$(MODULES_LIST)": modules_list,
                 "$(REGISTERED_LIST)": registered_list,
                 "$(APPLICATIONS_LIST)": applications_list,
                 "$(PROJECT_MOD)": ctx.attr.app_module,
-                "$(PROJECT_ENV)": ctx.attr.app_env, # $(subst \,\\,$(PROJECT_ENV))}$(if $(findstring {,$(PROJECT_APP_EXTRA_KEYS)),$(comma)$(newline)$(tab)$(subst \,\\,$(PROJECT_APP_EXTRA_KEYS)),)
+                "$(PROJECT_ENV)": ctx.attr.app_env,  # $(subst \,\\,$(PROJECT_ENV))}$(if $(findstring {,$(PROJECT_APP_EXTRA_KEYS)),$(comma)$(newline)$(tab)$(subst \,\\,$(PROJECT_APP_EXTRA_KEYS)),)
             },
         )
 
@@ -105,16 +105,16 @@ app_file = rule(
             default = Label("//:app_with_mod_file.template"),
             allow_single_file = True,
         ),
-        "app_name": attr.string(mandatory=True),
-        "app_version": attr.string(mandatory=True),
+        "app_name": attr.string(mandatory = True),
+        "app_version": attr.string(mandatory = True),
         "app_description": attr.string(),
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
         "app_env": attr.string(default = "[]"),
         "extra_apps": attr.string_list(),
-        "app_src": attr.label_list(allow_files=[".app.src"]),
-        "modules": attr.label_list(allow_files=[".beam"]),
-        "deps": attr.label_list(providers=[ErlangLibInfo]),
+        "app_src": attr.label_list(allow_files = [".app.src"]),
+        "modules": attr.label_list(allow_files = [".beam"]),
+        "deps": attr.label_list(providers = [ErlangLibInfo]),
     },
 )
 
@@ -168,11 +168,11 @@ def _erlc_impl(ctx):
 
         {erlang_home}/bin/erlc $@
     """.format(
-        dest_dir=dest_dir,
-        begins_with_fun=BEGINS_WITH_FUN,
-        query_erlang_version=QUERY_ERL_VERSION,
-        erlang_version=erlang_version,
-        erlang_home=ctx.attr._erlang_home[ErlangHomeProvider].path,
+        dest_dir = dest_dir,
+        begins_with_fun = BEGINS_WITH_FUN,
+        query_erlang_version = QUERY_ERL_VERSION,
+        erlang_version = erlang_version,
+        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
     )
 
     inputs = []
@@ -201,10 +201,10 @@ erlc = rule(
     attrs = {
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
-        "hdrs": attr.label_list(allow_files=[".hrl"]),
-        "srcs": attr.label_list(allow_files=[".erl"]),
-        "beam": attr.label_list(allow_files=[".beam"]),
-        "deps": attr.label_list(providers=[ErlangLibInfo]),
+        "hdrs": attr.label_list(allow_files = [".hrl"]),
+        "srcs": attr.label_list(allow_files = [".erl"]),
+        "beam": attr.label_list(allow_files = [".beam"]),
+        "deps": attr.label_list(providers = [ErlangLibInfo]),
         "erlc_opts": attr.string_list(),
         "dest": attr.string(
             default = "ebin",
@@ -230,29 +230,28 @@ bazel_erlang_lib = rule(
     implementation = _impl,
     attrs = {
         "_erlang_version": attr.label(default = ":erlang_version"),
-        "app_name": attr.string(mandatory=True),
-        "app_version": attr.string(mandatory=True),
-        "hdrs": attr.label_list(allow_files=[".hrl"]),
-        "app": attr.label(allow_files=[".app"]),
-        "beam": attr.label_list(allow_files=[".beam"]),
-        "priv": attr.label_list(allow_files=True),
+        "app_name": attr.string(mandatory = True),
+        "app_version": attr.string(mandatory = True),
+        "hdrs": attr.label_list(allow_files = [".hrl"]),
+        "app": attr.label(allow_files = [".app"]),
+        "beam": attr.label_list(allow_files = [".beam"]),
+        "priv": attr.label_list(allow_files = True),
     },
 )
 
 def erlang_lib(
-    app_name="",
-    app_version="",
-    app_description="",
-    app_module="",
-    app_registered=[],
-    app_env="[]",
-    extra_apps=[],
-    erlc_opts=[],
-    first_srcs=[],
-    priv=[],
-    deps=[],
-    runtime_deps=[]):
-
+        app_name = "",
+        app_version = "",
+        app_description = "",
+        app_module = "",
+        app_registered = [],
+        app_env = "[]",
+        extra_apps = [],
+        erlc_opts = [],
+        first_srcs = [],
+        priv = [],
+        deps = [],
+        runtime_deps = []):
     all_beam = []
 
     if len(first_srcs) > 0:
@@ -269,7 +268,7 @@ def erlang_lib(
     erlc(
         name = "beam_files",
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
-        srcs = native.glob(["src/*.erl"], exclude=first_srcs),
+        srcs = native.glob(["src/*.erl"], exclude = first_srcs),
         beam = all_beam,
         erlc_opts = erlc_opts,
         dest = "ebin",

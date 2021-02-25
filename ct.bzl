@@ -1,11 +1,14 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
-load(":bazel_erlang_lib.bzl", "ErlangLibInfo",
-                              "path_join",
-                              "unique_dirnames",
-                              "beam_file",
-                              "BEGINS_WITH_FUN",
-                              "QUERY_ERL_VERSION",
-                              "erlc")
+load(
+    ":bazel_erlang_lib.bzl",
+    "BEGINS_WITH_FUN",
+    "ErlangLibInfo",
+    "QUERY_ERL_VERSION",
+    "beam_file",
+    "erlc",
+    "path_join",
+    "unique_dirnames",
+)
 
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
@@ -25,8 +28,10 @@ def _unique_short_dirnames(files):
     return dirs
 
 def code_paths(dep):
-    return [path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
-        for d in _unique_short_dirnames(dep[ErlangLibInfo].beam)]
+    return [
+        path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
+        for d in _unique_short_dirnames(dep[ErlangLibInfo].beam)
+    ]
 
 def _impl(ctx):
     paths = []
@@ -78,16 +83,16 @@ def _impl(ctx):
         -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
         -sname {sname}
     """.format(
-        begins_with_fun=BEGINS_WITH_FUN,
-        query_erlang_version=QUERY_ERL_VERSION,
-        package=package,
-        erlang_home=ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version=ctx.attr._erlang_version[ErlangVersionProvider].version,
-        pa_args=pa_args,
-        filter_tests_args=filter_tests_args,
-        dir=_short_dirname(ctx.files.compiled_suites[0]),
-        sname=sname,
-        test_env=" && ".join(test_env_commands)
+        begins_with_fun = BEGINS_WITH_FUN,
+        query_erlang_version = QUERY_ERL_VERSION,
+        package = package,
+        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
+        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        pa_args = pa_args,
+        filter_tests_args = filter_tests_args,
+        dir = _short_dirname(ctx.files.compiled_suites[0]),
+        sname = sname,
+        test_env = " && ".join(test_env_commands),
     )
 
     ctx.actions.write(
@@ -111,11 +116,11 @@ ct_test = rule(
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
         "compiled_suites": attr.label_list(
-            allow_files=[".beam"],
-            mandatory=True,
+            allow_files = [".beam"],
+            mandatory = True,
         ),
-        "data": attr.label_list(allow_files=True),
-        "deps": attr.label_list(providers=[ErlangLibInfo]),
+        "data": attr.label_list(allow_files = True),
+        "deps": attr.label_list(providers = [ErlangLibInfo]),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
         "suites": attr.string_list(),
@@ -126,16 +131,16 @@ ct_test = rule(
 )
 
 def ct_suite(
-    suite_name="",
-    additional_srcs=[],
-    data=[],
-    deps=[],
-    runtime_deps=[],
-    tools=[],
-    test_env={},
-    groups=[],
-    **kwargs):
-
+        suite_name = "",
+        additional_srcs = [],
+        additional_beam = [],
+        data = [],
+        deps = [],
+        runtime_deps = [],
+        tools = [],
+        test_env = {},
+        groups = [],
+        **kwargs):
     erlc(
         name = "{}_beam_files".format(suite_name),
         hdrs = native.glob(["include/*.hrl"]),
@@ -151,7 +156,7 @@ def ct_suite(
         for group in groups:
             ct_test(
                 name = "{}-{}".format(suite_name, group),
-                compiled_suites = [":{}_beam_files".format(suite_name)],
+                compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
                 data = data_dir_files + data,
                 deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
                 tools = tools,
@@ -168,7 +173,7 @@ def ct_suite(
     else:
         ct_test(
             name = suite_name,
-            compiled_suites = [":{}_beam_files".format(suite_name)],
+            compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
             data = data_dir_files + data,
             deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
             tools = tools,

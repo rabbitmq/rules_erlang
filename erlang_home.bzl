@@ -13,7 +13,7 @@ erlang_home = rule(
     implementation = _erlang_home_impl,
     # The next line marks this as a special rule that we can
     # configure when invoking the cli or via .bazelrc file
-    build_setting = config.string(flag = True)
+    build_setting = config.string(flag = True),
 )
 
 def _erlang_version_impl(ctx):
@@ -21,5 +21,5 @@ def _erlang_version_impl(ctx):
 
 erlang_version = rule(
     implementation = _erlang_version_impl,
-    build_setting = config.string(flag = True)
+    build_setting = config.string(flag = True),
 )
