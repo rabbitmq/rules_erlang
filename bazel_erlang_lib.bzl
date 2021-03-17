@@ -250,6 +250,7 @@ def erlang_lib(
         erlc_opts = [],
         first_srcs = [],
         priv = [],
+        build_deps = [],
         deps = [],
         runtime_deps = []):
     all_beam = []
@@ -262,7 +263,7 @@ def erlang_lib(
             srcs = native.glob(first_srcs),
             erlc_opts = erlc_opts,
             dest = "ebin",
-            deps = deps,
+            deps = build_deps + deps,
         )
 
     erlc(
@@ -272,7 +273,7 @@ def erlang_lib(
         beam = all_beam,
         erlc_opts = erlc_opts,
         dest = "ebin",
-        deps = deps,
+        deps = build_deps + deps,
     )
 
     all_beam = all_beam + [":beam_files"]
