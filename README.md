@@ -36,3 +36,9 @@ ct_suite(
     name = "unit_SUITE",
 )
 ```
+
+```shell
+bazel test //... \
+    --@bazel-erlang//:erlang_home=/path/to/erlang \
+    --@bazel-erlang//:erlang_version=23.2
+```
