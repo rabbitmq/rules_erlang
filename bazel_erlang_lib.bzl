@@ -4,7 +4,6 @@ ErlangLibInfo = provider(
     doc = "Compiled Erlang sources",
     fields = {
         "lib_name": "Name of the erlang lib",
-        "lib_version": "Version of the erlang lib",
         "erlang_version": "The erlang version used to produce the beam files",
         "include": "Public header files",
         "beam": "Compiled bytecode",
@@ -41,10 +40,6 @@ def _app_file_impl(ctx):
     modules_list = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
 
     if len(ctx.files.app_src) == 1:
-        # print("Expanding {app_name}.app.src -> {app_name}.app and injecting modules list".format(app_name=ctx.attr.app_name))
-        # TODO: check that the app_name in the .app.src matches the rule attribute
-        #       as well as the version
-
         modules_term = "{modules," + modules_list + "}"
 
         # TODO: handle the data structure manipulation with erlang itself
@@ -56,7 +51,9 @@ def _app_file_impl(ctx):
             },
         )
     else:
-        # print("Generating {app_name}.app".format(app_name=ctx.attr.app_name))
+        if ctx.attr.app_version == "":
+            fail("app_version must be set when app_src is empty")
+
         if ctx.attr.app_module != "" and len([m for m in ctx.files.modules if m.basename == ctx.attr.app_module + ".beam"]) == 1:
             template = ctx.file._app_with_mod_file_template
         else:
@@ -66,7 +63,6 @@ def _app_file_impl(ctx):
 
         registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
 
-        # [$(call comma_list,kernel stdlib $(OTP_DEPS) $(LOCAL_DEPS) $(foreach dep,$(DEPS),$(call dep_name,$(dep))))]
         applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
         for dep in ctx.attr.deps:
             applications.append(dep[ErlangLibInfo].lib_name)
@@ -79,12 +75,12 @@ def _app_file_impl(ctx):
                 "$(PROJECT)": ctx.attr.app_name,
                 "$(PROJECT_DESCRIPTION)": project_description,
                 "$(PROJECT_VERSION)": ctx.attr.app_version,
-                "$(PROJECT_ID_TERM)": "",  # {id$(comma)$(space)"$(1)"}$(comma))
+                "$(PROJECT_ID_TERM)": "",
                 "$(MODULES_LIST)": modules_list,
                 "$(REGISTERED_LIST)": registered_list,
                 "$(APPLICATIONS_LIST)": applications_list,
                 "$(PROJECT_MOD)": ctx.attr.app_module,
-                "$(PROJECT_ENV)": ctx.attr.app_env,  # $(subst \,\\,$(PROJECT_ENV))}$(if $(findstring {,$(PROJECT_APP_EXTRA_KEYS)),$(comma)$(newline)$(tab)$(subst \,\\,$(PROJECT_APP_EXTRA_KEYS)),)
+                "$(PROJECT_ENV)": ctx.attr.app_env,
             },
         )
 
@@ -106,7 +102,7 @@ app_file = rule(
             allow_single_file = True,
         ),
         "app_name": attr.string(mandatory = True),
-        "app_version": attr.string(mandatory = True),
+        "app_version": attr.string(),
         "app_description": attr.string(),
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
@@ -217,7 +213,6 @@ def _impl(ctx):
     return [
         ErlangLibInfo(
             lib_name = ctx.attr.app_name,
-            lib_version = ctx.attr.app_version,
             erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
             include = ctx.files.hdrs,
             beam = compiled_files,
@@ -231,7 +226,6 @@ bazel_erlang_lib = rule(
     attrs = {
         "_erlang_version": attr.label(default = ":erlang_version"),
         "app_name": attr.string(mandatory = True),
-        "app_version": attr.string(mandatory = True),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(allow_files = [".beam"]),
@@ -295,7 +289,6 @@ def erlang_lib(
     bazel_erlang_lib(
         name = "bazel_erlang_lib",
         app_name = app_name,
-        app_version = app_version,
         hdrs = native.glob(["include/*.hrl"]),
         app = ":app_file",
         beam = all_beam,
