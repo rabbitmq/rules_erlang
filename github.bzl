@@ -10,11 +10,12 @@ def github_bazel_erlang_lib(name = None, org = None, repo = None, version = "", 
         ))
 
     repo = name if repo == None else repo
+    prefix = version if version != "" else ref
 
     http_archive(
         name = name,
         urls = ["https://github.com/{}/{}/archive/{}.zip".format(org, repo, ref)],
-        strip_prefix = "{}-{}".format(repo, ref),
+        strip_prefix = "{}-{}".format(repo, prefix),
         **kwargs
     )
 
