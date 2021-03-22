@@ -272,25 +272,26 @@ def erlang_lib(
 
     all_beam = all_beam + [":beam_files"]
 
-    app_file(
-        name = "app_file",
-        app_name = app_name,
-        app_version = app_version,
-        app_description = app_description,
-        app_module = app_module,
-        app_registered = app_registered,
-        app_env = app_env,
-        extra_apps = extra_apps,
-        app_src = native.glob(["src/{}.app.src".format(app_name)]),
-        modules = all_beam,
-        deps = deps + runtime_deps,
-    )
+    if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
+        app_file(
+            name = "app_file",
+            app_name = app_name,
+            app_version = app_version,
+            app_description = app_description,
+            app_module = app_module,
+            app_registered = app_registered,
+            app_env = app_env,
+            extra_apps = extra_apps,
+            app_src = native.glob(["src/{}.app.src".format(app_name)]),
+            modules = all_beam,
+            deps = deps + runtime_deps,
+        )
 
     bazel_erlang_lib(
         name = "bazel_erlang_lib",
         app_name = app_name,
         hdrs = native.glob(["include/*.hrl"]),
-        app = ":app_file",
+        app = "ebin/{}.app".format(app_name),
         beam = all_beam,
         priv = priv,
         visibility = ["//visibility:public"],
