@@ -286,12 +286,15 @@ def erlang_lib(
             modules = all_beam,
             deps = deps + runtime_deps,
         )
+        app = ":app_file"
+    else:
+        app = "ebin/{}.app".format(app_name)
 
     bazel_erlang_lib(
         name = "bazel_erlang_lib",
         app_name = app_name,
         hdrs = native.glob(["include/*.hrl"]),
-        app = "ebin/{}.app".format(app_name),
+        app = app,
         beam = all_beam,
         priv = priv,
         visibility = ["//visibility:public"],
