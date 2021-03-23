@@ -1,6 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def github_bazel_erlang_lib(name = None, org = None, repo = None, version = "", ref = "master", first_srcs = [], deps = [], **kwargs):
+def github_bazel_erlang_lib(name = None, org = None, repo = None, version = "master", ref = "refs/heads/master", first_srcs = [], deps = [], **kwargs):
     if not ("build_file" in kwargs.keys() or "build_file_content" in kwargs.keys()):
         kwargs.update(build_file_content = _BUILD_FILE_TEMPLATE.format(
             app_name = name,
@@ -10,12 +10,11 @@ def github_bazel_erlang_lib(name = None, org = None, repo = None, version = "", 
         ))
 
     repo = name if repo == None else repo
-    prefix = version if version != "" else ref
 
     http_archive(
         name = name,
         urls = ["https://github.com/{}/{}/archive/{}.zip".format(org, repo, ref)],
-        strip_prefix = "{}-{}".format(repo, prefix),
+        strip_prefix = "{}-{}".format(repo, version),
         **kwargs
     )
 
