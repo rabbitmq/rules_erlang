@@ -30,7 +30,9 @@ def flat_deps(list_of_labels_providing_erlang_lib_info):
     for dep in list_of_labels_providing_erlang_lib_info:
         if not _contains_by_lib_name(dep, deps):
             deps.append(dep)
-            deps.extend(dep[ErlangLibInfo].deps)
+            for t in dep[ErlangLibInfo].deps:
+                if not _contains_by_lib_name(t, deps):
+                    deps.append(t)
     return deps
 
 def unique_dirnames(files):
@@ -326,4 +328,73 @@ def erlang_lib(
         priv = priv,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
+    )
+
+def _unique(l):
+    r = []
+    for item in l:
+        if item not in r:
+            r.append(item)
+    return r
+
+TEST_ERLC_OPTS = [
+    "-DTEST",
+]
+
+def test_erlang_lib(
+        app_name = "",
+        app_version = "",
+        app_description = "",
+        app_module = "",
+        app_registered = [],
+        app_env = "[]",
+        extra_apps = [],
+        erlc_opts = [],
+        first_srcs = [],
+        priv = [],
+        build_deps = [],
+        deps = [],
+        runtime_deps = []):
+    all_beam = []
+
+    if len(first_srcs) > 0:
+        all_beam = [":first_test_beam_files"]
+        erlc(
+            name = "first_test_beam_files",
+            hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
+            srcs = native.glob(first_srcs),
+            erlc_opts = _unique(TEST_ERLC_OPTS + erlc_opts),
+            dest = "test",
+            deps = build_deps + deps,
+            testonly = True,
+        )
+
+    erlc(
+        name = "test_beam_files",
+        hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
+        srcs = native.glob(["src/*.erl"], exclude = first_srcs),
+        beam = all_beam,
+        erlc_opts = _unique(TEST_ERLC_OPTS + erlc_opts),
+        dest = "test",
+        deps = build_deps + deps,
+        testonly = True,
+    )
+
+    all_beam = all_beam + [":test_beam_files"]
+
+    if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
+        app = ":app_file"
+    else:
+        app = "ebin/{}.app".format(app_name)
+
+    bazel_erlang_lib(
+        name = "test_bazel_erlang_lib",
+        app_name = app_name,
+        hdrs = native.glob(["include/*.hrl"]),
+        app = app,
+        beam = all_beam,
+        priv = priv,
+        deps = deps + runtime_deps,
+        visibility = ["//visibility:public"],
+        testonly = True,
     )

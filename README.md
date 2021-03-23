@@ -43,20 +43,10 @@ erlang_lib(
     app_version = APP_VERSION,
 )
 
-erlc(
-    name = "test_beam_files",
-    hdrs = glob(["include/*.hrl", "src/*.hrl"]),
-    srcs = glob(["src/*.erl"]),
-    erlc_opts = ["-DTEST"],
-    dest = "src",
-)
-
-bazel_erlang_lib(
-    name = "test_bazel_erlang_lib",
+test_erlang_lib(
     app_name = APP_NAME,
-    hdrs = glob(["include/*.hrl"]),
-    app = ":app_file",
-    beam = [":test_beam_files"],
+    app_version = APP_VERSION,
+)
 
 ct_suite(
     name = "unit_SUITE",
