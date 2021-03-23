@@ -2,6 +2,33 @@
 
 Bazel rules for Erlang sources
 
+## Assumptions
+
+`erlang_lib` and `ct_suite` macros require the standard otp layout, relative to the bazel package (to some degree abitrary layout can be handled with with the `erlc`, `app_file`, `bazel_erlang_lib` & `ct_test` rules which those macros utilize). For an erlang application named `my_erlang_app` this means:
+
+```
+my_erlang_app
+├── BUILD.bazel
+├── include
+│   ├── ...
+│   └── my_header.hrl
+├── priv
+│   └── schema
+├── src
+│   ├── ...
+│   └── my_erlang_app.erl
+└── test
+    ├── ...
+    └── unit_SUITE.erl
+```
+
+And that the convention is followed where, using the `dest` attribute of the `erlc` rule:
+1. Compiled production bytecode is placed in `ebin`
+2. Compiled test bytecode is placed in `src`
+3. Compiled test suite and test helper bytecode is placed in `test`
+
+The example below follows this convention.
+
 ## Minimal Example
 
 ```starlark
@@ -27,7 +54,6 @@ erlc(
 bazel_erlang_lib(
     name = "test_bazel_erlang_lib",
     app_name = APP_NAME,
-    app_version = APP_VERSION,
     hdrs = glob(["include/*.hrl"]),
     app = ":app_file",
     beam = [":test_beam_files"],

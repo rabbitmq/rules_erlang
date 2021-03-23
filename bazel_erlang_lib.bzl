@@ -8,6 +8,7 @@ ErlangLibInfo = provider(
         "include": "Public header files",
         "beam": "Compiled bytecode",
         "priv": "Additional files",
+        "deps": "Runtime dependencies of the compiled sources",
     },
 )
 
@@ -17,6 +18,20 @@ QUERY_ERL_VERSION = """erl -eval '{ok, Version} = file:read_file(filename:join([
 # NOTE: we should probably fetch the separator with ctx.host_configuration.host_path_separator
 def path_join(*components):
     return "/".join(components)
+
+def _contains_by_lib_name(dep, deps):
+    for d in deps:
+        if d[ErlangLibInfo].lib_name == dep[ErlangLibInfo].lib_name:
+            return True
+    return False
+
+def flat_deps(list_of_labels_providing_erlang_lib_info):
+    deps = []
+    for dep in list_of_labels_providing_erlang_lib_info:
+        if not _contains_by_lib_name(dep, deps):
+            deps.append(dep)
+            deps.extend(dep[ErlangLibInfo].deps)
+    return deps
 
 def unique_dirnames(files):
     dirs = []
@@ -210,6 +225,13 @@ erlc = rule(
 
 def _impl(ctx):
     compiled_files = ctx.files.app + ctx.files.beam
+
+    deps = flat_deps(ctx.attr.deps)
+
+    runfiles = ctx.runfiles(compiled_files + ctx.files.priv)
+    for dep in ctx.attr.deps:
+        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
+
     return [
         ErlangLibInfo(
             lib_name = ctx.attr.app_name,
@@ -217,8 +239,12 @@ def _impl(ctx):
             include = ctx.files.hdrs,
             beam = compiled_files,
             priv = ctx.files.priv,
+            deps = deps,
         ),
-        DefaultInfo(files = depset(compiled_files)),
+        DefaultInfo(
+            files = depset(compiled_files),
+            runfiles = runfiles,
+        ),
     ]
 
 bazel_erlang_lib = rule(
@@ -230,6 +256,7 @@ bazel_erlang_lib = rule(
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(allow_files = [".beam"]),
         "priv": attr.label_list(allow_files = True),
+        "deps": attr.label_list(providers = [ErlangLibInfo]),
     },
 )
 
@@ -297,5 +324,6 @@ def erlang_lib(
         app = app,
         beam = all_beam,
         priv = priv,
+        deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
     )

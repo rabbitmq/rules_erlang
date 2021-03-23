@@ -7,7 +7,7 @@ load(
     "beam_file",
     "erlc",
     "path_join",
-    "unique_dirnames",
+    "flat_deps",
 )
 
 def sanitize_sname(s):
@@ -35,7 +35,7 @@ def code_paths(dep):
 
 def _impl(ctx):
     paths = []
-    for dep in ctx.attr.deps:
+    for dep in flat_deps(ctx.attr.deps):
         paths.extend(code_paths(dep))
 
     package = ctx.label.package
@@ -102,7 +102,7 @@ def _impl(ctx):
 
     runfiles = ctx.runfiles(files = ctx.files.compiled_suites + ctx.files.data)
     for dep in ctx.attr.deps:
-        runfiles = runfiles.merge(ctx.runfiles(dep[DefaultInfo].files.to_list()))
+        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
     for tool in ctx.attr.tools:
         runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
 

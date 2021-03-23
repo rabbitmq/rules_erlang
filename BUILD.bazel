@@ -14,6 +14,9 @@ erlang_home(
     visibility = ["//visibility:public"],
 )
 
+# This allows us to
+# `bazel build //my/target \
+#    --@bazel-erlang//:erlang_version=23.1`
 erlang_version(
     name = "erlang_version",
     build_setting_default = "23.1",
