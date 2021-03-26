@@ -145,7 +145,7 @@ def ct_suite(
         **kwargs):
     erlc(
         name = "{}_beam_files".format(suite_name),
-        hdrs = native.glob(["include/*.hrl"] + additional_hdrs),
+        hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,
         dest = "test",
