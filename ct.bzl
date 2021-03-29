@@ -6,8 +6,8 @@ load(
     "QUERY_ERL_VERSION",
     "beam_file",
     "erlc",
-    "path_join",
     "flat_deps",
+    "path_join",
 )
 
 def sanitize_sname(s):

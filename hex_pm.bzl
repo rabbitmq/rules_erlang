@@ -1,6 +1,6 @@
 load(":hex_archive.bzl", "hex_archive")
 
-def hex_pm_bazel_erlang_lib(name = None, version = None, erlc_opts = [], first_srcs = [], deps = [], **kwargs):
+def hex_pm_bazel_erlang_lib(name = None, version = None, erlc_opts = [], first_srcs = [], deps = [], runtime_deps = [], **kwargs):
     hex_archive(
         name = name,
         version = version,
@@ -10,6 +10,7 @@ def hex_pm_bazel_erlang_lib(name = None, version = None, erlc_opts = [], first_s
             erlc_opts = erlc_opts,
             first_srcs = first_srcs,
             deps = deps,
+            runtime_deps = runtime_deps,
         ),
         **kwargs
     )
@@ -23,5 +24,6 @@ erlang_lib(
     erlc_opts = {erlc_opts},
     first_srcs = {first_srcs},
     deps = {deps},
+    runtime_deps = {runtime_deps},
 )
 """

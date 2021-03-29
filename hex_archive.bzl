@@ -83,7 +83,7 @@ def _impl(ctx):
     return update_attrs(ctx.attr, _hex_archive_attrs.keys(), {"sha256": download_info.sha256})
 
 _hex_archive_attrs = {
-    "version" : attr.string(mandatory = True),
+    "version": attr.string(mandatory = True),
     "sha256": attr.string(
         doc = """The expected SHA-256 of the file downloaded.
 This must match the SHA-256 of the file downloaded. _It is a security risk
