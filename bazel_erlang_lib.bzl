@@ -15,6 +15,18 @@ ErlangLibInfo = provider(
 BEGINS_WITH_FUN = """beginswith() { case $2 in "$1"*) true;; *) false;; esac; }"""
 QUERY_ERL_VERSION = """erl -eval '{ok, Version} = file:read_file(filename:join([code:root_dir(), "releases", erlang:system_info(otp_release), "OTP_VERSION"])), io:fwrite(Version), halt().' -noshell"""
 
+DEFAULT_ERLC_OPTS = [
+    "-Werror",
+    "+debug_info",
+    "+warn_export_vars",
+    "+warn_shadow_vars",
+    "+warn_obsolete_guard",
+]
+
+ADDITIONAL_TEST_ERLC_OPTS = [
+    "-DTEST",
+]
+
 # NOTE: we should probably fetch the separator with ctx.host_configuration.host_path_separator
 def path_join(*components):
     return "/".join(components)
@@ -22,6 +34,7 @@ def path_join(*components):
 def _contains_by_lib_name(dep, deps):
     for d in deps:
         if d[ErlangLibInfo].lib_name == dep[ErlangLibInfo].lib_name:
+            # TODO: fail if name matches but they are not identical
             return True
     return False
 
@@ -270,7 +283,7 @@ def erlang_lib(
         app_registered = [],
         app_env = "[]",
         extra_apps = [],
-        erlc_opts = [],
+        erlc_opts = DEFAULT_ERLC_OPTS,
         first_srcs = [],
         build_deps = [],
         deps = [],
@@ -283,7 +296,7 @@ def erlang_lib(
             name = "first_beam_files",
             hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
             srcs = native.glob(first_srcs),
-            erlc_opts = erlc_opts,
+            erlc_opts = _unique(erlc_opts),
             dest = "ebin",
             deps = build_deps + deps,
         )
@@ -293,7 +306,7 @@ def erlang_lib(
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
         srcs = native.glob(["src/*.erl"], exclude = first_srcs),
         beam = all_beam,
-        erlc_opts = erlc_opts,
+        erlc_opts = _unique(erlc_opts),
         dest = "ebin",
         deps = build_deps + deps,
     )
@@ -336,10 +349,6 @@ def _unique(l):
             r.append(item)
     return r
 
-TEST_ERLC_OPTS = [
-    "-DTEST",
-]
-
 def test_erlang_lib(
         app_name = "",
         app_version = "",
@@ -348,7 +357,7 @@ def test_erlang_lib(
         app_registered = [],
         app_env = "[]",
         extra_apps = [],
-        erlc_opts = [],
+        erlc_opts = DEFAULT_ERLC_OPTS + ADDITIONAL_TEST_ERLC_OPTS,
         first_srcs = [],
         build_deps = [],
         deps = [],
@@ -361,7 +370,7 @@ def test_erlang_lib(
             name = "first_test_beam_files",
             hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
             srcs = native.glob(first_srcs),
-            erlc_opts = _unique(TEST_ERLC_OPTS + erlc_opts),
+            erlc_opts = _unique(erlc_opts),
             dest = "test",
             deps = build_deps + deps,
             testonly = True,
@@ -372,7 +381,7 @@ def test_erlang_lib(
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
         srcs = native.glob(["src/*.erl"], exclude = first_srcs),
         beam = all_beam,
-        erlc_opts = _unique(TEST_ERLC_OPTS + erlc_opts),
+        erlc_opts = _unique(erlc_opts),
         dest = "test",
         deps = build_deps + deps,
         testonly = True,
