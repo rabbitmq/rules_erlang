@@ -57,7 +57,7 @@ def _impl(ctx):
         test_env_commands.append("export {}=\"{}\"".format(k, v))
 
     sname = sanitize_sname("ct-{}-{}".format(
-        ctx.label.package.partition("/")[-1],
+        ctx.label.package.rpartition("/")[-1],
         ctx.label.name,
     ))
 
