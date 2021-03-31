@@ -63,27 +63,29 @@ def _impl(ctx):
 
     script = """set -euxo pipefail
 
-    export HOME=${{TEST_TMPDIR}}
+export HOME=${{TEST_TMPDIR}}
 
-    {begins_with_fun}
-    V=$({erlang_home}/bin/{query_erlang_version})
-    if ! beginswith "{erlang_version}" "$V"; then
-        echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-        exit 1
-    fi
+{begins_with_fun}
+V=$({erlang_home}/bin/{query_erlang_version})
+if ! beginswith "{erlang_version}" "$V"; then
+    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
+    exit 1
+fi
 
-    {test_env}
+{test_env}
 
-    cd {package}
+cd {package}
 
-    {erlang_home}/bin/ct_run \\
-        -no_auto_compile \\
-        -noinput \\
-        {pa_args}{filter_tests_args} \\
-        -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
-        -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
-        -sname {sname}
-    """.format(
+FILTER=${{FOCUS:-{filter_tests_args}}}
+
+{erlang_home}/bin/ct_run \\
+    -no_auto_compile \\
+    -noinput \\
+    {pa_args}$FILTER \\
+    -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
+    -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
+    -sname {sname}
+""".format(
         begins_with_fun = BEGINS_WITH_FUN,
         query_erlang_version = QUERY_ERL_VERSION,
         package = package,
@@ -142,7 +144,9 @@ def ct_suite(
         runtime_deps = [],
         tools = [],
         test_env = {},
+        suites = [],
         groups = [],
+        cases = [],
         **kwargs):
     erlc(
         name = "{}_beam_files".format(suite_name),
@@ -156,23 +160,48 @@ def ct_suite(
 
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
-    if len(groups) > 1:
+    if len(groups) > 0:
+        is_dict = hasattr(groups, 'keys')
+        tests = []
         for group in groups:
-            ct_test(
-                name = "{}-{}".format(suite_name, group),
-                compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
-                data = data_dir_files + data,
-                deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
-                tools = tools,
-                test_env = test_env,
-                suites = [suite_name],
-                groups = [group],
-                **kwargs
-            )
+            if is_dict:
+                group_tests = []
+                for case in groups[group]:
+                    ct_test(
+                        name = "{}-{}-{}".format(suite_name, group, case),
+                        compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+                        data = data_dir_files + data,
+                        deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+                        tools = tools,
+                        test_env = test_env,
+                        suites = [suite_name],
+                        groups = [group],
+                        cases = [case],
+                        **kwargs
+                    )
+                    group_tests.append("{}-{}-{}".format(suite_name, group, case))
+                native.test_suite(
+                    name = "{}-{}".format(suite_name, group),
+                    tests = group_tests,
+                )
+                tests.extend(group_tests)
+            else:
+                ct_test(
+                    name = "{}-{}".format(suite_name, group),
+                    compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+                    data = data_dir_files + data,
+                    deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+                    tools = tools,
+                    test_env = test_env,
+                    suites = [suite_name],
+                    groups = [group],
+                    **kwargs
+                )
+                tests.append("{}-{}".format(suite_name, group))
 
         native.test_suite(
             name = suite_name,
-            tests = ["{}-{}".format(suite_name, group) for group in groups],
+            tests = tests,
         )
     else:
         ct_test(

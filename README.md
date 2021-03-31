@@ -32,7 +32,7 @@ The example below follows this convention.
 ## Minimal Example
 
 ```starlark
-load("@bazel-erlang//:bazel_erlang_lib.bzl", "bazel_erlang_lib", "erlang_lib", "erlc")
+load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib", "test_erlang_lib")
 load("@bazel-erlang//:ct.bzl", "ct_suite")
 
 APP_NAME = "my_cool_app"
@@ -57,4 +57,13 @@ ct_suite(
 bazel test //... \
     --@bazel-erlang//:erlang_home=/path/to/erlang \
     --@bazel-erlang//:erlang_version=23.2
+```
+
+## Run a single test case
+
+```shell
+bazel test //:unit_SUITE \
+    --@bazel-erlang//:erlang_home=/path/to/erlang \
+    --@bazel-erlang//:erlang_version=23.2 \
+    --test_env FOCUS="-suite unit_SUITE -group my_group -case my_case"
 ```
