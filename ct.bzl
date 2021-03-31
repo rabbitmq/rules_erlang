@@ -167,8 +167,16 @@ def ct_suite(
             if is_dict:
                 group_tests = []
                 for case in groups[group]:
+                    if hasattr(case, 'keys'):
+                        case_name = case["case"]
+                        case.pop("case")
+                        case.update(**kwargs)
+                    else:
+                        case_name = case
+                        case = kwargs
+
                     ct_test(
-                        name = "{}-{}-{}".format(suite_name, group, case),
+                        name = "{}-{}-{}".format(suite_name, group, case_name),
                         compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
                         data = data_dir_files + data,
                         deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
@@ -176,10 +184,10 @@ def ct_suite(
                         test_env = test_env,
                         suites = [suite_name],
                         groups = [group],
-                        cases = [case],
-                        **kwargs
+                        cases = [case_name],
+                        **case
                     )
-                    group_tests.append("{}-{}-{}".format(suite_name, group, case))
+                    group_tests.append("{}-{}-{}".format(suite_name, group, case_name))
                 native.test_suite(
                     name = "{}-{}".format(suite_name, group),
                     tests = group_tests,
