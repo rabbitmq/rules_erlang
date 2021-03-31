@@ -23,8 +23,12 @@ DEFAULT_ERLC_OPTS = [
     "+warn_obsolete_guard",
 ]
 
-ADDITIONAL_TEST_ERLC_OPTS = [
-    "-DTEST",
+DEFAULT_TEST_ERLC_OPTS = [
+    "+debug_info",
+    "+warn_export_vars",
+    "+warn_shadow_vars",
+    "+warn_obsolete_guard",
+    "-DTEST=1",
 ]
 
 # NOTE: we should probably fetch the separator with ctx.host_configuration.host_path_separator
@@ -357,7 +361,7 @@ def test_erlang_lib(
         app_registered = [],
         app_env = "[]",
         extra_apps = [],
-        erlc_opts = DEFAULT_ERLC_OPTS + ADDITIONAL_TEST_ERLC_OPTS,
+        erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         first_srcs = [],
         build_deps = [],
         deps = [],

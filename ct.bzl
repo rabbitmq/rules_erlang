@@ -2,6 +2,7 @@ load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(
     ":bazel_erlang_lib.bzl",
     "BEGINS_WITH_FUN",
+    "DEFAULT_TEST_ERLC_OPTS",
     "ErlangLibInfo",
     "QUERY_ERL_VERSION",
     "beam_file",
@@ -135,7 +136,7 @@ def ct_suite(
         additional_hdrs = [],
         additional_srcs = [],
         additional_beam = [],
-        erlc_opts = [],
+        erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         data = [],
         deps = [],
         runtime_deps = [],
