@@ -298,7 +298,7 @@ def erlang_lib(
         all_beam = [":first_beam_files"]
         erlc(
             name = "first_beam_files",
-            hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
+            hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
             erlc_opts = _unique(erlc_opts),
             dest = "ebin",
@@ -307,8 +307,8 @@ def erlang_lib(
 
     erlc(
         name = "beam_files",
-        hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
-        srcs = native.glob(["src/*.erl"], exclude = first_srcs),
+        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
+        srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_beam,
         erlc_opts = _unique(erlc_opts),
         dest = "ebin",
@@ -338,7 +338,7 @@ def erlang_lib(
     bazel_erlang_lib(
         name = "bazel_erlang_lib",
         app_name = app_name,
-        hdrs = native.glob(["include/*.hrl"]),
+        hdrs = native.glob(["include/**/*.hrl"]),
         app = app,
         beam = all_beam,
         priv = native.glob(["priv/**/*"]),
@@ -372,7 +372,7 @@ def test_erlang_lib(
         all_beam = [":first_test_beam_files"]
         erlc(
             name = "first_test_beam_files",
-            hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
+            hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
             erlc_opts = _unique(erlc_opts),
             dest = "test",
@@ -382,8 +382,8 @@ def test_erlang_lib(
 
     erlc(
         name = "test_beam_files",
-        hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
-        srcs = native.glob(["src/*.erl"], exclude = first_srcs),
+        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
+        srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_beam,
         erlc_opts = _unique(erlc_opts),
         dest = "test",
@@ -401,7 +401,7 @@ def test_erlang_lib(
     bazel_erlang_lib(
         name = "test_bazel_erlang_lib",
         app_name = app_name,
-        hdrs = native.glob(["include/*.hrl"]),
+        hdrs = native.glob(["include/**/*.hrl"]),
         app = app,
         beam = all_beam,
         priv = native.glob(["priv/**/*"]),
