@@ -161,13 +161,13 @@ def ct_suite(
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     if len(groups) > 0:
-        is_dict = hasattr(groups, 'keys')
+        is_dict = hasattr(groups, "keys")
         tests = []
         for group in groups:
             if is_dict:
                 group_tests = []
                 for case in groups[group]:
-                    if hasattr(case, 'keys'):
+                    if hasattr(case, "keys"):
                         case_name = case["case"]
                         case.pop("case")
                         case.update(**kwargs)
