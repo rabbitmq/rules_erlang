@@ -232,7 +232,10 @@ erlc = rule(
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
-        "srcs": attr.label_list(allow_files = [".erl"]),
+        "srcs": attr.label_list(
+            mandatory = True,
+            allow_files = [".erl"],
+        ),
         "beam": attr.label_list(allow_files = [".beam"]),
         "deps": attr.label_list(providers = [ErlangLibInfo]),
         "erlc_opts": attr.string_list(),
