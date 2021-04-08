@@ -145,7 +145,11 @@ def ct_suite(
         tools = [],
         test_env = {},
         groups = [],
+        matrix = [],
         **kwargs):
+    if len(groups) > 0 and len(matrix) > 0:
+        fail("groups and matrix are mutually exclusive for ct_suite")
+
     erlc(
         name = "{}_beam_files".format(name),
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
@@ -208,6 +212,28 @@ def ct_suite(
         native.test_suite(
             name = name,
             tests = tests,
+        )
+    elif len(matrix) > 0:
+        all_tests = []
+        for tag, args in matrix.items():
+            test_name = "{}-{}".format(name, tag)
+            el_kwargs = dict(**kwargs)
+            el_kwargs.update(args)
+            ct_test(
+                name = test_name,
+                compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
+                data = data_dir_files + data,
+                deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+                tools = tools,
+                test_env = test_env,
+                suites = [name],
+                **el_kwargs
+            )
+            all_tests.append(test_name)
+
+        native.test_suite(
+            name = name,
+            tests = all_tests,
         )
     else:
         ct_test(
