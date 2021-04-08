@@ -134,7 +134,7 @@ ct_test = rule(
 )
 
 def ct_suite(
-        suite_name = "",
+        name = "",
         additional_hdrs = [],
         additional_srcs = [],
         additional_beam = [],
@@ -147,16 +147,16 @@ def ct_suite(
         groups = [],
         **kwargs):
     erlc(
-        name = "{}_beam_files".format(suite_name),
+        name = "{}_beam_files".format(name),
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
-        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
+        srcs = ["test/{}.erl".format(name)] + additional_srcs,
         erlc_opts = erlc_opts,
         dest = "test",
         deps = [":test_bazel_erlang_lib"] + deps,
         testonly = True,
     )
 
-    data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
+    data_dir_files = native.glob(["test/{}_data/**/*".format(name)])
 
     if len(groups) > 0:
         is_dict = hasattr(groups, "keys")
@@ -174,45 +174,45 @@ def ct_suite(
                         case = kwargs
 
                     ct_test(
-                        name = "{}-{}-{}".format(suite_name, group, case_name),
-                        compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+                        name = "{}-{}-{}".format(name, group, case_name),
+                        compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
                         data = data_dir_files + data,
                         deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
                         tools = tools,
                         test_env = test_env,
-                        suites = [suite_name],
+                        suites = [name],
                         groups = [group],
                         cases = [case_name],
                         **case
                     )
-                    group_tests.append("{}-{}-{}".format(suite_name, group, case_name))
+                    group_tests.append("{}-{}-{}".format(name, group, case_name))
                 native.test_suite(
-                    name = "{}-{}".format(suite_name, group),
+                    name = "{}-{}".format(name, group),
                     tests = group_tests,
                 )
                 tests.extend(group_tests)
             else:
                 ct_test(
-                    name = "{}-{}".format(suite_name, group),
-                    compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+                    name = "{}-{}".format(name, group),
+                    compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
                     data = data_dir_files + data,
                     deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
                     tools = tools,
                     test_env = test_env,
-                    suites = [suite_name],
+                    suites = [name],
                     groups = [group],
                     **kwargs
                 )
-                tests.append("{}-{}".format(suite_name, group))
+                tests.append("{}-{}".format(name, group))
 
         native.test_suite(
-            name = suite_name,
+            name = name,
             tests = tests,
         )
     else:
         ct_test(
-            name = suite_name,
-            compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+            name = name,
+            compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
             data = data_dir_files + data,
             deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
             tools = tools,
