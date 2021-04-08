@@ -99,7 +99,8 @@ def eunit(
         deps = [],
         runtime_deps = [],
         tools = [],
-        test_env = {}):
+        test_env = {},
+        **kwargs):
     srcs = native.glob(["test/**/*.erl"])
     erlc(
         name = "test_case_beam_files",
@@ -128,4 +129,5 @@ def eunit(
         deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
         tools = tools,
         test_env = test_env,
+        **kwargs
     )
