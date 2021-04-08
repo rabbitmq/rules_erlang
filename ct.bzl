@@ -144,9 +144,7 @@ def ct_suite(
         runtime_deps = [],
         tools = [],
         test_env = {},
-        suites = [],
         groups = [],
-        cases = [],
         **kwargs):
     erlc(
         name = "{}_beam_files".format(suite_name),
