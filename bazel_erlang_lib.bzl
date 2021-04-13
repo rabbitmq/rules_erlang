@@ -82,6 +82,7 @@ def _app_file_impl(ctx):
             output = app_file,
             substitutions = {
                 "{modules,[]}": modules_term,
+                "{modules, []}": modules_term,
             },
         )
     else:
