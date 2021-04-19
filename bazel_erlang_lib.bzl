@@ -277,7 +277,7 @@ bazel_erlang_lib = rule(
         "app_name": attr.string(mandatory = True),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "app": attr.label(allow_files = [".app"]),
-        "beam": attr.label_list(allow_files = [".beam"]),
+        "beam": attr.label_list(allow_files = [".beam", ".appup"]),
         "priv": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangLibInfo]),
     },
