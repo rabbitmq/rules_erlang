@@ -81,7 +81,7 @@ FILTER=${{FOCUS:-{filter_tests_args}}}
 {erlang_home}/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
-    {pa_args}$FILTER \\
+    {pa_args} $FILTER \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
     -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
     -sname {sname}
