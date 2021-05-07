@@ -293,6 +293,7 @@ def erlang_lib(
         extra_apps = [],
         erlc_opts = DEFAULT_ERLC_OPTS,
         first_srcs = [],
+        extra_priv = [],
         build_deps = [],
         deps = [],
         runtime_deps = []):
@@ -345,7 +346,7 @@ def erlang_lib(
         hdrs = native.glob(["include/**/*.hrl"]),
         app = app,
         beam = all_beam,
-        priv = native.glob(["priv/**/*"]),
+        priv = native.glob(["priv/**/*"] + extra_priv),
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
     )
@@ -367,6 +368,7 @@ def test_erlang_lib(
         extra_apps = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         first_srcs = [],
+        extra_priv = [],
         build_deps = [],
         deps = [],
         runtime_deps = []):
@@ -408,7 +410,7 @@ def test_erlang_lib(
         hdrs = native.glob(["include/**/*.hrl"]),
         app = app,
         beam = all_beam,
-        priv = native.glob(["priv/**/*"]),
+        priv = native.glob(["priv/**/*"] + extra_priv),
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
         testonly = True,
