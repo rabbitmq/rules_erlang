@@ -1,0 +1,3 @@
+load(":bazel_erlang.bzl", "bazel_erlang_deps")
+
+bazel_erlang_deps()
