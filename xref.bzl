@@ -30,7 +30,7 @@ def _impl(ctx):
         ))
 
     extra_paths = []
-    dirs = [ctx.attr.target.label.package]
+    dirs = [path_join(ctx.attr.target.label.package, "ebin")]
     for dep in lib_info.deps:
         if dep.label.workspace_root != "":
             extra_paths.extend(code_paths(dep))
