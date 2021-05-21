@@ -31,7 +31,7 @@ def _impl(ctx):
 
     extra_paths = []
     dirs = [path_join(ctx.attr.target.label.package, "ebin")]
-    for dep in lib_info.deps:
+    for dep in lib_info.deps + ctx.attr.additional_libs:
         if dep.label.workspace_root != "":
             extra_paths.extend(code_paths(dep))
         else:
@@ -92,6 +92,8 @@ $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} --config {config_path}
 
     runfiles = ctx.runfiles([ctx.file._xrefr, config_file])
     runfiles = runfiles.merge(ctx.attr.target[DefaultInfo].default_runfiles)
+    for dep in ctx.attr.additional_libs:
+        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
     return [DefaultInfo(runfiles = runfiles)]
 
 xref_test = rule(
@@ -119,6 +121,9 @@ xref_test = rule(
                 "locals_not_used",
                 "deprecated_function_calls",
             ],
+        ),
+        "additional_libs": attr.label_list(
+            providers = [ErlangLibInfo],
         ),
     },
     test = True,
