@@ -79,7 +79,7 @@ $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} --config {config_path}
         begins_with_fun = BEGINS_WITH_FUN,
         query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        erlang_version = erlang_version,
         xrefr = xrefr_path,
         config_path = config_file.short_path,
     )
