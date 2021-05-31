@@ -89,7 +89,9 @@ def _app_file_impl(ctx):
         if ctx.attr.app_version == "":
             fail("app_version must be set when app_src is empty")
 
-        if ctx.attr.app_module != "" and len([m for m in ctx.files.modules if m.basename == ctx.attr.app_module + ".beam"]) == 1:
+        app_module = ctx.attr.app_module if ctx.attr.app_module != "" else ctx.attr.app_name + "_app"
+
+        if len([m for m in ctx.files.modules if m.basename == app_module + ".beam"]) == 1:
             template = ctx.file._app_with_mod_file_template
         else:
             template = ctx.file._app_file_template
@@ -114,7 +116,7 @@ def _app_file_impl(ctx):
                 "$(MODULES_LIST)": modules_list,
                 "$(REGISTERED_LIST)": registered_list,
                 "$(APPLICATIONS_LIST)": applications_list,
-                "$(PROJECT_MOD)": ctx.attr.app_module,
+                "$(PROJECT_MOD)": app_module,
                 "$(PROJECT_ENV)": ctx.attr.app_env,
             },
         )
