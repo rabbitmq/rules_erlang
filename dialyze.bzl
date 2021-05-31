@@ -113,7 +113,7 @@ fi
 
 set -x
 {erlang_home}/bin/dialyzer {apps_args} {plt_args}\\
-    -c {dirs} || test $? -eq 2
+    -c {dirs} {opts} || test $? -eq 2
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
         query_erlang_version = QUERY_ERL_VERSION,
@@ -123,6 +123,7 @@ set -x
         plt_args = plt_args,
         name = ctx.label.name,
         dirs = " ".join(dirs),
+        opts = " ".join(ctx.attr.dialyzer_opts),
     )
 
     ctx.actions.write(
@@ -151,6 +152,13 @@ dialyze_test = rule(
             mandatory = True,
         ),
         "plt_apps": attr.string_list(),
+        "dialyzer_opts": attr.string_list(
+            default = [
+                "-Werror_handling",
+                "-Wrace_conditions",
+                "-Wunmatched_returns",
+            ],
+        ),
     },
     test = True,
 )
