@@ -135,6 +135,7 @@ ct_test = rule(
 
 def ct_suite(
         name = "",
+        suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
         additional_beam = [],
@@ -150,17 +151,20 @@ def ct_suite(
     if len(groups) > 0 and len(matrix) > 0:
         fail("groups and matrix are mutually exclusive for ct_suite")
 
+    if suite_name == "":
+        suite_name = name
+
     erlc(
         name = "{}_beam_files".format(name),
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
-        srcs = ["test/{}.erl".format(name)] + additional_srcs,
+        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,
         dest = "test",
         deps = [":test_bazel_erlang_lib"] + deps,
         testonly = True,
     )
 
-    data_dir_files = native.glob(["test/{}_data/**/*".format(name)])
+    data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     if len(groups) > 0:
         is_dict = hasattr(groups, "keys")
@@ -171,11 +175,12 @@ def ct_suite(
                 for case in groups[group]:
                     if hasattr(case, "keys"):
                         case_name = case["case"]
-                        case.pop("case")
-                        case.update(**kwargs)
+                        el_kwargs = dict(**case)
+                        el_kwargs.pop("case")
+                        el_kwargs.update(**kwargs)
                     else:
                         case_name = case
-                        case = kwargs
+                        el_kwargs = kwargs
 
                     ct_test(
                         name = "{}-{}-{}".format(name, group, case_name),
@@ -187,7 +192,7 @@ def ct_suite(
                         suites = [name],
                         groups = [group],
                         cases = [case_name],
-                        **case
+                        **el_kwargs
                     )
                     group_tests.append("{}-{}-{}".format(name, group, case_name))
                 native.test_suite(
