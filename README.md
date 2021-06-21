@@ -67,3 +67,17 @@ bazel test //:unit_SUITE \
     --@bazel-erlang//:erlang_version=23.2 \
     --test_env FOCUS="-suite unit_SUITE -group my_group -case my_case"
 ```
+
+## Copyright and License
+
+(c) 2020-2021, VMware Inc or its affiliates.
+
+Dual licensed under the Apache License Version 2.0 and
+Mozilla Public License Version 2.0.
+
+This means that the user can consider the library to be licensed under
+**any of the licenses from the list** above. For example, you may
+choose the Apache Public License 2.0 and include this library into a
+commercial product.
+
+See [LICENSE](./LICENSE) for details.
