@@ -145,12 +145,8 @@ def ct_suite(
         runtime_deps = [],
         tools = [],
         test_env = {},
-        groups = [],
         matrix = [],
         **kwargs):
-    if len(groups) > 0 and len(matrix) > 0:
-        fail("groups and matrix are mutually exclusive for ct_suite")
-
     if suite_name == "":
         suite_name = name
 
@@ -166,64 +162,12 @@ def ct_suite(
 
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
-    if len(groups) > 0:
-        is_dict = hasattr(groups, "keys")
-        tests = []
-        for group in groups:
-            if is_dict:
-                group_tests = []
-                for case in groups[group]:
-                    if hasattr(case, "keys"):
-                        case_name = case["case"]
-                        el_kwargs = dict(**case)
-                        el_kwargs.pop("case")
-                        el_kwargs.update(**kwargs)
-                    else:
-                        case_name = case
-                        el_kwargs = kwargs
-
-                    ct_test(
-                        name = "{}-{}-{}".format(name, group, case_name),
-                        compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
-                        data = data_dir_files + data,
-                        deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
-                        tools = tools,
-                        test_env = test_env,
-                        suites = [name],
-                        groups = [group],
-                        cases = [case_name],
-                        **el_kwargs
-                    )
-                    group_tests.append("{}-{}-{}".format(name, group, case_name))
-                native.test_suite(
-                    name = "{}-{}".format(name, group),
-                    tests = group_tests,
-                )
-                tests.extend(group_tests)
-            else:
-                ct_test(
-                    name = "{}-{}".format(name, group),
-                    compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
-                    data = data_dir_files + data,
-                    deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
-                    tools = tools,
-                    test_env = test_env,
-                    suites = [name],
-                    groups = [group],
-                    **kwargs
-                )
-                tests.append("{}-{}".format(name, group))
-
-        native.test_suite(
-            name = name,
-            tests = tests,
-        )
-    elif len(matrix) > 0:
+    if len(matrix) > 0:
         all_tests = []
         for tag, args in matrix.items():
             test_name = "{}-{}".format(name, tag)
-            el_kwargs = dict(**kwargs)
-            el_kwargs.update(args)
+            test_kwargs = dict(**kwargs)
+            test_kwargs.update(args)
             ct_test(
                 name = test_name,
                 compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
@@ -232,7 +176,7 @@ def ct_suite(
                 tools = tools,
                 test_env = test_env,
                 suites = [name],
-                **el_kwargs
+                **test_kwargs
             )
             all_tests.append(test_name)
 
@@ -250,3 +194,20 @@ def ct_suite(
             test_env = test_env,
             **kwargs
         )
+
+def ct_group_matrix(groups):
+    matrix = {}
+    for group in groups:
+        matrix[group] = {"groups": [group]}
+    return matrix
+
+def ct_group_case_matrix(groups):
+    matrix = {}
+    for group in groups:
+        for case in groups[group]:
+            name = "{}-{}".format(group, case)
+            matrix[name] = {
+                "groups": [group],
+                "cases": [case],
+            }
+    return matrix
