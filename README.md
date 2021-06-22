@@ -31,8 +31,26 @@ The example below follows this convention.
 
 ## Minimal Example
 
+### `WORKSPACE` file
+
+```starlark
+http_archive(
+    name = "bazel-erlang",
+    strip_prefix = "bazel-erlang-master",
+    urls = ["https://github.com/rabbitmq/bazel-erlang/archive/master.zip"],
+)
+
+load("@bazel-erlang//:bazel_erlang.bzl", "bazel_erlang_deps")
+
+bazel_erlang_deps()
+```
+
+### `BUILD` file
+
 ```starlark
 load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib", "test_erlang_lib")
+load("@bazel-erlang//:xref.bzl", "xref")
+load("@bazel-erlang//:dialyze.bzl", "dialyze", "plt")
 load("@bazel-erlang//:ct.bzl", "ct_suite")
 
 APP_NAME = "my_cool_app"
@@ -48,13 +66,27 @@ test_erlang_lib(
     app_version = APP_VERSION,
 )
 
+xref()
+
+dialyze()
+
 ct_suite(
     name = "unit_SUITE",
 )
 ```
 
+## Compile and run all tests
+
 ```shell
 bazel test //... \
+    --@bazel-erlang//:erlang_home=/path/to/erlang \
+    --@bazel-erlang//:erlang_version=23.2
+```
+
+## Run the unit suite only
+
+```shell
+bazel test //:unit_SUITE \
     --@bazel-erlang//:erlang_home=/path/to/erlang \
     --@bazel-erlang//:erlang_version=23.2
 ```
