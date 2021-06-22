@@ -138,8 +138,35 @@ def ct_suite(
         suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
-        additional_beam = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
+        deps = [],
+        **kwargs):
+    if suite_name == "":
+        suite_name = name
+
+    erlc(
+        name = "{}_beam_files".format(suite_name),
+        hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
+        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
+        erlc_opts = erlc_opts,
+        dest = "test",
+        deps = [":test_bazel_erlang_lib"] + deps,
+        testonly = True,
+    )
+
+    ct_suite_variant(
+        name = name,
+        name_suffix = "",
+        suite_name = suite_name,
+        deps = deps,
+        **kwargs
+    )
+
+def ct_suite_variant(
+        name = "",
+        name_suffix = "",
+        suite_name = "",
+        additional_beam = [],
         data = [],
         deps = [],
         runtime_deps = [],
@@ -150,16 +177,6 @@ def ct_suite(
     if suite_name == "":
         suite_name = name
 
-    erlc(
-        name = "{}_beam_files".format(name),
-        hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
-        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
-        erlc_opts = erlc_opts,
-        dest = "test",
-        deps = [":test_bazel_erlang_lib"] + deps,
-        testonly = True,
-    )
-
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     if len(matrix) > 0:
@@ -169,29 +186,30 @@ def ct_suite(
             test_kwargs = dict(**kwargs)
             test_kwargs.update(args)
             ct_test(
-                name = test_name,
-                compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
+                name = test_name + name_suffix,
+                compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
                 data = data_dir_files + data,
                 deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
                 tools = tools,
                 test_env = test_env,
-                suites = [name],
+                suites = [suite_name],
                 **test_kwargs
             )
-            all_tests.append(test_name)
+            all_tests.append(test_name + name_suffix)
 
         native.test_suite(
-            name = name,
+            name = name + name_suffix,
             tests = all_tests,
         )
     else:
         ct_test(
-            name = name,
-            compiled_suites = [":{}_beam_files".format(name)] + additional_beam,
+            name = name + name_suffix,
+            compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
             data = data_dir_files + data,
             deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
             tools = tools,
             test_env = test_env,
+            suites = [suite_name],
             **kwargs
         )
 
