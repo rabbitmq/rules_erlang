@@ -74,7 +74,8 @@ fi
     -eval '{{ok, [C]}} = file:consult("{config_path}"), io:format("~p~n", [C]), halt().' \\
     -noshell
 
-$TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} --config {config_path}
+{erlang_home}/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
+    --config {config_path}
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
         query_erlang_version = QUERY_ERL_VERSION,
