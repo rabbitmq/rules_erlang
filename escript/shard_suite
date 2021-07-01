@@ -1,0 +1,175 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -sname shard_suite
+-mode(compile).
+main([SuiteModuleString, ShardIndexString, TotalShardsString]) ->
+    {SuiteModule, ShardIndex, TotalShards} = try
+        {list_to_atom(SuiteModuleString),
+         list_to_integer(ShardIndexString),
+         list_to_integer(TotalShardsString)}
+    catch
+        _:_ -> usage()
+    end,
+
+    maybe_add_code_paths(),
+
+    ShardingResult = try_sharding(SuiteModule, ShardIndex, TotalShards),
+
+    case ShardingResult of
+        {ok, Shard} ->
+            #{suites := Suites,
+              groups := Groups,
+              cases := Cases} = flatten_shard(Shard),
+            io:format("-suite ~s -group ~s -case ~s",
+                      [lists:join(" ", lists:map(fun atom_to_list/1, Suites)),
+                       lists:join(" ", lists:map(fun atom_to_list/1, Groups)),
+                       lists:join(" ", lists:map(fun atom_to_list/1, Cases))]);
+        {error, Reason} ->
+            io:format(standard_error, Reason, [])
+    end,
+
+    halt(case ShardingResult of {ok, _} -> 0; _ -> 1 end);
+main(_) ->
+    usage().
+
+usage() ->
+    io:format(standard_error, "usage: shard_suite suite_module shard_index total_shards~n", []),
+    halt(1).
+
+maybe_add_code_paths() ->
+    case os:getenv("SHARD_SUITE_CODE_PATHS") of
+        false ->
+            ok;
+        Var ->
+            Paths = string:lexemes(Var, ":"),
+            code:add_paths(Paths)
+    end.
+
+flatten_shard(Shard) ->
+    flatten_shard(Shard, #{suites => [], groups => [], cases => []}).
+
+flatten_shard(Shard, Acc) when map_size(Shard) == 0 ->
+    Acc;
+flatten_shard(Shard, Acc) ->
+    SingleCaseStructure = s_first(Shard),
+    [Suite] = maps:keys(SingleCaseStructure),
+    {Group, Case} = flatten_shard_slice(maps:get(Suite, SingleCaseStructure)),
+    Acc2 = Acc#{
+        suites := lists:usort([Suite | maps:get(suites, Acc)]),
+        groups := lists:usort([Group | maps:get(groups, Acc)]),
+        cases := lists:usort([Case | maps:get(cases, Acc)])
+    },
+    flatten_shard(s_drop(1, Shard), Acc2).
+
+%% It seems to be sufficient to use the most precise group name and case name,
+%% rather than all parent groups of the case
+flatten_shard_slice(ShardSlice) when is_map(ShardSlice) ->
+    [Group] = maps:keys(ShardSlice),
+    SubSlice = maps:get(Group, ShardSlice),
+    case SubSlice of
+        [Case] ->
+            {Group, Case};
+        _ ->
+            flatten_shard_slice(SubSlice)
+    end.
+
+try_sharding(SuiteModule, ShardIndex, TotalShards) when is_atom(SuiteModule)->
+    Structure = structure(SuiteModule),
+
+    io:format(standard_error, "Test Suite Structure: ~p~n~n", [Structure]),
+
+    TotalCases = count_cases(Structure),
+
+    io:format(standard_error, "Total cases: ~p~n~n", [TotalCases]),
+
+    case TotalCases < TotalShards of
+        true ->
+            {error, not_enough_cases};
+        _ ->
+            {From, Length} = range(ShardIndex, TotalShards, TotalCases),
+            Shard = s_take(Length, s_drop(From, Structure)),
+            io:format(standard_error, "Shard: ~p~n~n", [Shard]),
+            io:format(standard_error, "Shard cases: ~p~n~n", [count_cases(Shard)]),
+            {ok, Shard}
+    end.
+
+structure(SuiteModule) when is_atom(SuiteModule)->
+    S = mapify(SuiteModule:groups()),
+    GroupMap = case erlang:function_exported(SuiteModule, all, 0) of
+        true -> maps:with(group_names(SuiteModule:all()), S);
+        false -> S
+    end,
+    #{SuiteModule => GroupMap}.
+
+group_names([{group, GroupName} | Rest]) ->
+    [GroupName | group_names(Rest)];
+group_names([]) ->
+    [].
+
+mapify([{GroupName, _, Contents} | Rest]) ->
+    maps:put(GroupName, mapify(Contents), mapify(Rest));
+mapify([Case | _] = Cases) when is_atom(Case) ->
+    Cases;
+mapify([]) ->
+    maps:new().
+
+count_cases(Structure) when is_map(Structure) ->
+    lists:sum(lists:map(fun count_cases/1, maps:values(Structure)));
+count_cases(Structure) when is_list(Structure) ->
+    length(Structure).
+
+range(I, N, Count) ->
+    From = floor(I * Count / N),
+    To = floor((I + 1) * Count / N),
+    {From, To - From}.
+
+s_drop(0, Structure) when is_map(Structure) andalso map_size(Structure) > 0 ->
+    Structure;
+s_drop(1, Structure) when is_map(Structure) andalso map_size(Structure) > 0 ->
+    [K1 | _] = lists:sort(maps:keys(Structure)),
+    case s_drop(1, maps:get(K1, Structure)) of
+        Ss when (is_list(Ss) andalso length(Ss) == 0)
+                orelse
+                (is_map(Ss) andalso map_size(Ss) == 0) ->
+            maps:without([K1], Structure);
+        Ss ->
+            maps:update(K1, Ss, Structure)
+    end;
+s_drop(1, [_ | Rest]) ->
+    Rest;
+s_drop(N, Structure) when is_map(Structure) andalso map_size(Structure) > 0 ->
+    s_drop(N - 1, s_drop(1, Structure)).
+
+s_first(Structure) when is_map(Structure) andalso map_size(Structure) > 0 ->
+    [K1 | _] = lists:sort(maps:keys(Structure)),
+    #{K1 => s_first(maps:get(K1, Structure))};
+s_first([Case | _]) ->
+    [Case].
+
+s_merge(V, S) when is_map(S) andalso is_map(V) andalso map_size(V) == 1 ->
+    [K] = maps:keys(V),
+    case maps:is_key(K, S) of
+        true ->
+            maps:update(K, s_merge(maps:get(K, V), maps:get(K, S)), S);
+        _ ->
+            maps:put(K, maps:get(K, V), S)
+    end;
+s_merge(SingleCase, Cases) when is_list(SingleCase) andalso is_list(Cases) ->
+    lists:append(Cases, SingleCase).
+
+s_take(N, Structure) when is_map(Structure) ->
+    s_take(N, Structure, maps:new()).
+
+s_take(1, Structure, Acc) when is_map(Structure) andalso map_size(Structure) == 0 ->
+    Acc;
+s_take(1, Structure, Acc) when is_map(Structure) ->
+    s_merge(s_first(Structure), Acc);
+s_take(N, Structure, Acc) ->
+    case s_drop(1, Structure) of
+        Empty when map_size(Empty) == 0 ->
+            s_merge(s_first(Structure), Acc);
+        Rest ->
+            s_take(N - 1,
+                Rest,
+                s_merge(s_first(Structure), Acc))
+    end.
