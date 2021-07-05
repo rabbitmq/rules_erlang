@@ -60,12 +60,17 @@ else
     FILTER="-suite {suite_name}"
 fi
 
-cd {package}
+if [ -n "${{FOCUS+x}}" ]; then
+    if [ 0 -eq ${{TEST_SHARD_INDEX}} ]; then
+        echo "Using shard index 0 to run 'FOCUS'ed tests"
+        FILTER="-suite {suite_name} ${{FOCUS}}"
+    else
+        echo "Skipping shard ${{TEST_SHARD_INDEX}} as 'FOCUS' is set"
+        exit 0
+    fi
+fi
 
-# if FOCUS is set, we should run those suites in shard index 0,
-# and nothing in the remaining shards
-# OR in each shard compute the intersection of the focused suites and
-# the shard suites, skipping empty shards somehow
+cd {package}
 
 set -x
 {erlang_home}/bin/ct_run \\

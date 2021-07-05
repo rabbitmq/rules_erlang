@@ -52,7 +52,7 @@ bazel_erlang_deps()
 load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib", "test_erlang_lib")
 load("@bazel-erlang//:xref.bzl", "xref")
 load("@bazel-erlang//:dialyze.bzl", "dialyze", "plt")
-load("@bazel-erlang//:ct.bzl", "ct_suite")
+load("@bazel-erlang//:ct_sharded.bzl", "ct_suite")
 
 APP_NAME = "my_cool_app"
 APP_VERSION = "0.1.0
@@ -98,7 +98,7 @@ bazel test //:unit_SUITE \
 bazel test //:unit_SUITE \
     --@bazel-erlang//:erlang_home=/path/to/erlang \
     --@bazel-erlang//:erlang_version=23.2 \
-    --test_env FOCUS="-suite unit_SUITE -group my_group -case my_case"
+    --test_env FOCUS="-group my_group -case my_case"
 ```
 
 ## Copyright and License
