@@ -2,38 +2,39 @@
 %% -*- erlang -*-
 %%! -sname shard_suite
 -mode(compile).
-main([SuiteModuleString, ShardIndexString, TotalShardsString]) ->
-    {SuiteModule, ShardIndex, TotalShards} = try
-        {list_to_atom(SuiteModuleString),
-         list_to_integer(ShardIndexString),
-         list_to_integer(TotalShardsString)}
-    catch
-        _:_ -> usage()
-    end,
+main([ShardingMethodString, SuiteModuleString, ShardIndexString, TotalShardsString]) ->
+    {ShardingMethod, SuiteModule, ShardIndex, TotalShards} =
+        try
+            {case ShardingMethodString of
+                 "-group" -> group;
+                 "-uniform" -> uniform
+             end,
+             list_to_atom(SuiteModuleString),
+             list_to_integer(ShardIndexString),
+             list_to_integer(TotalShardsString)}
+        catch
+            _:_ -> usage()
+        end,
 
     maybe_add_code_paths(),
 
-    ShardingResult = try_sharding(SuiteModule, ShardIndex, TotalShards),
+    ShardingResult = try_sharding(ShardingMethod, SuiteModule, ShardIndex, TotalShards),
 
     case ShardingResult of
-        {ok, Shard} ->
-            #{suites := Suites,
-              groups := Groups,
-              cases := Cases} = flatten_shard(Shard),
-            io:format("-suite ~s -group ~s -case ~s",
-                      [lists:join(" ", lists:map(fun atom_to_list/1, Suites)),
-                       lists:join(" ", lists:map(fun atom_to_list/1, Groups)),
-                       lists:join(" ", lists:map(fun atom_to_list/1, Cases))]);
+        {ok, CtRunArgs} ->
+            io:format(CtRunArgs),
+            halt();
         {error, Reason} ->
-            io:format(standard_error, Reason, [])
-    end,
-
-    halt(case ShardingResult of {ok, _} -> 0; _ -> 1 end);
+            io:format(standard_error, "ERROR: ~p~n", [Reason]),
+            halt(1)
+    end;
 main(_) ->
     usage().
 
 usage() ->
-    io:format(standard_error, "usage: shard_suite suite_module shard_index total_shards~n", []),
+    io:format(standard_error,
+              "usage: shard_suite [-group|-uniform] suite_module shard_index total_shards~n",
+              []),
     halt(1).
 
 maybe_add_code_paths() ->
@@ -55,10 +56,10 @@ flatten_shard(Shard, Acc) ->
     [Suite] = maps:keys(SingleCaseStructure),
     {Group, Case} = flatten_shard_slice(maps:get(Suite, SingleCaseStructure)),
     Acc2 = Acc#{
-        suites := lists:usort([Suite | maps:get(suites, Acc)]),
-        groups := lists:usort([Group | maps:get(groups, Acc)]),
-        cases := lists:usort([Case | maps:get(cases, Acc)])
-    },
+                suites := lists:usort([Suite | maps:get(suites, Acc)]),
+                groups := lists:usort([Group | maps:get(groups, Acc)]),
+                cases := lists:usort([Case | maps:get(cases, Acc)])
+               },
     flatten_shard(s_drop(1, Shard), Acc2).
 
 %% It seems to be sufficient to use the most precise group name and case name,
@@ -73,7 +74,8 @@ flatten_shard_slice(ShardSlice) when is_map(ShardSlice) ->
             flatten_shard_slice(SubSlice)
     end.
 
-try_sharding(SuiteModule, ShardIndex, TotalShards) when is_atom(SuiteModule)->
+try_sharding(ShardingMethod, SuiteModule, ShardIndex, TotalShards)
+  when is_atom(SuiteModule)->
     Structure = structure(SuiteModule),
 
     io:format(standard_error, "Test Suite Structure: ~p~n~n", [Structure]),
@@ -86,19 +88,42 @@ try_sharding(SuiteModule, ShardIndex, TotalShards) when is_atom(SuiteModule)->
         true ->
             {error, not_enough_cases};
         _ ->
-            {From, Length} = range(ShardIndex, TotalShards, TotalCases),
-            Shard = s_take(Length, s_drop(From, Structure)),
-            io:format(standard_error, "Shard: ~p~n~n", [Shard]),
-            io:format(standard_error, "Shard cases: ~p~n~n", [count_cases(Shard)]),
-            {ok, Shard}
+            shard(ShardingMethod, Structure, ShardIndex, TotalShards)
     end.
+
+shard(group, Structure, ShardIndex, TotalShards) when is_map(Structure) ->
+    [Suite] = maps:keys(Structure),
+    case leaf_groups(Structure) of
+        Groups when length(Groups) == TotalShards ->
+            Group = lists:nth(ShardIndex + 1, Groups),
+            {ok, io_lib:format("-suite ~p -group ~p", [Suite, Group])};
+        Groups ->
+            io:format(standard_error,
+                      "Suite contains ~p groups; In -group sharding mode set shard_count to match~n~n",
+                      [length(Groups)]),
+            {error, wrong_shard_count}
+    end;
+shard(uniform, Structure, ShardIndex, TotalShards) when is_map(Structure)  ->
+    TotalCases = count_cases(Structure),
+    {From, Length} = range(ShardIndex, TotalShards, TotalCases),
+    Shard = s_take(Length, s_drop(From, Structure)),
+    io:format(standard_error, "Shard: ~p~n~n", [Shard]),
+    io:format(standard_error, "Shard cases: ~p~n~n", [count_cases(Shard)]),
+    #{suites := Suites,
+      groups := Groups,
+      cases := Cases} = flatten_shard(Shard),
+    CtRunArgs = io_lib:format("-suite ~s -group ~s -case ~s",
+                              [lists:join(" ", lists:map(fun atom_to_list/1, Suites)),
+                               lists:join(" ", lists:map(fun atom_to_list/1, Groups)),
+                               lists:join(" ", lists:map(fun atom_to_list/1, Cases))]),
+    {ok, CtRunArgs}.
 
 structure(SuiteModule) when is_atom(SuiteModule)->
     S = mapify(SuiteModule:groups()),
     GroupMap = case erlang:function_exported(SuiteModule, all, 0) of
-        true -> maps:with(group_names(SuiteModule:all()), S);
-        false -> S
-    end,
+                   true -> maps:with(group_names(SuiteModule:all()), S);
+                   false -> S
+               end,
     #{SuiteModule => GroupMap}.
 
 group_names([{group, GroupName} | Rest]) ->
@@ -117,6 +142,16 @@ count_cases(Structure) when is_map(Structure) ->
     lists:sum(lists:map(fun count_cases/1, maps:values(Structure)));
 count_cases(Structure) when is_list(Structure) ->
     length(Structure).
+
+leaf_groups(Structure) when is_map(Structure) ->
+    lists:flatmap(fun (K) ->
+                          case maps:get(K, Structure) of
+                              Group when is_map(Group) ->
+                                  leaf_groups(Group);
+                              Cases when is_list(Cases) ->
+                                  [K]
+                          end
+                  end, lists:sort(maps:keys(Structure))).
 
 range(I, N, Count) ->
     From = floor(I * Count / N),
@@ -170,6 +205,6 @@ s_take(N, Structure, Acc) ->
             s_merge(s_first(Structure), Acc);
         Rest ->
             s_take(N - 1,
-                Rest,
-                s_merge(s_first(Structure), Acc))
+                   Rest,
+                   s_merge(s_first(Structure), Acc))
     end.

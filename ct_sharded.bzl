@@ -55,6 +55,7 @@ if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
     export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
     FILTER=$({erlang_home}/bin/escript \\
         $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
+            -{sharding_method} \\
             {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
 else
     FILTER="-suite {suite_name}"
@@ -90,6 +91,7 @@ set -x
         pa_args = pa_args,
         shard_suite_code_paths = shard_suite_code_paths,
         shard_suite = ctx.file._shard_suite_escript.short_path,
+        sharding_method = ctx.attr.sharding_method,
         suite_name = ctx.attr.suite_name,
         dir = short_dirname(ctx.files.compiled_suites[0]),
         sname = sname,
@@ -131,6 +133,10 @@ ct_sharded_test = rule(
         "deps": attr.label_list(providers = [ErlangLibInfo]),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
+        "sharding_method": attr.string(
+            default = "group",
+            values = ["group", "uniform"],
+        ),
     },
     test = True,
 )
