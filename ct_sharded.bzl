@@ -10,7 +10,7 @@ load(
     "flat_deps",
     "path_join",
 )
-load(":ct.bzl", "sanitize_sname", "code_paths", "short_dirname")
+load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname")
 
 def _impl(ctx):
     paths = []
@@ -19,9 +19,11 @@ def _impl(ctx):
 
     package = ctx.label.package
 
-    absolute_paths = ["$TEST_SRCDIR/$TEST_WORKSPACE/{}".format(p) for p in paths]
-    pa_args = " ".join(["-pa {}".format(p) for p in absolute_paths])
-    shard_suite_code_paths = ":".join(absolute_paths)
+    pa_args = " ".join([
+        "-pa $TEST_SRCDIR/$TEST_WORKSPACE/{}".format(p)
+        for p in paths
+    ])
+    shard_suite_code_paths = ":".join(paths)
 
     test_env_commands = []
     for k, v in ctx.attr.test_env.items():
@@ -32,9 +34,11 @@ def _impl(ctx):
         ctx.label.name,
     ))
 
-    script = """set -euo pipefail
+    script = """set -eo pipefail
 
-touch ${{TEST_SHARD_STATUS_FILE}}
+if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
+    touch ${{TEST_SHARD_STATUS_FILE}}
+fi
 
 export HOME=${{TEST_TMPDIR}}
 
@@ -47,12 +51,16 @@ fi
 
 {test_env}
 
-cd {package}
+if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
+    export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
+    FILTER=$({erlang_home}/bin/escript \\
+        $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
+            {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
+else
+    FILTER="-suite {suite_name}"
+fi
 
-export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
-FILTER=$({erlang_home}/bin/escript \\
-    $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
-        {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
+cd {package}
 
 # if FOCUS is set, we should run those suites in shard index 0,
 # and nothing in the remaining shards
@@ -89,7 +97,7 @@ set -x
     )
 
     runfiles = ctx.runfiles(
-        ctx.files.compiled_suites + ctx.files.data + ctx.files._shard_suite_escript
+        ctx.files.compiled_suites + ctx.files.data + ctx.files._shard_suite_escript,
     )
     for dep in ctx.attr.deps:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
