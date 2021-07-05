@@ -21,7 +21,16 @@ main([ShardingMethodString, SuiteModuleString, ShardIndexString, TotalShardsStri
     ShardingResult = try_sharding(ShardingMethod, SuiteModule, ShardIndex, TotalShards),
 
     case ShardingResult of
-        {ok, CtRunArgs} ->
+        {ok, Shard} ->
+            io:format(standard_error, "Shard: ~p~n~n", [Shard]),
+            io:format(standard_error, "Shard cases: ~p~n~n", [count_cases(Shard)]),
+            #{suites := Suites,
+              groups := Groups,
+              cases := Cases} = flatten_shard(Shard),
+            CtRunArgs = io_lib:format("-suite ~s -group ~s -case ~s",
+                                      [lists:join(" ", lists:map(fun atom_to_list/1, Suites)),
+                                       lists:join(" ", lists:map(fun atom_to_list/1, Groups)),
+                                       lists:join(" ", lists:map(fun atom_to_list/1, Cases))]),
             io:format(CtRunArgs),
             halt();
         {error, Reason} ->
@@ -92,31 +101,21 @@ try_sharding(ShardingMethod, SuiteModule, ShardIndex, TotalShards)
     end.
 
 shard(group, Structure, ShardIndex, TotalShards) when is_map(Structure) ->
-    [Suite] = maps:keys(Structure),
-    case leaf_groups(Structure) of
-        Groups when length(Groups) == TotalShards ->
-            Group = lists:nth(ShardIndex + 1, Groups),
-            {ok, io_lib:format("-suite ~p -group ~p", [Suite, Group])};
-        Groups ->
+    case s_inner_groups(Structure) of
+        Shards when length(Shards) == TotalShards ->
+            Shard = lists:nth(ShardIndex + 1, Shards),
+            {ok, Shard};
+        Shards ->
             io:format(standard_error,
                       "Suite contains ~p groups; In -group sharding mode set shard_count to match~n~n",
-                      [length(Groups)]),
+                      [length(Shards)]),
             {error, wrong_shard_count}
     end;
 shard(uniform, Structure, ShardIndex, TotalShards) when is_map(Structure)  ->
     TotalCases = count_cases(Structure),
     {From, Length} = range(ShardIndex, TotalShards, TotalCases),
     Shard = s_take(Length, s_drop(From, Structure)),
-    io:format(standard_error, "Shard: ~p~n~n", [Shard]),
-    io:format(standard_error, "Shard cases: ~p~n~n", [count_cases(Shard)]),
-    #{suites := Suites,
-      groups := Groups,
-      cases := Cases} = flatten_shard(Shard),
-    CtRunArgs = io_lib:format("-suite ~s -group ~s -case ~s",
-                              [lists:join(" ", lists:map(fun atom_to_list/1, Suites)),
-                               lists:join(" ", lists:map(fun atom_to_list/1, Groups)),
-                               lists:join(" ", lists:map(fun atom_to_list/1, Cases))]),
-    {ok, CtRunArgs}.
+    {ok, Shard}.
 
 structure(SuiteModule) when is_atom(SuiteModule)->
     S = mapify(SuiteModule:groups()),
@@ -143,15 +142,21 @@ count_cases(Structure) when is_map(Structure) ->
 count_cases(Structure) when is_list(Structure) ->
     length(Structure).
 
-leaf_groups(Structure) when is_map(Structure) ->
-    lists:flatmap(fun (K) ->
-                          case maps:get(K, Structure) of
-                              Group when is_map(Group) ->
-                                  leaf_groups(Group);
-                              Cases when is_list(Cases) ->
-                                  [K]
-                          end
-                  end, lists:sort(maps:keys(Structure))).
+s_inner_groups(Structure) when is_map(Structure) ->
+    s_inner_groups(Structure, fun identity/1).
+
+s_inner_groups(Structure, Wrapper) when is_map(Structure) ->
+    lists:flatmap(
+      fun (K) ->
+              case maps:get(K, Structure) of
+                  Group when is_map(Group) ->
+                      s_inner_groups(Group, fun (G) ->
+                                                    Wrapper(#{K => G})
+                                            end);
+                  Cases when is_list(Cases) ->
+                      [Wrapper(#{K => Cases})]
+              end
+      end, lists:sort(maps:keys(Structure))).
 
 range(I, N, Count) ->
     From = floor(I * Count / N),
@@ -208,3 +213,5 @@ s_take(N, Structure, Acc) ->
                    Rest,
                    s_merge(s_first(Structure), Acc))
     end.
+
+identity(A) -> A.
