@@ -158,7 +158,6 @@ def ct_suite(
 
     ct_suite_variant(
         name = name,
-        name_suffix = "",
         suite_name = suite_name,
         deps = deps,
         **kwargs
@@ -166,14 +165,11 @@ def ct_suite(
 
 def ct_suite_variant(
         name = "",
-        name_suffix = "",
         suite_name = "",
         additional_beam = [],
         data = [],
         deps = [],
         runtime_deps = [],
-        tools = [],
-        test_env = {},
         **kwargs):
     if suite_name == "":
         suite_name = name
@@ -181,12 +177,10 @@ def ct_suite_variant(
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     ct_sharded_test(
-        name = name + name_suffix,
+        name = name,
         suite_name = suite_name,
         compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
         data = data_dir_files + data,
         deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
-        tools = tools,
-        test_env = test_env,
         **kwargs
     )
