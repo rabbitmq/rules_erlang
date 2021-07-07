@@ -83,8 +83,9 @@ flatten_shard([], Acc) ->
     Acc;
 flatten_shard([Case | Rest], #{groups := Groups, cases := Cases}) ->
     {Ancestors, TestCase} = Case,
+    Group = lists:last(Ancestors),
     flatten_shard(Rest, #{
-        groups => lists:usort(Ancestors ++ Groups),
+        groups => lists:usort([Group | Groups]),
         cases => lists:usort([TestCase | Cases])
        }).
 
