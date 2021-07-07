@@ -86,7 +86,7 @@ flatten_shard([Case | Rest], #{groups := Groups, cases := Cases}) ->
     Group = lists:last(Ancestors),
     flatten_shard(Rest, #{
         groups => lists:usort([Group | Groups]),
-        cases => lists:usort([TestCase | Cases])
+        cases => Cases ++ [TestCase]
        }).
 
 -spec try_sharding(sharding_method(), atom(), non_neg_integer(), non_neg_integer()) ->
