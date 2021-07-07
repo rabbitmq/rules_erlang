@@ -61,7 +61,7 @@ def _impl(ctx):
         ctx.label.name,
     ))
 
-    script = """set -euxo pipefail
+    script = """set -euo pipefail
 
 export HOME=${{TEST_TMPDIR}}
 
@@ -78,6 +78,7 @@ cd {package}
 
 FILTER=${{FOCUS:-{filter_tests_args}}}
 
+set -x
 {erlang_home}/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\

@@ -121,7 +121,7 @@ ct_sharded_test = rule(
         "_erlang_home": attr.label(default = ":erlang_home"),
         "_erlang_version": attr.label(default = ":erlang_version"),
         "_shard_suite_escript": attr.label(
-            default = "//escript:shard_suite",
+            default = "//shard_suite:escript",
             allow_single_file = True,
         ),
         "suite_name": attr.string(mandatory = True),
@@ -135,7 +135,7 @@ ct_sharded_test = rule(
         "test_env": attr.string_dict(),
         "sharding_method": attr.string(
             default = "group",
-            values = ["group", "uniform"],
+            values = ["group", "case"],
         ),
     },
     test = True,

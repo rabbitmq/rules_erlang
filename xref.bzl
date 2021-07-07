@@ -59,7 +59,7 @@ def _impl(ctx):
         ctx.file._xrefr.short_path,
     )
 
-    script = """set -euxo pipefail
+    script = """set -euo pipefail
 
 export HOME=${{TEST_TMPDIR}}
 
@@ -74,6 +74,7 @@ fi
     -eval '{{ok, [C]}} = file:consult("{config_path}"), io:format("~p~n", [C]), halt().' \\
     -noshell
 
+set -x
 {erlang_home}/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
     --config {config_path}
 """.format(
