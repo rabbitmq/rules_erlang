@@ -12,7 +12,8 @@ all() -> [
           shard_by_group,
           shard_by_case,
           flatten_shard,
-          flatten_shard_with_nested_group
+          flatten_shard_with_nested_group,
+          to_ct_run_args
          ].
 
 structure(_) ->
@@ -65,17 +66,24 @@ flatten_shard(_) ->
     S = shard_suite:structure(example_suite),
     Cases = shard_suite:ordered_cases(S),
     {ok, ShardOne} = shard_suite:shard(group, Cases, 0, 3),
-    ?assertEqual(#{groups => [a_group],
+    ?assertEqual(#{grouppaths => [[a_group]],
                    cases => [one_test,two_test]},
                  shard_suite:flatten_shard(ShardOne)).
 
 flatten_shard_with_nested_group(_) ->
     S = shard_suite:structure(example_suite),
     Cases = shard_suite:ordered_cases(S),
-    {ok, ShardOne} = shard_suite:shard(group, Cases, 2, 3),
-    %% It seems to be the case that in terms of the arguments to
-    %% ct_run, we should only name the most specific group
-    %% enclosing a test
-    ?assertEqual(#{groups => [nested_group],
+    {ok, ShardThree} = shard_suite:shard(group, Cases, 2, 3),
+    ?assertEqual(#{grouppaths => [[another_group, nested_group]],
                    cases => [nested_test]},
-                 shard_suite:flatten_shard(ShardOne)).
+                 shard_suite:flatten_shard(ShardThree)).
+
+to_ct_run_args(_) ->
+    SuiteModule = example_suite,
+    S = shard_suite:structure(SuiteModule),
+    Cases = shard_suite:ordered_cases(S),
+    {ok, ShardThree} = shard_suite:shard(group, Cases, 2, 3),
+    ?assertEqual("-suite example_suite -group [another_group,nested_group] -case nested_test",
+                 lists:flatten(
+                   shard_suite:to_ct_run_args(SuiteModule,
+                                              shard_suite:flatten_shard(ShardThree)))).

@@ -14,7 +14,8 @@
 -type groupname() :: atom().
 -type suite_structure() :: [testname() | {groupname(), suite_structure()}].
 
--type named_case() :: {[groupname()], testname()}.
+-type grouppath() :: [groupname()].
+-type named_case() :: {grouppath(), testname()}.
 
 -spec main([string()]) -> no_return().
 main([ShardingMethodString, SuiteModuleString, ShardIndexString, TotalShardsString]) ->
@@ -40,14 +41,7 @@ main([ShardingMethodString, SuiteModuleString, ShardIndexString, TotalShardsStri
             {ok, Shard} ->
                 io:format(standard_error, "Shard: ~p~n~n", [Shard]),
                 io:format(standard_error, "Shard cases: ~p~n~n", [length(Shard)]),
-                #{groups := Groups,
-                  cases := Cases} = flatten_shard(Shard),
-                CtRunArgs = io_lib:format("-suite ~s -group ~s -case ~s",
-                                          [atom_to_list(SuiteModule),
-                                           lists:join(" ",
-                                                      lists:map(fun atom_to_list/1, Groups)),
-                                           lists:join(" ",
-                                                      lists:map(fun atom_to_list/1, Cases))]),
+                CtRunArgs = to_ct_run_args(SuiteModule, flatten_shard(Shard)),
                 io:format(CtRunArgs),
                 0;
             {error, Reason} ->
@@ -75,25 +69,26 @@ maybe_add_code_paths() ->
     end.
 
 -spec flatten_shard([named_case()]) -> 
-    #{groups => list(groupname()), cases => list(testname())}.
+    #{grouppaths => list(groupname()), cases => list(testname())}.
 flatten_shard(Shard) ->
-    flatten_shard(Shard, #{groups => [], cases => []}).
+    flatten_shard(Shard, #{grouppaths => [], cases => []}).
 
 flatten_shard([], Acc) ->
     Acc;
-flatten_shard([Case | Rest], #{groups := Groups, cases := Cases}) ->
-    {Ancestors, TestCase} = Case,
-    Group = lists:last(Ancestors),
-    Groups1 = case Groups of
-                  [] -> [Group];
-                  _ -> case lists:last(Groups) of
-                           Group -> Groups;
-                           _ -> Groups ++ [Group]
-                       end
-              end,
-    Cases1 = Cases ++ [TestCase],
-    flatten_shard(Rest, #{groups => Groups1,
-                          cases => Cases1}).
+flatten_shard([NamedCase | Rest], #{grouppaths := GroupPaths, cases := Cases}) ->
+    {GroupPath, Case} = NamedCase,
+    flatten_shard(Rest,
+                  #{grouppaths => append_if_missing(GroupPath, GroupPaths),
+                    cases => append_if_missing(Case, Cases)}).
+
+-spec to_ct_run_args(atom(), #{grouppaths := [grouppath()], cases := [testname()]}) -> string().
+to_ct_run_args(SuiteModule, #{grouppaths := GroupPaths, cases := Cases}) ->
+    io_lib:format("-suite ~s -group ~s -case ~s",
+                  [atom_to_list(SuiteModule),
+                   string:join(lists:map(fun (GroupPath) ->
+                                                 io_lib:format("~w", [GroupPath])
+                                         end, GroupPaths), " "),
+                   string:join(lists:map(fun atom_to_list/1, Cases), " ")]).
 
 -spec try_sharding(sharding_method(), atom(), non_neg_integer(), non_neg_integer()) ->
           {ok, [named_case()]} | {error, term()}.
@@ -186,3 +181,10 @@ cases_by_group([Case | Rest]) ->
     maps:update_with(Ancestors, fun (L) ->
         [TestCase | L]
     end, [TestCase], cases_by_group(Rest)).
+
+-spec append_if_missing(T, [T]) -> [T] when T :: term().
+append_if_missing(Item, List) ->
+    case lists:member(Item, List) of
+        true -> List;
+        _ -> List ++ [Item]
+    end.
