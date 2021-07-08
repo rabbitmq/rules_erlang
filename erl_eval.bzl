@@ -29,8 +29,8 @@ export OUTS="{outs}"
         query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
-        srcs = " ".join([src.path for src in ctx.files.srcs]),
-        outs = " ".join([out.path for out in outs]),
+        srcs = ":".join([src.path for src in ctx.files.srcs]),
+        outs = ":".join([out.path for out in outs]),
     )
 
     ctx.actions.run_shell(
