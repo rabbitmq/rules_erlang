@@ -68,6 +68,21 @@ maybe_add_code_paths() ->
             code:add_paths(Paths)
     end.
 
+-spec validate_groups(atom(), [ct_suite:ct_group_def()]) -> [ct_suite:ct_group_def()].
+validate_groups(SuiteModule, GroupDefs) ->
+    GroupNames = lists:map(fun ({GroupName, _, _}) ->
+        GroupName
+    end, GroupDefs),
+    case length(GroupNames) =/= length(lists:usort(GroupNames)) of
+        true ->
+            io:format(standard_error,
+                      "ERROR: ~p:groups/0 contains groups with duplicate names~n~n",
+                      [SuiteModule]),
+            throw(duplicate_group_names);
+        _ ->
+            GroupDefs
+    end.
+
 -spec flatten_shard([named_case()]) -> 
     #{grouppaths => list(groupname()), cases => list(testname())}.
 flatten_shard(Shard) ->
@@ -141,13 +156,14 @@ shard('case', Cases, ShardIndex, TotalShards) ->
 structure(SuiteModule) ->
     TestDefs = SuiteModule:all(),
     GroupDefs = case erlang:function_exported(SuiteModule, groups, 0) of
-        true -> SuiteModule:groups();
+        true -> validate_groups(SuiteModule, SuiteModule:groups());
         false -> []
     end,
     lists:map(fun (TestDef) ->
         structure(TestDef, GroupDefs)
     end, TestDefs).
 
+-spec structure(ct_suite:ct_test_def(), [ct_suite:ct_group_def()]) -> testname() | {groupname(), suite_structure()}.
 structure({GroupName, _, SubGroupsAndTestCases}, GroupDefs) when GroupName =/= testcase ->
     Contents = lists:map(fun (S) -> structure(S, GroupDefs) end, SubGroupsAndTestCases),
     {GroupName, Contents};
@@ -172,7 +188,7 @@ ordered_cases(Structure, Ancestors) ->
             [{Ancestors, TestCase}]
     end, Structure).
 
--spec cases_by_grouppath([named_case()], [{grouppath(), [testname()]}]) -> #{[groupname()] => [testname()]}.
+-spec cases_by_grouppath([named_case()], [{grouppath(), [testname()]}]) -> [{grouppath(), [testname()]}].
 cases_by_grouppath([], Acc) ->
     Acc;
 cases_by_grouppath([Case | Rest], Acc) ->
