@@ -39,10 +39,10 @@ ordered_cases(_) ->
 cases_by_group(_) ->
     S = shard_suite:structure(example_suite),
     Cases = shard_suite:ordered_cases(S),
-    ?assertEqual(#{[a_group] => [one_test,two_test],
-                   [another_group] => [two_test,three_test],
-                   [another_group,nested_group] => [nested_test]},
-                 shard_suite:cases_by_group(Cases)).
+    ?assertEqual([{[a_group], [one_test,two_test]},
+                  {[another_group], [two_test,three_test]},
+                  {[another_group,nested_group], [nested_test]}],
+                 shard_suite:cases_by_grouppath(Cases, [])).
 
 shard_by_group(_) ->
     S = shard_suite:structure(example_suite),

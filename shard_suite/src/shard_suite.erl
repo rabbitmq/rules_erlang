@@ -111,14 +111,13 @@ try_sharding(ShardingMethod, SuiteModule, ShardIndex, TotalShards) ->
 -spec shard(sharding_method(), [named_case()], non_neg_integer(), non_neg_integer()) ->
           {ok, [named_case()]} | {error, term()}.
 shard('group', Cases, ShardIndex, TotalShards) ->
-    CasesByGroup = cases_by_group(Cases),
-    case maps:size(CasesByGroup) of
+    CasesByGroupPath = cases_by_grouppath(Cases, []),
+    case length(CasesByGroupPath) of
         TotalShards ->
-            Ancestors = lists:nth(ShardIndex + 1,
-                                  lists:sort(maps:keys(CasesByGroup))),
+            {GroupPath, TestCases} = lists:nth(ShardIndex + 1, CasesByGroupPath),
             Shard = lists:map(fun (TestCase) ->
-                {Ancestors, TestCase}
-            end, maps:get(Ancestors, CasesByGroup)),
+                {GroupPath, TestCase}
+            end, TestCases),
             {ok, Shard};
         GroupCount ->
             io:format(standard_error,
@@ -173,14 +172,18 @@ ordered_cases(Structure, Ancestors) ->
             [{Ancestors, TestCase}]
     end, Structure).
 
--spec cases_by_group([named_case()]) -> #{[groupname()] => [testname()]}.
-cases_by_group([]) ->
-    #{};
-cases_by_group([Case | Rest]) ->
-    {Ancestors, TestCase} = Case,
-    maps:update_with(Ancestors, fun (L) ->
-        [TestCase | L]
-    end, [TestCase], cases_by_group(Rest)).
+-spec cases_by_grouppath([named_case()], [{grouppath(), [testname()]}]) -> #{[groupname()] => [testname()]}.
+cases_by_grouppath([], Acc) ->
+    Acc;
+cases_by_grouppath([Case | Rest], Acc) ->
+    {GroupPath, TestCase} = Case,
+    V = case lists:keyfind(GroupPath, 1, Acc) of
+        {GroupPath, TestCases} ->
+            {GroupPath, TestCases ++ [TestCase]};
+        false ->
+            {GroupPath, [TestCase]}
+    end,
+    cases_by_grouppath(Rest, lists:keystore(GroupPath, 1, Acc, V)).
 
 -spec append_if_missing(T, [T]) -> [T] when T :: term().
 append_if_missing(Item, List) ->
