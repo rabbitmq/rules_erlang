@@ -51,23 +51,27 @@ fi
 
 {test_env}
 
-if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
-    export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
-    FILTER=$({erlang_home}/bin/escript \\
-        $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
-            -{sharding_method} \\
-            {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
-else
-    FILTER="-suite {suite_name}"
-fi
-
 if [ -n "${{FOCUS+x}}" ]; then
-    if [ 0 -eq ${{TEST_SHARD_INDEX}} ]; then
-        echo "Using shard index 0 to run 'FOCUS'ed tests"
-        FILTER="-suite {suite_name} ${{FOCUS}}"
+    if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
+        if [ 0 -eq ${{TEST_SHARD_INDEX}} ]; then
+            echo "Using shard index 0 to run FOCUS'ed tests"
+            FILTER="-suite {suite_name} ${{FOCUS}}"
+        else
+            echo "Skipping shard ${{TEST_SHARD_INDEX}} as FOCUS is set"
+            exit 0
+        fi
     else
-        echo "Skipping shard ${{TEST_SHARD_INDEX}} as 'FOCUS' is set"
-        exit 0
+        FILTER="-suite {suite_name} ${{FOCUS}}"
+    fi
+else
+    if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
+        export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
+        FILTER=$({erlang_home}/bin/escript \\
+            $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
+                -{sharding_method} \\
+                {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
+    else
+        FILTER="-suite {suite_name}"
     fi
 fi
 
