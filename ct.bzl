@@ -56,6 +56,10 @@ def _impl(ctx):
     for k, v in ctx.attr.test_env.items():
         test_env_commands.append("export {}=\"{}\"".format(k, v))
 
+    ct_hooks_args = ""
+    if len(ctx.attr.ct_hooks) > 0:
+        ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
+
     sname = sanitize_sname("ct-{}-{}".format(
         ctx.label.package.rpartition("/")[-1],
         ctx.label.name,
@@ -85,6 +89,7 @@ set -x
     {pa_args} $FILTER \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
     -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
+    {ct_hooks_args} \\
     -sname {sname}
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
@@ -95,6 +100,7 @@ set -x
         pa_args = pa_args,
         filter_tests_args = filter_tests_args,
         dir = short_dirname(ctx.files.compiled_suites[0]),
+        ct_hooks_args = ct_hooks_args,
         sname = sname,
         test_env = " && ".join(test_env_commands),
     )
@@ -123,6 +129,7 @@ ct_test = rule(
             allow_files = [".beam"],
             mandatory = True,
         ),
+        "ct_hooks": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangLibInfo]),
         "tools": attr.label_list(),
