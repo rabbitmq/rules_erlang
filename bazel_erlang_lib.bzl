@@ -17,6 +17,7 @@ QUERY_ERL_VERSION = """erl -eval '{ok, Version} = file:read_file(filename:join([
 
 DEFAULT_ERLC_OPTS = [
     "-Werror",
+    "+deterministic",
     "+debug_info",
     "+warn_export_vars",
     "+warn_shadow_vars",
@@ -24,6 +25,7 @@ DEFAULT_ERLC_OPTS = [
 ]
 
 DEFAULT_TEST_ERLC_OPTS = [
+    "+deterministic",
     "+debug_info",
     "+warn_export_vars",
     "+warn_shadow_vars",
