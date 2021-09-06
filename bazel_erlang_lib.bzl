@@ -100,6 +100,10 @@ def _app_file_impl(ctx):
 
         project_description = ctx.attr.app_description if ctx.attr.app_description != "" else ctx.attr.app_name
 
+        id_term = ""
+        if ctx.attr.app_id != "":
+            id_term = "\n\t{id, \"" + ctx.attr.app_id + "\"},"
+
         registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
 
         applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
@@ -114,7 +118,7 @@ def _app_file_impl(ctx):
                 "$(PROJECT)": ctx.attr.app_name,
                 "$(PROJECT_DESCRIPTION)": project_description,
                 "$(PROJECT_VERSION)": ctx.attr.app_version,
-                "$(PROJECT_ID_TERM)": "",
+                "$(PROJECT_ID_TERM)": id_term,
                 "$(MODULES_LIST)": modules_list,
                 "$(REGISTERED_LIST)": registered_list,
                 "$(APPLICATIONS_LIST)": applications_list,
@@ -142,6 +146,7 @@ app_file = rule(
         ),
         "app_name": attr.string(mandatory = True),
         "app_version": attr.string(),
+        "app_id": attr.string(),
         "app_description": attr.string(),
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
@@ -290,6 +295,7 @@ bazel_erlang_lib = rule(
 def erlang_lib(
         app_name = "",
         app_version = "",
+        app_id = "",
         app_description = "",
         app_module = "",
         app_registered = [],
@@ -331,6 +337,7 @@ def erlang_lib(
             name = "app_file",
             app_name = app_name,
             app_version = app_version,
+            app_id = app_id,
             app_description = app_description,
             app_module = app_module,
             app_registered = app_registered,
@@ -365,6 +372,7 @@ def _unique(l):
 def test_erlang_lib(
         app_name = "",
         app_version = "",
+        app_id = "",
         app_description = "",
         app_module = "",
         app_registered = [],
