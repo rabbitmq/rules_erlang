@@ -107,6 +107,10 @@ def _app_file_impl(ctx):
             applications.append(dep[ErlangLibInfo].lib_name)
         applications_list = "[" + ",".join(applications) + "]"
 
+        app_extra_keys_terms = ""
+        if len(ctx.attr.app_extra_keys) > 0:
+            app_extra_keys_terms = ",\n" + ",\n".join(["\t" + t for t in ctx.attr.app_extra_keys])
+
         ctx.actions.expand_template(
             template = template,
             output = app_file,
@@ -120,6 +124,7 @@ def _app_file_impl(ctx):
                 "$(APPLICATIONS_LIST)": applications_list,
                 "$(PROJECT_MOD)": app_module,
                 "$(PROJECT_ENV)": ctx.attr.app_env,
+                "$(PROJECT_APP_EXTRA_KEYS)": app_extra_keys_terms,
             },
         )
 
@@ -146,6 +151,7 @@ app_file = rule(
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
         "app_env": attr.string(default = "[]"),
+        "app_extra_keys": attr.string_list(),
         "extra_apps": attr.string_list(),
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
@@ -294,6 +300,7 @@ def erlang_lib(
         app_module = "",
         app_registered = [],
         app_env = "[]",
+        app_extra_keys = [],
         extra_apps = [],
         erlc_opts = DEFAULT_ERLC_OPTS,
         first_srcs = [],
@@ -335,6 +342,7 @@ def erlang_lib(
             app_module = app_module,
             app_registered = app_registered,
             app_env = app_env,
+            app_extra_keys = app_extra_keys,
             extra_apps = extra_apps,
             app_src = native.glob(["src/{}.app.src".format(app_name)]),
             modules = all_beam,
@@ -369,6 +377,7 @@ def test_erlang_lib(
         app_module = "",
         app_registered = [],
         app_env = "[]",
+        app_extra_keys = [],
         extra_apps = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         first_srcs = [],

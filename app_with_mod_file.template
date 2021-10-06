@@ -5,5 +5,5 @@
 	{registered, $(REGISTERED_LIST)},
 	{applications, $(APPLICATIONS_LIST)},
 	{mod, {$(PROJECT_MOD), []}},
-	{env, $(PROJECT_ENV)}
+	{env, $(PROJECT_ENV)}$(PROJECT_APP_EXTRA_KEYS)
 ]}.

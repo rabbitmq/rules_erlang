@@ -4,5 +4,5 @@
 	{modules, $(MODULES_LIST)},
 	{registered, []},
 	{applications, $(APPLICATIONS_LIST)},
-	{env, $(PROJECT_ENV)}
+	{env, $(PROJECT_ENV)}$(PROJECT_APP_EXTRA_KEYS)
 ]}.
