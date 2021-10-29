@@ -10,7 +10,7 @@ load(
     "flat_deps",
     "path_join",
 )
-load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname")
+load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname", _assert_suites="assert_suites")
 
 def _impl(ctx):
     paths = []
@@ -180,6 +180,8 @@ def ct_suite(
         **kwargs
     )
 
+    return suite_name
+
 def ct_suite_variant(
         name = "",
         suite_name = "",
@@ -201,3 +203,8 @@ def ct_suite_variant(
         deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
         **kwargs
     )
+
+    return suite_name
+
+def assert_suites(**kwargs):
+    _assert_suites(**kwargs)
