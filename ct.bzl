@@ -242,7 +242,9 @@ def ct_group_case_matrix(groups):
             }
     return matrix
 
-def assert_suites(suite_names, suite_files):
+def assert_suites(suite_names, suite_files = None):
+    if suite_files == None:
+        suite_files = native.glob(["test/**/*_SUITE.erl"])
     for f in suite_files:
         sn = f.rpartition("/")[-1].replace(".erl", "")
         if not sn in suite_names:

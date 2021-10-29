@@ -206,5 +206,5 @@ def ct_suite_variant(
 
     return suite_name
 
-def assert_suites(**kwargs):
-    _assert_suites(**kwargs)
+def assert_suites(*args):
+    _assert_suites(*args)

@@ -71,16 +71,11 @@ xref()
 
 dialyze()
 
-suites = [
+assert_suites([
     ct_suite(
         name = "unit_SUITE",
     ),
-]
-
-assert_suites(
-    suites,
-    glob(["test/**/*_SUITE.erl"]),
-)
+])
 ```
 
 ## Compile and run all tests
