@@ -79,7 +79,9 @@ else
     fi
 fi
 
-cd {package}
+if [ -n "{package}" ]; then
+    cd {package}
+fi
 
 set -x
 {erlang_home}/bin/ct_run \\
