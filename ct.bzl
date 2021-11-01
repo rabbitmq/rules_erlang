@@ -78,7 +78,9 @@ fi
 
 {test_env}
 
-cd {package}
+if [ -n "{package}" ]; then
+    cd {package}
+fi
 
 FILTER=${{FOCUS:-{filter_tests_args}}}
 
