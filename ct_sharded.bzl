@@ -10,19 +10,48 @@ load(
     "flat_deps",
     "path_join",
 )
-load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname", _assert_suites="assert_suites")
+load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname", _assert_suites = "assert_suites")
+
+ERL_LIBS_DIR = "deps"
+
+def priv_file_dest_relative_path(dep_label, f):
+    if dep_label.workspace_root != "":
+        if dep_label.package != "":
+            rel_base = path_join(dep_label.workspace_root, dep_label.package)
+        else:
+            rel_base = dep_label.workspace_root
+    else:
+        rel_base = dep_label.package
+    if rel_base != "":
+        return f.short_path.replace(rel_base + "/", "")
+    else:
+        return f.short_path
 
 def _impl(ctx):
-    paths = []
+    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
+
+    erl_libs_files = []
     for dep in flat_deps(ctx.attr.deps):
-        paths.extend(code_paths(dep))
+        lib_info = dep[ErlangLibInfo]
+        dep_path = path_join(ERL_LIBS_DIR, lib_info.lib_name)
+        if lib_info.erlang_version != erlang_version:
+            fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
+        for src in lib_info.beam:
+            dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
+            ctx.actions.symlink(output = dest, target_file = src)
+            erl_libs_files.append(dest)
+        for src in lib_info.priv:
+            rp = priv_file_dest_relative_path(dep.label, src)
+            dest = ctx.actions.declare_file(path_join(dep_path, rp))
+            ctx.actions.symlink(output = dest, target_file = src)
+            erl_libs_files.append(dest)
 
     package = ctx.label.package
 
-    pa_args = " ".join([
-        "-pa $TEST_SRCDIR/$TEST_WORKSPACE/{}".format(p)
-        for p in paths
-    ])
+    # do we need this with ERL_LIBS now set?
+    paths = []
+    for dep in flat_deps(ctx.attr.deps):
+        paths.extend(code_paths(dep))
     shard_suite_code_paths = ":".join(paths)
 
     test_env_commands = []
@@ -84,10 +113,10 @@ if [ -n "{package}" ]; then
 fi
 
 set -x
+export ERL_LIBS={erl_libs_path}
 {erlang_home}/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
-    {pa_args} \\
     ${{FILTER}} \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
     -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
@@ -98,8 +127,8 @@ set -x
         query_erlang_version = QUERY_ERL_VERSION,
         package = package,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
-        pa_args = pa_args,
+        erlang_version = erlang_version,
+        erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE", ERL_LIBS_DIR),
         shard_suite_code_paths = shard_suite_code_paths,
         shard_suite = ctx.file._shard_suite_escript.short_path,
         sharding_method = ctx.attr.sharding_method,
@@ -116,7 +145,7 @@ set -x
     )
 
     runfiles = ctx.runfiles(
-        ctx.files.compiled_suites + ctx.files.data + ctx.files._shard_suite_escript,
+        ctx.files.compiled_suites + ctx.files.data + erl_libs_files + ctx.files._shard_suite_escript,
     )
     for dep in ctx.attr.deps:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
