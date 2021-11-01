@@ -52,7 +52,7 @@ bazel_erlang_deps()
 load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib", "test_erlang_lib")
 load("@bazel-erlang//:xref.bzl", "xref")
 load("@bazel-erlang//:dialyze.bzl", "dialyze", "plt")
-load("@bazel-erlang//:ct_sharded.bzl", "ct_suite")
+load("@bazel-erlang//:ct_sharded.bzl", "ct_suite", "assert_suites")
 
 APP_NAME = "my_cool_app"
 APP_VERSION = "0.1.0
@@ -71,9 +71,11 @@ xref()
 
 dialyze()
 
-ct_suite(
-    name = "unit_SUITE",
-)
+assert_suites([
+    ct_suite(
+        name = "unit_SUITE",
+    ),
+])
 ```
 
 ## Compile and run all tests

@@ -172,6 +172,8 @@ def ct_suite(
         **kwargs
     )
 
+    return suite_name
+
 def ct_suite_variant(
         name = "",
         name_suffix = "",
@@ -223,6 +225,8 @@ def ct_suite_variant(
             **kwargs
         )
 
+    return suite_name
+
 def ct_group_matrix(groups):
     matrix = {}
     for group in groups:
@@ -239,3 +243,11 @@ def ct_group_case_matrix(groups):
                 "cases": [case],
             }
     return matrix
+
+def assert_suites(suite_names, suite_files = None):
+    if suite_files == None:
+        suite_files = native.glob(["test/**/*_SUITE.erl"])
+    for f in suite_files:
+        sn = f.rpartition("/")[-1].replace(".erl", "")
+        if not sn in suite_names:
+            fail("A bazel rule has not been defined for {} (expected {} in {}".format(f, sn, suite_names))
