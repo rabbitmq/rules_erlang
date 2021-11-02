@@ -14,7 +14,7 @@ load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname", _assert_suites 
 
 ERL_LIBS_DIR = "deps"
 
-def priv_file_dest_relative_path(dep_label, f):
+def additional_file_dest_relative_path(dep_label, f):
     if dep_label.workspace_root != "":
         if dep_label.package != "":
             rel_base = path_join(dep_label.workspace_root, dep_label.package)
@@ -37,22 +37,33 @@ def _impl(ctx):
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for src in lib_info.beam:
-            dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
-            ctx.actions.symlink(output = dest, target_file = src)
+            if src.is_directory:
+                dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
+                args = ctx.actions.args()
+                args.add_all([src])
+                args.add(dest.path)
+                ctx.actions.run(
+                    inputs = [src],
+                    outputs = [dest],
+                    executable = "cp",
+                    arguments = [args],
+                )
+            else:
+                dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
+                ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
         for src in lib_info.priv:
-            rp = priv_file_dest_relative_path(dep.label, src)
+            rp = additional_file_dest_relative_path(dep.label, src)
             dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
 
     package = ctx.label.package
 
-    # do we need this with ERL_LIBS now set?
-    paths = []
-    for dep in flat_deps(ctx.attr.deps):
-        paths.extend(code_paths(dep))
-    shard_suite_code_paths = ":".join(paths)
+    erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE")
+    if package != "":
+        erl_libs_path = path_join(erl_libs_path, package)
+    erl_libs_path = path_join(erl_libs_path, ERL_LIBS_DIR)
 
     test_env_commands = []
     for k, v in ctx.attr.test_env.items():
@@ -82,6 +93,8 @@ if ! beginswith "{erlang_version}" "$V"; then
     exit 1
 fi
 
+export ERL_LIBS={erl_libs_path}
+
 {test_env}
 
 if [ -n "${{FOCUS+x}}" ]; then
@@ -98,7 +111,7 @@ if [ -n "${{FOCUS+x}}" ]; then
     fi
 else
     if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
-        export SHARD_SUITE_CODE_PATHS={shard_suite_code_paths}
+        export SHARD_SUITE_CODE_PATHS="$TEST_SRCDIR/$TEST_WORKSPACE/{dir}"
         FILTER=$({erlang_home}/bin/escript \\
             $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
                 -{sharding_method} \\
@@ -113,7 +126,6 @@ if [ -n "{package}" ]; then
 fi
 
 set -x
-export ERL_LIBS={erl_libs_path}
 {erlang_home}/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
@@ -128,8 +140,7 @@ export ERL_LIBS={erl_libs_path}
         package = package,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = erlang_version,
-        erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE", ERL_LIBS_DIR),
-        shard_suite_code_paths = shard_suite_code_paths,
+        erl_libs_path = erl_libs_path,
         shard_suite = ctx.file._shard_suite_escript.short_path,
         sharding_method = ctx.attr.sharding_method,
         suite_name = ctx.attr.suite_name,
@@ -145,10 +156,9 @@ export ERL_LIBS={erl_libs_path}
     )
 
     runfiles = ctx.runfiles(
-        ctx.files.compiled_suites + ctx.files.data + erl_libs_files + ctx.files._shard_suite_escript,
+        files = ctx.files.compiled_suites + ctx.files.data + ctx.files._shard_suite_escript,
+        transitive_files = depset(erl_libs_files),
     )
-    for dep in ctx.attr.deps:
-        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
     for tool in ctx.attr.tools:
         runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
 

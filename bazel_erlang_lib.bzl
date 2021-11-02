@@ -1,12 +1,12 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 
 ErlangLibInfo = provider(
-    doc = "Compiled Erlang sources",
+    doc = "Compiled Erlang Library/Application",
     fields = {
         "lib_name": "Name of the erlang lib",
         "erlang_version": "The erlang version used to produce the beam files",
         "include": "Public header files",
-        "beam": "Compiled bytecode",
+        "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
         "deps": "Runtime dependencies of the compiled sources",
     },
