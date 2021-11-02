@@ -10,22 +10,15 @@ load(
     "flat_deps",
     "path_join",
 )
-load(":ct.bzl", "code_paths", "sanitize_sname", "short_dirname", _assert_suites = "assert_suites")
-
-ERL_LIBS_DIR = "deps"
-
-def additional_file_dest_relative_path(dep_label, f):
-    if dep_label.workspace_root != "":
-        if dep_label.package != "":
-            rel_base = path_join(dep_label.workspace_root, dep_label.package)
-        else:
-            rel_base = dep_label.workspace_root
-    else:
-        rel_base = dep_label.package
-    if rel_base != "":
-        return f.short_path.replace(rel_base + "/", "")
-    else:
-        return f.short_path
+load(
+    ":ct.bzl",
+    "ERL_LIBS_DIR",
+    "additional_file_dest_relative_path",
+    "code_paths",
+    "sanitize_sname",
+    "short_dirname",
+    _assert_suites = "assert_suites",
+)
 
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version

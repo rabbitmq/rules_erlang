@@ -11,6 +11,8 @@ load(
     "path_join",
 )
 
+ERL_LIBS_DIR = "deps"
+
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
 
@@ -34,14 +36,51 @@ def code_paths(dep):
         for d in _unique_short_dirnames(dep[ErlangLibInfo].beam)
     ]
 
+def additional_file_dest_relative_path(dep_label, f):
+    if dep_label.workspace_root != "":
+        if dep_label.package != "":
+            rel_base = path_join(dep_label.workspace_root, dep_label.package)
+        else:
+            rel_base = dep_label.workspace_root
+    else:
+        rel_base = dep_label.package
+    if rel_base != "":
+        return f.short_path.replace(rel_base + "/", "")
+    else:
+        return f.short_path
+
 def _impl(ctx):
-    paths = []
+    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
+
+    erl_libs_files = []
     for dep in flat_deps(ctx.attr.deps):
-        paths.extend(code_paths(dep))
+        lib_info = dep[ErlangLibInfo]
+        dep_path = path_join(ERL_LIBS_DIR, lib_info.lib_name)
+        if lib_info.erlang_version != erlang_version:
+            fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
+        for src in lib_info.beam:
+            if src.is_directory:
+                dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
+                args = ctx.actions.args()
+                args.add_all([src])
+                args.add(dest.path)
+                ctx.actions.run(
+                    inputs = [src],
+                    outputs = [dest],
+                    executable = "cp",
+                    arguments = [args],
+                )
+            else:
+                dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
+                ctx.actions.symlink(output = dest, target_file = src)
+            erl_libs_files.append(dest)
+        for src in lib_info.priv:
+            rp = additional_file_dest_relative_path(dep.label, src)
+            dest = ctx.actions.declare_file(path_join(dep_path, rp))
+            ctx.actions.symlink(output = dest, target_file = src)
+            erl_libs_files.append(dest)
 
     package = ctx.label.package
-
-    pa_args = " ".join(["-pa $TEST_SRCDIR/$TEST_WORKSPACE/{}".format(p) for p in paths])
 
     filter_tests_args = ""
     if len(ctx.attr.suites + ctx.attr.groups + ctx.attr.cases) > 0:
@@ -51,6 +90,11 @@ def _impl(ctx):
             filter_tests_args = filter_tests_args + " -group " + " ".join(ctx.attr.groups)
         if len(ctx.attr.cases) > 0:
             filter_tests_args = filter_tests_args + " -case " + " ".join(ctx.attr.cases)
+
+    erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE")
+    if package != "":
+        erl_libs_path = path_join(erl_libs_path, package)
+    erl_libs_path = path_join(erl_libs_path, ERL_LIBS_DIR)
 
     test_env_commands = []
     for k, v in ctx.attr.test_env.items():
@@ -76,6 +120,8 @@ if ! beginswith "{erlang_version}" "$V"; then
     exit 1
 fi
 
+export ERL_LIBS={erl_libs_path}
+
 {test_env}
 
 if [ -n "{package}" ]; then
@@ -88,7 +134,7 @@ set -x
 {erlang_home}/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
-    {pa_args} $FILTER \\
+    $FILTER \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
     -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
     {ct_hooks_args} \\
@@ -98,8 +144,8 @@ set -x
         query_erlang_version = QUERY_ERL_VERSION,
         package = package,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
-        pa_args = pa_args,
+        erlang_version = erlang_version,
+        erl_libs_path = erl_libs_path,
         filter_tests_args = filter_tests_args,
         dir = short_dirname(ctx.files.compiled_suites[0]),
         ct_hooks_args = ct_hooks_args,
@@ -112,9 +158,10 @@ set -x
         content = script,
     )
 
-    runfiles = ctx.runfiles(files = ctx.files.compiled_suites + ctx.files.data)
-    for dep in ctx.attr.deps:
-        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
+    runfiles = ctx.runfiles(
+        files = ctx.files.compiled_suites + ctx.files.data,
+        transitive_files = depset(erl_libs_files),
+    )
     for tool in ctx.attr.tools:
         runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
 
