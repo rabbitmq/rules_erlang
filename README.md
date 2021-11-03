@@ -36,9 +36,9 @@ The example below follows this convention.
 ```starlark
 http_archive(
     name = "bazel-erlang",
-    sha256 = "03b75fae7e3d3e80644ba1b0f1bf43b9da3c7c36435ea7baba0d0f87b3c05482",
-    strip_prefix = "bazel-erlang-1.2.0",
-    urls = ["https://github.com/rabbitmq/bazel-erlang/archive/refs/tags/1.2.0.zip"],
+    sha256 = "64490ba578db6d51a622a85bad1a862b4c1f11dfb4b224a9f00141eab21e22f7",
+    strip_prefix = "bazel-erlang-1.3.0",
+    urls = ["https://github.com/rabbitmq/bazel-erlang/archive/refs/tags/1.3.0.zip"],
 )
 
 load("@bazel-erlang//:bazel_erlang.bzl", "bazel_erlang_deps")
