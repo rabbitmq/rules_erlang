@@ -45,9 +45,9 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         rel_base = dep_label.package
     if rel_base != "":
-        return f.short_path.replace(rel_base + "/", "")
+        return f.path.replace(rel_base + "/", "")
     else:
-        return f.short_path
+        return f.path
 
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
