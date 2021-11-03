@@ -38,16 +38,17 @@ def code_paths(dep):
 
 def additional_file_dest_relative_path(dep_label, f):
     if dep_label.workspace_root != "":
+        workspace_root = dep_label.workspace_root.replace("external/", "../")
         if dep_label.package != "":
-            rel_base = path_join(dep_label.workspace_root, dep_label.package)
+            rel_base = path_join(workspace_root, dep_label.package)
         else:
-            rel_base = dep_label.workspace_root
+            rel_base = workspace_root
     else:
         rel_base = dep_label.package
     if rel_base != "":
-        return f.path.replace(rel_base + "/", "")
+        return f.short_path.replace(rel_base + "/", "")
     else:
-        return f.path
+        return f.short_path
 
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
