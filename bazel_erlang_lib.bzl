@@ -8,6 +8,7 @@ ErlangLibInfo = provider(
         "include": "Public header files",
         "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
+        "license_files": "License files",
         "deps": "Runtime dependencies of the compiled sources",
     },
 )
@@ -272,6 +273,7 @@ def _impl(ctx):
             include = ctx.files.hdrs,
             beam = compiled_files,
             priv = ctx.files.priv,
+            license_files = ctx.files.license_files,
             deps = deps,
         ),
         DefaultInfo(
@@ -289,6 +291,7 @@ bazel_erlang_lib = rule(
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(allow_files = [".beam", ".appup"]),
         "priv": attr.label_list(allow_files = True),
+        "license_files": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangLibInfo]),
     },
 )
@@ -305,6 +308,7 @@ def erlang_lib(
         erlc_opts = DEFAULT_ERLC_OPTS,
         first_srcs = [],
         extra_priv = [],
+        extra_license_files = [],
         build_deps = [],
         deps = [],
         runtime_deps = []):
@@ -359,6 +363,7 @@ def erlang_lib(
         app = app,
         beam = all_beam,
         priv = native.glob(["priv/**/*"]) + extra_priv,
+        license_files = native.glob(["LICENSE*"]) + extra_license_files,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
     )
@@ -382,6 +387,7 @@ def test_erlang_lib(
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         first_srcs = [],
         extra_priv = [],
+        extra_license_files = [],
         build_deps = [],
         deps = [],
         runtime_deps = []):
@@ -424,6 +430,7 @@ def test_erlang_lib(
         app = app,
         beam = all_beam,
         priv = native.glob(["priv/**/*"]) + extra_priv,
+        license_files = native.glob(["LICENSE*"]) + extra_license_files,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
         testonly = True,
