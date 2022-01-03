@@ -320,7 +320,7 @@ def erlang_lib(
             name = "first_beam_files",
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
-            erlc_opts = _unique(erlc_opts),
+            erlc_opts = erlc_opts,
             dest = "ebin",
             deps = build_deps + deps,
         )
@@ -330,7 +330,7 @@ def erlang_lib(
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
         srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_beam,
-        erlc_opts = _unique(erlc_opts),
+        erlc_opts = erlc_opts,
         dest = "ebin",
         deps = build_deps + deps,
     )
@@ -368,13 +368,6 @@ def erlang_lib(
         visibility = ["//visibility:public"],
     )
 
-def _unique(l):
-    r = []
-    for item in l:
-        if item not in r:
-            r.append(item)
-    return r
-
 def test_erlang_lib(
         app_name = "",
         app_version = "",
@@ -399,7 +392,7 @@ def test_erlang_lib(
             name = "first_test_beam_files",
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
-            erlc_opts = _unique(erlc_opts),
+            erlc_opts = erlc_opts,
             dest = "test",
             deps = build_deps + deps,
             testonly = True,
@@ -410,7 +403,7 @@ def test_erlang_lib(
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
         srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_beam,
-        erlc_opts = _unique(erlc_opts),
+        erlc_opts = erlc_opts,
         dest = "test",
         deps = build_deps + deps,
         testonly = True,
