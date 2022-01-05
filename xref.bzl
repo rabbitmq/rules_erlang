@@ -3,10 +3,10 @@ load(
     "ErlangHomeProvider",
     "ErlangVersionProvider",
 )
+load(":erlang_app_info.bzl", "ErlangAppInfo")
 load(
-    ":bazel_erlang_lib.bzl",
+    ":util.bzl",
     "BEGINS_WITH_FUN",
-    "ErlangLibInfo",
     "QUERY_ERL_VERSION",
     "path_join",
 )
@@ -21,7 +21,7 @@ def _to_erlang_atom_list(strings):
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
-    lib_info = ctx.attr.target[ErlangLibInfo]
+    lib_info = ctx.attr.target[ErlangAppInfo]
 
     if lib_info.erlang_version != erlang_version:
         fail("Erlang version mismatch ({} != {})".format(
@@ -30,12 +30,12 @@ def _impl(ctx):
         ))
 
     extra_paths = []
-    dirs = [path_join(ctx.attr.target.label.package, "ebin")]
+    dirs = [path_join(ctx, ctx.attr.target.label.package, "ebin")]
     for dep in lib_info.deps + ctx.attr.additional_libs:
         if dep.label.workspace_root != "":
-            extra_paths.extend(code_paths(dep))
+            extra_paths.extend(code_paths(ctx, dep))
         else:
-            dirs.append(path_join(dep.label.package, "ebin"))
+            dirs.append(path_join(ctx, dep.label.package, "ebin"))
 
     xref_config = "[{xref, ["
     xref_config = xref_config + "{config, #{"
@@ -55,6 +55,7 @@ def _impl(ctx):
     )
 
     xrefr_path = path_join(
+        ctx,
         ctx.attr._xrefr.label.workspace_root,
         ctx.file._xrefr.short_path,
     )
@@ -112,8 +113,9 @@ xref_test = rule(
             cfg = "target",
             allow_single_file = True,
         ),
+        "is_windows": attr.bool(mandatory = True),
         "target": attr.label(
-            providers = [ErlangLibInfo],
+            providers = [ErlangAppInfo],
             mandatory = True,
         ),
         "checks": attr.string_list(
@@ -124,7 +126,7 @@ xref_test = rule(
             ],
         ),
         "additional_libs": attr.label_list(
-            providers = [ErlangLibInfo],
+            providers = [ErlangAppInfo],
         ),
     },
     test = True,
@@ -133,6 +135,10 @@ xref_test = rule(
 def xref(**kwargs):
     xref_test(
         name = "xref",
-        target = ":bazel_erlang_lib",
+        target = ":erlang_app",
+        is_windows = select({
+            "@bazel_tools//src/conditions:host_windows": True,
+            "//conditions:default": False,
+        }),
         **kwargs
     )

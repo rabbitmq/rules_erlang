@@ -1,12 +1,11 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
+load(":erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(":erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
+load(":erlc.bzl", "erlc")
 load(
-    ":bazel_erlang_lib.bzl",
+    ":util.bzl",
     "BEGINS_WITH_FUN",
-    "DEFAULT_TEST_ERLC_OPTS",
-    "ErlangLibInfo",
     "QUERY_ERL_VERSION",
-    "erlc",
-    "flat_deps",
 )
 load(":ct.bzl", "code_paths")
 
@@ -16,7 +15,7 @@ def _to_atom_list(l):
 def _impl(ctx):
     paths = []
     for dep in flat_deps(ctx.attr.deps):
-        paths.extend(code_paths(dep))
+        paths.extend(code_paths(ctx, dep))
 
     package = ctx.label.package
 
@@ -83,7 +82,7 @@ eunit_test = rule(
         ),
         "eunit_mods": attr.string_list(mandatory = True),
         "data": attr.label_list(allow_files = True),
-        "deps": attr.label_list(providers = [ErlangLibInfo]),
+        "deps": attr.label_list(providers = [ErlangAppInfo]),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
     },
@@ -108,7 +107,7 @@ def eunit(
         srcs = srcs,
         erlc_opts = erlc_opts,
         dest = "test",
-        deps = [":test_bazel_erlang_lib"] + deps,
+        deps = [":test_erlang_app"] + deps,
         testonly = True,
     )
 
@@ -126,7 +125,7 @@ def eunit(
         compiled_suites = [":test_case_beam_files"],
         eunit_mods = eunit_mods,
         data = native.glob(["test/**/*"], exclude = srcs) + data,
-        deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+        deps = [":test_erlang_app"] + deps + runtime_deps,
         tools = tools,
         test_env = test_env,
         **kwargs

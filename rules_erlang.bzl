@@ -1,6 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-def bazel_erlang_deps():
+def rules_erlang_dependencies():
     http_file(
         name = "xrefr",
         urls = ["https://github.com/inaka/xref_runner/releases/download/1.2.0/xrefr"],

@@ -1,6 +1,6 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(
-    ":bazel_erlang_lib.bzl",
+    ":util.bzl",
     "BEGINS_WITH_FUN",
     "QUERY_ERL_VERSION",
     "path_join",

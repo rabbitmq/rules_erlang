@@ -1,15 +1,17 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(
-    ":bazel_erlang_lib.bzl",
-    "BEGINS_WITH_FUN",
+    ":erlang_app.bzl",
     "DEFAULT_TEST_ERLC_OPTS",
-    "ErlangLibInfo",
+)
+load(":erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(":erlc.bzl", "erlc")
+load(
+    ":util.bzl",
+    "BEGINS_WITH_FUN",
     "QUERY_ERL_VERSION",
-    "beam_file",
-    "erlc",
-    "flat_deps",
     "path_join",
 )
+load("//private:erlc.bzl", "beam_file")
 
 ERL_LIBS_DIR = "deps"
 
@@ -30,23 +32,29 @@ def _unique_short_dirnames(files):
             dirs.append(dirname)
     return dirs
 
-def code_paths(dep):
+def code_paths(ctx, dep):
     return [
-        path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
-        for d in _unique_short_dirnames(dep[ErlangLibInfo].beam)
+        path_join(ctx, dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
+        for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)
     ]
 
-def additional_file_dest_relative_path(dep_label, f):
+def additional_file_dest_relative_path(ctx, dep_label, f):
     if dep_label.workspace_root != "":
-        workspace_root = dep_label.workspace_root.replace("external/", "../")
+        if ctx.attr.is_windows:
+            workspace_root = dep_label.workspace_root.replace("external\\", "..\\")
+        else:
+            workspace_root = dep_label.workspace_root.replace("external/", "../")
         if dep_label.package != "":
-            rel_base = path_join(workspace_root, dep_label.package)
+            rel_base = path_join(ctx, workspace_root, dep_label.package)
         else:
             rel_base = workspace_root
     else:
         rel_base = dep_label.package
     if rel_base != "":
-        return f.short_path.replace(rel_base + "/", "")
+        if ctx.attr.is_windows:
+            return f.short_path.replace(rel_base + "\\", "")
+        else:
+            return f.short_path.replace(rel_base + "/", "")
     else:
         return f.short_path
 
@@ -55,13 +63,13 @@ def _impl(ctx):
 
     erl_libs_files = []
     for dep in flat_deps(ctx.attr.deps):
-        lib_info = dep[ErlangLibInfo]
-        dep_path = path_join(ERL_LIBS_DIR, lib_info.lib_name)
+        lib_info = dep[ErlangAppInfo]
+        dep_path = path_join(ctx, ERL_LIBS_DIR, lib_info.app_name)
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for src in lib_info.beam:
             if src.is_directory:
-                dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
+                dest = ctx.actions.declare_directory(path_join(ctx, dep_path, "ebin"))
                 args = ctx.actions.args()
                 args.add_all([src])
                 args.add(dest.path)
@@ -72,12 +80,12 @@ def _impl(ctx):
                     arguments = [args],
                 )
             else:
-                dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
+                dest = ctx.actions.declare_file(path_join(ctx, dep_path, "ebin", src.basename))
                 ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
         for src in lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
-            dest = ctx.actions.declare_file(path_join(dep_path, rp))
+            rp = additional_file_dest_relative_path(ctx, dep.label, src)
+            dest = ctx.actions.declare_file(path_join(ctx, dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
 
@@ -92,10 +100,10 @@ def _impl(ctx):
         if len(ctx.attr.cases) > 0:
             filter_tests_args = filter_tests_args + " -case " + " ".join(ctx.attr.cases)
 
-    erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE")
+    erl_libs_path = path_join(ctx, "$TEST_SRCDIR", "$TEST_WORKSPACE")
     if package != "":
-        erl_libs_path = path_join(erl_libs_path, package)
-    erl_libs_path = path_join(erl_libs_path, ERL_LIBS_DIR)
+        erl_libs_path = path_join(ctx, erl_libs_path, package)
+    erl_libs_path = path_join(ctx, erl_libs_path, ERL_LIBS_DIR)
 
     test_env_commands = []
     for k, v in ctx.attr.test_env.items():
@@ -173,15 +181,16 @@ set -x
 ct_test = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = ":erlang_home"),
-        "_erlang_version": attr.label(default = ":erlang_version"),
+        "_erlang_home": attr.label(default = Label("//:erlang_home")),
+        "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
             mandatory = True,
         ),
         "ct_hooks": attr.string_list(),
         "data": attr.label_list(allow_files = True),
-        "deps": attr.label_list(providers = [ErlangLibInfo]),
+        "deps": attr.label_list(providers = [ErlangAppInfo]),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
         "suites": attr.string_list(),
@@ -208,7 +217,7 @@ def ct_suite(
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,
         dest = "test",
-        deps = [":test_bazel_erlang_lib"] + deps,
+        deps = [":test_erlang_app"] + deps,
         testonly = True,
     )
 
@@ -247,9 +256,13 @@ def ct_suite_variant(
             test_kwargs.update(args)
             ct_test(
                 name = test_name + name_suffix,
+                is_windows = select({
+                    "@bazel_tools//src/conditions:host_windows": True,
+                    "//conditions:default": False,
+                }),
                 compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
                 data = data_dir_files + data,
-                deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+                deps = [":test_erlang_app"] + deps + runtime_deps,
                 tools = tools,
                 test_env = test_env,
                 suites = [suite_name],
@@ -264,9 +277,13 @@ def ct_suite_variant(
     else:
         ct_test(
             name = name + name_suffix,
+            is_windows = select({
+                "@bazel_tools//src/conditions:host_windows": True,
+                "//conditions:default": False,
+            }),
             compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
             data = data_dir_files + data,
-            deps = [":test_bazel_erlang_lib"] + deps + runtime_deps,
+            deps = [":test_erlang_app"] + deps + runtime_deps,
             tools = tools,
             test_env = test_env,
             suites = [suite_name],

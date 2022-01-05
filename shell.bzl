@@ -4,19 +4,21 @@ load(
     "ErlangVersionProvider",
 )
 load(
-    ":bazel_erlang_lib.bzl",
-    "BEGINS_WITH_FUN",
-    "ErlangLibInfo",
-    "QUERY_ERL_VERSION",
+    ":erlang_app_info.bzl",
+    "ErlangAppInfo",
     "flat_deps",
-    "path_join",
+)
+load(
+    ":util.bzl",
+    "BEGINS_WITH_FUN",
+    "QUERY_ERL_VERSION",
 )
 load(":ct.bzl", "code_paths")
 
 def _impl(ctx):
     paths = []
     for dep in flat_deps(ctx.attr.deps):
-        paths.extend(code_paths(dep))
+        paths.extend(code_paths(ctx, dep))
 
     script = """
 set -euo pipefail
@@ -61,7 +63,7 @@ shell = rule(
         "_erlang_version": attr.label(
             default = Label("//:erlang_version"),
         ),
-        "deps": attr.label_list(providers = [ErlangLibInfo]),
+        "deps": attr.label_list(providers = [ErlangAppInfo]),
         "extra_erl_args": attr.string_list(),
     },
     executable = True,

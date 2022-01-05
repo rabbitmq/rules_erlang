@@ -3,12 +3,11 @@ load(
     "ErlangHomeProvider",
     "ErlangVersionProvider",
 )
+load(":erlang_app_info.bzl", "ErlangAppInfo")
 load(
-    ":bazel_erlang_lib.bzl",
+    ":util.bzl",
     "BEGINS_WITH_FUN",
-    "ErlangLibInfo",
     "QUERY_ERL_VERSION",
-    "path_join",
 )
 load(":ct.bzl", "code_paths")
 
@@ -79,7 +78,7 @@ plt = rule(
 def _dialyze_impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
-    lib_info = ctx.attr.target[ErlangLibInfo]
+    lib_info = ctx.attr.target[ErlangAppInfo]
 
     if lib_info.erlang_version != erlang_version:
         fail("Erlang version mismatch ({} != {})".format(
@@ -96,9 +95,9 @@ def _dialyze_impl(ctx):
     else:
         plt_args = "--plt " + ctx.file.plt.short_path
 
-    dirs = code_paths(ctx.attr.target)
+    dirs = code_paths(ctx, ctx.attr.target)
     for dep in lib_info.deps:
-        dirs.extend(code_paths(dep))
+        dirs.extend(code_paths(ctx, dep))
 
     script = """set -euo pipefail
 
@@ -148,7 +147,7 @@ dialyze_test = rule(
             allow_single_file = [".plt"],
         ),
         "target": attr.label(
-            providers = [ErlangLibInfo],
+            providers = [ErlangAppInfo],
             mandatory = True,
         ),
         "plt_apps": attr.string_list(),
@@ -166,6 +165,6 @@ dialyze_test = rule(
 def dialyze(**kwargs):
     dialyze_test(
         name = "dialyze",
-        target = ":bazel_erlang_lib",
+        target = ":erlang_app",
         **kwargs
     )
