@@ -143,6 +143,7 @@ dialyze_test = rule(
         "_erlang_version": attr.label(
             default = Label("//:erlang_version"),
         ),
+        "is_windows": attr.bool(mandatory = True),
         "plt": attr.label(
             allow_single_file = [".plt"],
         ),
@@ -166,5 +167,9 @@ def dialyze(**kwargs):
     dialyze_test(
         name = "dialyze",
         target = ":erlang_app",
+        is_windows = select({
+            "@bazel_tools//src/conditions:host_windows": True,
+            "//conditions:default": False,
+        }),
         **kwargs
     )
