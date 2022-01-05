@@ -1,7 +1,7 @@
-load(":bazel_erlang_lib.bzl", "DEFAULT_ERLC_OPTS")
+load(":erlang_app.bzl", "DEFAULT_ERLC_OPTS")
 load(":hex_archive.bzl", "hex_archive")
 
-def hex_pm_bazel_erlang_lib(
+def hex_pm_erlang_app(
         name = None,
         version = None,
         erlc_opts = DEFAULT_ERLC_OPTS,
@@ -24,9 +24,9 @@ def hex_pm_bazel_erlang_lib(
     )
 
 _BUILD_FILE_TEMPLATE = """
-load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
-erlang_lib(
+erlang_app(
     app_name = "{app_name}",
     app_version = "{version}",
     erlc_opts = {erlc_opts},

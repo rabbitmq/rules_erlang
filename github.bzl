@@ -1,6 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def github_bazel_erlang_lib(
+def github_erlang_app(
         name = None,
         org = None,
         repo = None,
@@ -31,9 +31,9 @@ def github_bazel_erlang_lib(
     )
 
 _BUILD_FILE_TEMPLATE = """
-load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
-erlang_lib(
+erlang_app(
     app_name = "{app_name}",
     app_version = "{version}",
     extra_apps = {extra_apps},

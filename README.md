@@ -1,10 +1,10 @@
-# bazel_erlang
+# rules_erlang
 
 Bazel rules for Erlang sources
 
 ## Assumptions
 
-`erlang_lib` and `ct_suite` macros require the standard otp layout, relative to the bazel package (to some degree abitrary layout can be handled with with the `erlc`, `app_file`, `bazel_erlang_lib` & `ct_test` rules which those macros utilize). For an erlang application named `my_erlang_app` this means:
+`erlang_app` and `ct_suite` macros require the standard otp layout, relative to the bazel package (to some degree abitrary layout can be handled with with the `erlc`, `app_file`, `erlang_app_info` & `ct_test` rules which those macros utilize). For an erlang application named `my_erlang_app` this means:
 
 ```
 my_erlang_app
@@ -35,34 +35,33 @@ The example below follows this convention.
 
 ```starlark
 http_archive(
-    name = "bazel-erlang",
-    sha256 = "f37c339711ce05b748688938ad9b1c00a78f0b2ef67d6baa734f5a34e33ad8a3",
-    strip_prefix = "bazel-erlang-1.4.0",
-    urls = ["https://github.com/rabbitmq/bazel-erlang/archive/refs/tags/1.4.0.zip"],
+    name = "rules_erlang",
+    strip_prefix = "rules_erlang-v2",
+    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/heads/v2.zip"],
 )
 
-load("@bazel-erlang//:bazel_erlang.bzl", "bazel_erlang_deps")
+load("@rules_erlang//:rules_erlang.bzl", "rules_erlang_dependencies")
 
-bazel_erlang_deps()
+rules_erlang_dependencies()
 ```
 
 ### `BUILD` file
 
 ```starlark
-load("@bazel-erlang//:bazel_erlang_lib.bzl", "erlang_lib", "test_erlang_lib")
-load("@bazel-erlang//:xref.bzl", "xref")
-load("@bazel-erlang//:dialyze.bzl", "dialyze", "plt")
-load("@bazel-erlang//:ct_sharded.bzl", "ct_suite", "assert_suites")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
+load("@rules_erlang//:xref.bzl", "xref")
+load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
+load("@rules_erlang//:ct_sharded.bzl", "ct_suite", "assert_suites")
 
 APP_NAME = "my_cool_app"
 APP_VERSION = "0.1.0
 
-erlang_lib(
+erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
 )
 
-test_erlang_lib(
+test_erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
 )
@@ -82,24 +81,24 @@ assert_suites([
 
 ```shell
 bazel test //... \
-    --@bazel-erlang//:erlang_home=/path/to/erlang \
-    --@bazel-erlang//:erlang_version=23.2
+    --@rules_erlang//:erlang_home=/path/to/erlang \
+    --@rules_erlang//:erlang_version=23.2
 ```
 
 ## Run the unit suite only
 
 ```shell
 bazel test //:unit_SUITE \
-    --@bazel-erlang//:erlang_home=/path/to/erlang \
-    --@bazel-erlang//:erlang_version=23.2
+    --@rules_erlang//:erlang_home=/path/to/erlang \
+    --@rules_erlang//:erlang_version=23.2
 ```
 
 ## Run a single test case
 
 ```shell
 bazel test //:unit_SUITE \
-    --@bazel-erlang//:erlang_home=/path/to/erlang \
-    --@bazel-erlang//:erlang_version=23.2 \
+    --@rules_erlang//:erlang_home=/path/to/erlang \
+    --@rules_erlang//:erlang_version=23.2 \
     --test_env FOCUS="-group my_group -case my_case"
 ```
 

@@ -1,8 +1,8 @@
 load(
-    "//:bazel_erlang_lib.bzl",
+    "//:erlang_app.bzl",
     "DEFAULT_TEST_ERLC_OPTS",
-    "erlang_lib",
-    "test_erlang_lib",
+    "erlang_app",
+    "test_erlang_app",
 )
 load("//:xref.bzl", "xref")
 load("//:dialyze.bzl", "DEFAULT_PLT_APPS", "dialyze", "plt")
@@ -13,12 +13,12 @@ APP_NAME = "shard_suite"
 
 APP_VERSION = "1.0.0"
 
-erlang_lib(
+erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
 )
 
-test_erlang_lib(
+test_erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
     erlc_opts = DEFAULT_TEST_ERLC_OPTS + [
