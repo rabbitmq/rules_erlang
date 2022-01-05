@@ -1,7 +1,7 @@
 load(":erlang_app.bzl", "DEFAULT_ERLC_OPTS")
 load(":hex_archive.bzl", "hex_archive")
 
-def hex_pm_bazel_erlang_lib(
+def hex_pm_erlang_app(
         name = None,
         version = None,
         erlc_opts = DEFAULT_ERLC_OPTS,
