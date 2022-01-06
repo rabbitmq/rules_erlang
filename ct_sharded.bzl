@@ -78,7 +78,7 @@ fi
 export HOME=${{TEST_TMPDIR}}
 
 {begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
+V=$("{erlang_home}"/bin/{query_erlang_version})
 if ! beginswith "{erlang_version}" "$V"; then
     echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
     exit 1
@@ -103,7 +103,7 @@ if [ -n "${{FOCUS+x}}" ]; then
 else
     if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
         export SHARD_SUITE_CODE_PATHS="$TEST_SRCDIR/$TEST_WORKSPACE/{dir}"
-        FILTER=$({erlang_home}/bin/escript \\
+        FILTER=$("{erlang_home}"/bin/escript \\
             $TEST_SRCDIR/$TEST_WORKSPACE/{shard_suite} \\
                 -{sharding_method} \\
                 {suite_name} ${{TEST_SHARD_INDEX}} ${{TEST_TOTAL_SHARDS}})
@@ -117,7 +117,7 @@ if [ -n "{package}" ]; then
 fi
 
 set -x
-{erlang_home}/bin/ct_run \\
+"{erlang_home}"/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
     ${{FILTER}} \\

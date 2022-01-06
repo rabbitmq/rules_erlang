@@ -28,14 +28,14 @@ def _plt_impl(ctx):
 export HOME=$PWD
 
 {begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
+V=$("{erlang_home}"/bin/{query_erlang_version})
 if ! beginswith "{erlang_version}" "$V"; then
     echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
     exit 1
 fi
 
 set -x
-{erlang_home}/bin/dialyzer {apps_args} {source_plt_arg}\\
+"{erlang_home}"/bin/dialyzer {apps_args} {source_plt_arg}\\
     --output_plt {output}
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,

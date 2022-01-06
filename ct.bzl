@@ -123,7 +123,7 @@ def _impl(ctx):
 export HOME=${{TEST_TMPDIR}}
 
 {begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
+V=$("{erlang_home}"/bin/{query_erlang_version})
 if ! beginswith "{erlang_version}" "$V"; then
     echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
     exit 1
@@ -140,7 +140,7 @@ fi
 FILTER=${{FOCUS:-{filter_tests_args}}}
 
 set -x
-{erlang_home}/bin/ct_run \\
+"{erlang_home}"/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
     $FILTER \\

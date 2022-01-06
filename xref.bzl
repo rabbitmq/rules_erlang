@@ -65,18 +65,18 @@ def _impl(ctx):
 export HOME=${{TEST_TMPDIR}}
 
 {begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
+V=$("{erlang_home}"/bin/{query_erlang_version})
 if ! beginswith "{erlang_version}" "$V"; then
     echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
     exit 1
 fi
 
-{erlang_home}/bin/erl \\
+"{erlang_home}"/bin/erl \\
     -eval '{{ok, [C]}} = file:consult("{config_path}"), io:format("~p~n", [C]), halt().' \\
     -noshell
 
 set -x
-{erlang_home}/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
+"{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
     --config {config_path}
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
