@@ -120,6 +120,7 @@ def _impl(ctx):
     ))
 
     if not ctx.attr.is_windows:
+        output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
 export HOME=${{TEST_TMPDIR}}
@@ -164,26 +165,27 @@ set -x
         test_env = " && ".join(test_env_commands),
     )
     else:
+        output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """
-{erlang_home}/bin/ct_run ^
+dir %TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
+"{erlang_home}\\bin\\ct_run" ^
     -no_auto_compile ^
     -noinput ^
     %FILTER% ^
-    -dir %TEST_SRCDIR%\\%TEST_WORKSPACE%\\{dir} ^
+    -dir %TEST_SRCDIR%/%TEST_WORKSPACE%/{dir} ^
     -logdir %TEST_UNDECLARED_OUTPUTS_DIR% ^
     {ct_hooks_args} ^
     -sname {sname}
 """.format(
     erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
     erlang_version = erlang_version,
-    erl_libs_path = erl_libs_path,
-    dir = windows_path(short_dirname(ctx.files.compiled_suites[0])),
+    dir = short_dirname(ctx.files.compiled_suites[0]),
     ct_hooks_args = ct_hooks_args,
     sname = sname,
 )
 
     ctx.actions.write(
-        output = ctx.outputs.executable,
+        output = output,
         content = script,
     )
 
@@ -196,6 +198,7 @@ set -x
 
     return [DefaultInfo(
         runfiles = runfiles,
+        executable = output
     )]
 
 ct_test = rule(
