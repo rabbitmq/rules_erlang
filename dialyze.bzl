@@ -4,11 +4,6 @@ load(
     "ErlangVersionProvider",
 )
 load(":erlang_app_info.bzl", "ErlangAppInfo")
-load(
-    ":util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-)
 load(":ct.bzl", "code_paths")
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
@@ -27,19 +22,10 @@ def _plt_impl(ctx):
 
 export HOME=$PWD
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 set -x
-"{erlang_home}"/bin/dialyzer {apps_args} {source_plt_arg}\\
+"{erlang_home}/bin/dialyzer.exe" {apps_args} {source_plt_arg}\\
     --output_plt {output}
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
         apps_args = apps_args,
@@ -100,22 +86,10 @@ def _dialyze_impl(ctx):
         dirs.extend(code_paths(ctx, dep))
 
     script = """set -euo pipefail
-
 export HOME=${{TEST_TMPDIR}}
-
-{begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 set -x
-{erlang_home}/bin/dialyzer {apps_args} {plt_args}\\
-    -c {dirs} {opts} || test $? -eq 2
+"{erlang_home}/bin/dialyzer.exe" {apps_args} {plt_args} -c {dirs} {opts} || test $? -eq 2
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = erlang_version,
         apps_args = apps_args,

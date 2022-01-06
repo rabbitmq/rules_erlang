@@ -11,12 +11,7 @@ load(
     _assert_suites = "assert_suites",
 )
 load("//private:erlc.bzl", "beam_file")
-load(
-    ":util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "path_join",
-)
+load(":util.bzl", "path_join")
 
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
@@ -77,13 +72,6 @@ fi
 
 export HOME=${{TEST_TMPDIR}}
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 export ERL_LIBS={erl_libs_path}
 
 {test_env}
@@ -117,7 +105,7 @@ if [ -n "{package}" ]; then
 fi
 
 set -x
-"{erlang_home}"/bin/ct_run \\
+"{erlang_home}/bin/ct_run.exe" \\
     -no_auto_compile \\
     -noinput \\
     ${{FILTER}} \\
@@ -126,8 +114,6 @@ set -x
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         package = package,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = erlang_version,

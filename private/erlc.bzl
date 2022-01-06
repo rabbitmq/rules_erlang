@@ -1,6 +1,6 @@
 load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
-load("//:util.bzl", "BEGINS_WITH_FUN", "QUERY_ERL_VERSION", "path_join")
+load("//:util.bzl", "path_join")
 
 def beam_file(ctx, src, dir):
     name = src.basename.replace(".erl", ".beam")
@@ -45,27 +45,19 @@ def _impl(ctx):
 
     erl_args.add_all(ctx.files.srcs)
 
-    script = """
-        set -euo pipefail
-
-        mkdir -p {dest_dir}
-        export HOME=$PWD
-
-        {begins_with_fun}
-        V=$("{erlang_home}"/bin/{query_erlang_version})
-        if ! beginswith "{erlang_version}" "$V"; then
-            echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-            exit 1
-        fi
-
-        "{erlang_home}"/bin/erlc $@
-    """.format(
-        dest_dir = dest_dir,
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_version = erlang_version,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-    )
+#     script = """
+# set -xeuo pipefail
+# mkdir -p {dest_dir}
+# export HOME=$PWD
+# # "{erlang_home}/bin/erlc.exe" $@
+# echo ARG_START
+# echo $@
+# echo ARG_END
+# """.format(
+#         dest_dir = dest_dir,
+#         erlang_version = erlang_version,
+#         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
+#     )
 
     inputs = []
     inputs.extend(ctx.files.hdrs)
@@ -76,13 +68,22 @@ def _impl(ctx):
         inputs.extend(lib_info.beam)
     inputs.extend(ctx.files.beam)
 
-    ctx.actions.run_shell(
-        inputs = inputs,
+    ctx.actions.run(
         outputs = beam_files,
-        command = script,
+        inputs = inputs,
+        executable = 'C:/tools/erl-24.2/bin/erlc.exe',
         arguments = [erl_args],
-        mnemonic = "ERLC",
+        mnemonic = 'ERLC',
+        use_default_shell_env=True,
     )
+    # ctx.actions.run_shell(
+    #     inputs = inputs,
+    #     outputs = beam_files,
+    #     command = script,
+    #     arguments = [erl_args],
+    #     mnemonic = "ERLC",
+    #     use_default_shell_env=True,
+    # )
 
     return [
         DefaultInfo(files = depset(beam_files)),

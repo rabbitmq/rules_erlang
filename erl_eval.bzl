@@ -1,32 +1,19 @@
 load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
-load(
-    ":util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "path_join",
-)
+load(":util.bzl", "path_join")
 
 def _impl(ctx):
     outs = [ctx.actions.declare_file(f) for f in ctx.attr.outs]
 
     script = """set -euo pipefail
-
-{begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 export SRCS="{srcs}"
 export OUTS="{outs}"
 
-{erlang_home}/bin/erl \\
-    -noshell \\
-    -eval "$1"
+# TODO LRB
+# export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/mnt/c/tools/elixir-1.13.1/bin:/mnt/c/tools/erl-24.2/bin:/mnt/c/windows/system32:/mnt/c/windows
+
+export PATH=/mnt/c/tools/elixir-1.13.1/bin:/mnt/c/tools/erl-24.2/bin:/mnt/c/windows/system32:/mnt/c/windows
+"{erlang_home}/bin/erl.exe" -noshell -eval "$1"
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path.replace(" ", "\\ "),
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
         srcs = ctx.configuration.host_path_separator.join([src.path for src in ctx.files.srcs]),

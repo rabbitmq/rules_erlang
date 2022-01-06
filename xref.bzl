@@ -4,12 +4,7 @@ load(
     "ErlangVersionProvider",
 )
 load(":erlang_app_info.bzl", "ErlangAppInfo")
-load(
-    ":util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "path_join",
-)
+load(":util.bzl", "path_join")
 load(":ct.bzl", "code_paths")
 
 def _to_erlang_string_list(strings):
@@ -60,26 +55,14 @@ def _impl(ctx):
     )
 
     script = """set -euo pipefail
-
 export HOME=${{TEST_TMPDIR}}
-
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
-"{erlang_home}"/bin/erl \\
+"{erlang_home}/bin/erl.exe" \\
     -eval '{{ok, [C]}} = file:consult("{config_path}"), io:format("~p~n", [C]), halt().' \\
     -noshell
-
 set -x
-"{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
+"{erlang_home}/bin/escript.exe" $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
     --config {config_path}
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = erlang_version,
         xrefr = xrefr_path,

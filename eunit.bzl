@@ -2,11 +2,6 @@ load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(":erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(":erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
 load(":erlc.bzl", "erlc")
-load(
-    ":util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-)
 load(":ct.bzl", "code_paths")
 
 def _to_atom_list(l):
@@ -29,25 +24,16 @@ def _impl(ctx):
 
 export HOME=${{TEST_TMPDIR}}
 
-{begins_with_fun}
-V=$({erlang_home}/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 {test_env}
 
 cd {package}
 
 # TODO: should we stick the deps in the ERLANG_LIBS instead of pa args?
 
-{erlang_home}/bin/erl +A1 -noinput -boot no_dot_erlang \\
+"{erlang_home}/bin/erl.exe" +A1 -noinput -boot no_dot_erlang \\
     {pa_args} \\
     -eval "case eunit:test({eunit_mods_term},[]) of ok -> ok; error -> halt(2) end, halt()"
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
         package = package,
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
