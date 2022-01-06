@@ -6,7 +6,7 @@ def _module_name(f):
 
 def _impl(ctx):
     app_file = ctx.actions.declare_file(
-        path_join(ctx, "ebin", "{}.app".format(ctx.attr.app_name)),
+        path_join("ebin", "{}.app".format(ctx.attr.app_name)),
     )
 
     if len(ctx.files.app_src) > 1:

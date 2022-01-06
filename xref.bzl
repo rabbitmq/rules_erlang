@@ -30,12 +30,12 @@ def _impl(ctx):
         ))
 
     extra_paths = []
-    dirs = [path_join(ctx, ctx.attr.target.label.package, "ebin")]
+    dirs = [path_join(ctx.attr.target.label.package, "ebin")]
     for dep in lib_info.deps + ctx.attr.additional_libs:
         if dep.label.workspace_root != "":
             extra_paths.extend(code_paths(ctx, dep))
         else:
-            dirs.append(path_join(ctx, dep.label.package, "ebin"))
+            dirs.append(path_join(dep.label.package, "ebin"))
 
     xref_config = "[{xref, ["
     xref_config = xref_config + "{config, #{"
@@ -55,7 +55,6 @@ def _impl(ctx):
     )
 
     xrefr_path = path_join(
-        ctx,
         ctx.attr._xrefr.label.workspace_root,
         ctx.file._xrefr.short_path,
     )

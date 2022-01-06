@@ -2,9 +2,9 @@ load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "BEGINS_WITH_FUN", "QUERY_ERL_VERSION", "path_join")
 
-def beam_file(ctx, src, dir):
+def beam_file(src, dir):
     name = src.basename.replace(".erl", ".beam")
-    return ctx.actions.declare_file(path_join(ctx, dir, name))
+    return ctx.actions.declare_file(path_join(dir, name))
 
 def _unique_dirnames(files):
     dirs = []
@@ -32,7 +32,7 @@ def _impl(ctx):
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for dir in _unique_dirnames(lib_info.include):
-            erl_args.add("-I", path_join(ctx, dir, "../.."))
+            erl_args.add("-I", path_join(dir, "../.."))
         for dir in _unique_dirnames(lib_info.beam):
             erl_args.add("-pa", dir)
 

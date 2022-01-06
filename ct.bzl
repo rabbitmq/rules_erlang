@@ -10,6 +10,7 @@ load(
     "BEGINS_WITH_FUN",
     "QUERY_ERL_VERSION",
     "path_join",
+    "windows_path",
 )
 load("//private:erlc.bzl", "beam_file")
 
@@ -34,7 +35,7 @@ def _unique_short_dirnames(files):
 
 def code_paths(ctx, dep):
     return [
-        path_join(ctx, dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
+        path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
         for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)
     ]
 
@@ -45,7 +46,7 @@ def additional_file_dest_relative_path(ctx, dep_label, f):
         else:
             workspace_root = dep_label.workspace_root.replace("external/", "../")
         if dep_label.package != "":
-            rel_base = path_join(ctx, workspace_root, dep_label.package)
+            rel_base = path_join(workspace_root, dep_label.package)
         else:
             rel_base = workspace_root
     else:
@@ -64,12 +65,12 @@ def _impl(ctx):
     erl_libs_files = []
     for dep in flat_deps(ctx.attr.deps):
         lib_info = dep[ErlangAppInfo]
-        dep_path = path_join(ctx, ERL_LIBS_DIR, lib_info.app_name)
+        dep_path = path_join(ERL_LIBS_DIR, lib_info.app_name)
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for src in lib_info.beam:
             if src.is_directory:
-                dest = ctx.actions.declare_directory(path_join(ctx, dep_path, "ebin"))
+                dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
                 args = ctx.actions.args()
                 args.add_all([src])
                 args.add(dest.path)
@@ -80,12 +81,12 @@ def _impl(ctx):
                     arguments = [args],
                 )
             else:
-                dest = ctx.actions.declare_file(path_join(ctx, dep_path, "ebin", src.basename))
+                dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
                 ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
         for src in lib_info.priv:
             rp = additional_file_dest_relative_path(ctx, dep.label, src)
-            dest = ctx.actions.declare_file(path_join(ctx, dep_path, rp))
+            dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
 
@@ -100,10 +101,10 @@ def _impl(ctx):
         if len(ctx.attr.cases) > 0:
             filter_tests_args = filter_tests_args + " -case " + " ".join(ctx.attr.cases)
 
-    erl_libs_path = path_join(ctx, "$TEST_SRCDIR", "$TEST_WORKSPACE")
+    erl_libs_path = path_join("$TEST_SRCDIR", "$TEST_WORKSPACE")
     if package != "":
-        erl_libs_path = path_join(ctx, erl_libs_path, package)
-    erl_libs_path = path_join(ctx, erl_libs_path, ERL_LIBS_DIR)
+        erl_libs_path = path_join(erl_libs_path, package)
+    erl_libs_path = path_join(erl_libs_path, ERL_LIBS_DIR)
 
     test_env_commands = []
     for k, v in ctx.attr.test_env.items():
@@ -118,7 +119,8 @@ def _impl(ctx):
         ctx.label.name,
     ))
 
-    script = """set -euo pipefail
+    if ! ctx.attr.is_windows:
+        script = """set -euo pipefail
 
 export HOME=${{TEST_TMPDIR}}
 
@@ -161,6 +163,24 @@ set -x
         sname = sname,
         test_env = " && ".join(test_env_commands),
     )
+    else:
+        script = """
+{erlang_home}/bin/ct_run ^
+    -no_auto_compile ^
+    -noinput ^
+    %FILTER% ^
+    -dir %TEST_SRCDIR%\\%TEST_WORKSPACE%\\{dir} ^
+    -logdir %TEST_UNDECLARED_OUTPUTS_DIR% ^
+    {ct_hooks_args} ^
+    -sname {sname}
+""".format(
+    erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
+    erlang_version = erlang_version,
+    erl_libs_path = erl_libs_path,
+    dir = windows_path(short_dirname(ctx.files.compiled_suites[0])),
+    ct_hooks_args = ct_hooks_args,
+    sname = sname,
+)
 
     ctx.actions.write(
         output = ctx.outputs.executable,
