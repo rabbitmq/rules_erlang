@@ -79,23 +79,6 @@ def _dialyze_impl(ctx):
 
     args.add_all(ctx.attr.dialyzer_opts)
 
-#     script = """set -euo pipefail
-# export HOME=${{TEST_TMPDIR}}
-# set -x
-# "{erlang_home}/bin/dialyzer.exe" {apps_args} {plt_args} -c {dirs} {opts} || test $? -eq 2
-# """.format(
-#         apps_args = apps_args,
-#         plt_args = plt_args,
-#         name = ctx.label.name,
-#         dirs = " ".join(dirs),
-#         opts = " ".join(ctx.attr.dialyzer_opts),
-#     )
-
-    # ctx.actions.write(
-    #     output = ctx.outputs.executable,
-    #     content = script,
-    # )
-
     ctx.actions.run(
         outputs = [ctx.outputs.executable],
         executable = 'dialyzer',
@@ -111,8 +94,12 @@ def _dialyze_impl(ctx):
 dialyze_test = rule(
     implementation = _dialyze_impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "_erlang_home": attr.label(
+            default = Label("//:erlang_home"),
+        ),
+        "_erlang_version": attr.label(
+            default = Label("//:erlang_version"),
+        ),
         "is_windows": attr.bool(mandatory = True),
         "plt": attr.label(
             allow_single_file = [".plt"],
