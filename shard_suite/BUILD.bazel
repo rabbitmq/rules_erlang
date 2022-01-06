@@ -51,8 +51,8 @@ erl_eval(
     ],
     expression = """
 io:format("Assembiling shard_suite escript...~n", []),
-Src = os:getenv("SRCS"),
-Dest = os:getenv("OUTS"),
+{ok, [[Src]]} = init:get_argument(srcs),
+{ok, [[Dest]]} = init:get_argument(outs),
 ok = escript:create(Dest,
                     [shebang, comment, {emu_args, "-sname shard_suite"},
                      {source, Src}]),

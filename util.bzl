@@ -1,4 +1,3 @@
-
 def path_join(*components):
     return "/".join(components)
 

@@ -45,20 +45,6 @@ def _impl(ctx):
 
     erl_args.add_all(ctx.files.srcs)
 
-#     script = """
-# set -xeuo pipefail
-# mkdir -p {dest_dir}
-# export HOME=$PWD
-# # "{erlang_home}/bin/erlc.exe" $@
-# echo ARG_START
-# echo $@
-# echo ARG_END
-# """.format(
-#         dest_dir = dest_dir,
-#         erlang_version = erlang_version,
-#         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-#     )
-
     inputs = []
     inputs.extend(ctx.files.hdrs)
     inputs.extend(ctx.files.srcs)
@@ -71,19 +57,11 @@ def _impl(ctx):
     ctx.actions.run(
         outputs = beam_files,
         inputs = inputs,
-        executable = 'C:/tools/erl-24.2/bin/erlc.exe',
+        executable = 'erlc',
         arguments = [erl_args],
         mnemonic = 'ERLC',
         use_default_shell_env=True,
     )
-    # ctx.actions.run_shell(
-    #     inputs = inputs,
-    #     outputs = beam_files,
-    #     command = script,
-    #     arguments = [erl_args],
-    #     mnemonic = "ERLC",
-    #     use_default_shell_env=True,
-    # )
 
     return [
         DefaultInfo(files = depset(beam_files)),
