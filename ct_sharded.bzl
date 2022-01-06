@@ -24,7 +24,7 @@ def _impl(ctx):
     erl_libs_files = []
     for dep in flat_deps(ctx.attr.deps):
         lib_info = dep[ErlangAppInfo]
-        dep_path = path_join(ctx, ERL_LIBS_DIR, lib_info.lib_name)
+        dep_path = path_join(ctx, ERL_LIBS_DIR, lib_info.app_name)
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for src in lib_info.beam:
@@ -44,7 +44,7 @@ def _impl(ctx):
                 ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
         for src in lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
+            rp = additional_file_dest_relative_path(ctx, dep.label, src)
             dest = ctx.actions.declare_file(path_join(ctx, dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
