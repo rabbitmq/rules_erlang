@@ -27,10 +27,10 @@ export OUTS="{outs}"
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
         query_erlang_version = QUERY_ERL_VERSION,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
+        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path.replace(" ", "\\ "),
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
-        srcs = ":".join([src.path for src in ctx.files.srcs]),
-        outs = ":".join([out.path for out in outs]),
+        srcs = ctx.configuration.host_path_separator.join([src.path for src in ctx.files.srcs]),
+        outs = ctx.configuration.host_path_separator.join([out.path for out in outs]),
     )
 
     ctx.actions.run_shell(
