@@ -119,7 +119,7 @@ def _impl(ctx):
         ctx.label.name,
     ))
 
-    if ! ctx.attr.is_windows:
+    if not ctx.attr.is_windows:
         script = """set -euo pipefail
 
 export HOME=${{TEST_TMPDIR}}

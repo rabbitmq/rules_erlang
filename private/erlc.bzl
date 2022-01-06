@@ -2,7 +2,7 @@ load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "BEGINS_WITH_FUN", "QUERY_ERL_VERSION", "path_join")
 
-def beam_file(src, dir):
+def beam_file(ctx, src, dir):
     name = src.basename.replace(".erl", ".beam")
     return ctx.actions.declare_file(path_join(dir, name))
 
