@@ -36,8 +36,9 @@ The example below follows this convention.
 ```starlark
 http_archive(
     name = "rules_erlang",
-    strip_prefix = "rules_erlang-v2",
-    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/heads/v2.zip"],
+    sha256 = "7fd0564918537eb72294d17f5f8dc663907b16d712773b1c006e83194746a1c0",
+    strip_prefix = "rules_erlang-2.0.0",
+    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/2.0.0.zip"],
 )
 
 load("@rules_erlang//:rules_erlang.bzl", "rules_erlang_dependencies")
