@@ -119,7 +119,8 @@ set -x
         script = """@echo off
 echo Erlang Version: {erlang_version}
 
-if defined TEST_SHARD_STATUS_FILE copy /b %TEST_SHARD_STATUS_FILE% +,,
+SETLOCAL EnableDelayedExpansion
+if defined TEST_SHARD_STATUS_FILE type nul > !TEST_SHARD_STATUS_FILE!
 
 REM TEST_SRCDIR is provided by bazel but with unix directory separators
 set dir=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
@@ -148,7 +149,11 @@ set SHARD_SUITE_CODE_PATHS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
 set SHARD_SUITE_CODE_PATHS=%SHARD_SUITE_CODE_PATHS:/=\\%
 set shard_suite_tool_path=%TEST_SRCDIR%/%TEST_WORKSPACE%/{shard_suite}
 set shard_suite_tool_path=%shard_suite_tool_path:/=\\%
-set FILTER=("{erlang_home}"\\bin\\escript %shard_suite_tool_path% -{sharding_method} {suite_name} %TEST_SHARD_INDEX% %TEST_TOTAL_SHARDS%)
+"{erlang_home}"\\bin\\escript %shard_suite_tool_path% ^
+    -{sharding_method} {suite_name} %TEST_SHARD_INDEX% %TEST_TOTAL_SHARDS% ^
+    > shard.tmp
+set /p FILTER= < shard.tmp
+DEL shard.tmp
 goto :run_test
 :no_focus_no_shard
 set FILTER=-suite {suite_name}
