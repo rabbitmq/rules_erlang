@@ -172,6 +172,7 @@ set dir=%dir:/=\\%
 
 set logdir=%TEST_UNDECLARED_OUTPUTS_DIR%
 set logdir=%logdir:/=\\%
+subst b: %logdir%
 
 set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
 set ERL_LIBS=%ERL_LIBS:/=\\%
@@ -187,9 +188,12 @@ echo on
     -noinput ^
     %FILTER% ^
     -dir %dir% ^
-    -logdir %logdir% ^
+    -logdir b: ^
     {ct_hooks_args} ^
-    -sname {sname} || exit /b 1
+    -sname {sname}
+set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
+subst b: /d
+exit /b %CT_RUN_ERRORLEVEL%
 """.format(
             package = package,
             erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
