@@ -53,7 +53,7 @@ fi
 
 set -x
 {erlang_home}/bin/dialyzer {apps_args} {plt_args}\\
-    -c {dirs} {opts} || test $? -eq 2
+    {dirs} {opts}{check_warnings}
 """.format(
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
@@ -64,6 +64,7 @@ set -x
             name = ctx.label.name,
             dirs = " ".join(dirs),
             opts = " ".join(ctx.attr.dialyzer_opts),
+            check_warnings = " || test $? -eq 2" if not ctx.attr.warnings_as_errors else "",
         )
     else:
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
@@ -72,9 +73,9 @@ echo Erlang Version: {erlang_version}
 
 echo on
 "{erlang_home}\\bin\\dialyzer" {apps_args} {plt_args} ^
-    -c {dirs} {opts}
+    {dirs} {opts}
 if %ERRORLEVEL% EQU 0 EXIT /B 0
-if %ERRORLEVEL% EQU 2 EXIT /B 0
+{check_warnings}
 EXIT /B 1
 """.format(
             erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
@@ -84,6 +85,7 @@ EXIT /B 1
             name = ctx.label.name,
             dirs = " ".join(dirs),
             opts = " ".join(ctx.attr.dialyzer_opts),
+            check_warnings = "if %ERRORLEVEL% EQU 2 EXIT /B 0" if not ctx.attr.warnings_as_errors else "",
         )
 
     ctx.actions.write(
@@ -123,6 +125,7 @@ dialyze_test = rule(
                 "-Wunmatched_returns",
             ],
         ),
+        "warnings_as_errors": attr.bool(default = True),
     },
     test = True,
 )
