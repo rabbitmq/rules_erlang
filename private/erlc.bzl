@@ -11,7 +11,7 @@ def beam_file(ctx, src, dir):
     name = src.basename.replace(".erl", ".beam")
     return ctx.actions.declare_file(path_join(dir, name))
 
-def _unique_dirnames(files):
+def unique_dirnames(files):
     dirs = []
     for f in files:
         dirname = f.path if f.is_directory else f.dirname
@@ -29,19 +29,19 @@ def _impl(ctx):
     erl_args = ctx.actions.args()
     erl_args.add("-v")
 
-    for dir in _unique_dirnames(ctx.files.hdrs):
+    for dir in unique_dirnames(ctx.files.hdrs):
         erl_args.add("-I", dir)
 
     for dep in ctx.attr.deps:
         lib_info = dep[ErlangAppInfo]
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
-        for dir in _unique_dirnames(lib_info.include):
+        for dir in unique_dirnames(lib_info.include):
             erl_args.add("-I", path_join(dir, "../.."))
-        for dir in _unique_dirnames(lib_info.beam):
+        for dir in unique_dirnames(lib_info.beam):
             erl_args.add("-pa", dir)
 
-    for dir in _unique_dirnames(ctx.files.beam):
+    for dir in unique_dirnames(ctx.files.beam):
         erl_args.add("-pa", dir)
 
     erl_args.add("-o", dest_dir)

@@ -28,7 +28,7 @@ def _unique_short_dirnames(files):
             dirs.append(dirname)
     return dirs
 
-def code_paths(ctx, dep):
+def code_paths(dep):
     return [
         path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
         for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)

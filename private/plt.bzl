@@ -3,13 +3,14 @@ load(
     "ErlangHomeProvider",
     "ErlangVersionProvider",
 )
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(
     "//:util.bzl",
     "BEGINS_WITH_FUN",
     "QUERY_ERL_VERSION",
     "windows_path",
 )
+load(":erlc.bzl", "unique_dirnames")
 load(":ct.bzl", "code_paths")
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
@@ -22,7 +23,14 @@ def _impl(ctx):
     if ctx.attr.plt == None:
         source_plt_arg = "--build_plt"
     else:
-        source_plt_arg = "--plt " + ctx.file.plt.path + " --add_to_plt"
+        source_plt_arg = "--plt " + ctx.file.plt.path + " --no_check_plt --add_to_plt"
+
+    files = []
+    for dep in flat_deps(ctx.attr.deps):
+        lib_info = dep[ErlangAppInfo]
+        files.extend(lib_info.beam)
+
+    dirs = unique_dirnames(files)
 
     script = """set -euo pipefail
 
@@ -36,7 +44,8 @@ if ! beginswith "{erlang_version}" "$V"; then
 fi
 
 set -x
-"{erlang_home}"/bin/dialyzer {apps_args} {source_plt_arg}\\
+"{erlang_home}"/bin/dialyzer {apps_args} \\
+    {source_plt_arg} \\{dirs}
     --output_plt {output}
 """.format(
         begins_with_fun = BEGINS_WITH_FUN,
@@ -45,11 +54,17 @@ set -x
         erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
         apps_args = apps_args,
         source_plt_arg = source_plt_arg,
+        dirs = "".join(["\n    {} \\".format(d) for d in dirs]),
         output = ctx.outputs.plt.path,
     )
 
+    inputs = []
+    if ctx.file.plt != None:
+        inputs.append(ctx.file.plt)
+    inputs.extend(files)
+
     ctx.actions.run_shell(
-        inputs = [ctx.file.plt] if ctx.file.plt != None else [],
+        inputs = inputs,
         outputs = [ctx.outputs.plt],
         command = script,
         mnemonic = "DIALYZER",
@@ -69,6 +84,9 @@ plt = rule(
         ),
         "apps": attr.string_list(
             default = DEFAULT_PLT_APPS,
+        ),
+        "deps": attr.label_list(
+            providers = [ErlangAppInfo],
         ),
     },
     outputs = {
