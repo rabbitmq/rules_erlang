@@ -30,13 +30,11 @@ def _impl(ctx):
     if ctx.attr.plt == None:
         plt_args = "--build_plt"
     elif not ctx.attr.is_windows:
-        plt_args = "--plt " + ctx.file.plt.short_path
+        plt_args = "--plt " + ctx.file.plt.short_path + " --no_check_plt"
     else:
-        plt_args = "--plt " + windows_path(ctx.file.plt.short_path)
+        plt_args = "--plt " + windows_path(ctx.file.plt.short_path) + " --no_check_plt"
 
-    dirs = code_paths(ctx, ctx.attr.target)
-    for dep in lib_info.deps:
-        dirs.extend(code_paths(ctx, dep))
+    dirs = code_paths(ctx.attr.target)
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)
@@ -52,8 +50,9 @@ if ! beginswith "{erlang_version}" "$V"; then
 fi
 
 set -x
-{erlang_home}/bin/dialyzer {apps_args} {plt_args}\\
-    {dirs} {opts}{check_warnings}
+{erlang_home}/bin/dialyzer {apps_args} \\
+    {plt_args} \\
+    -r {dirs} {opts}{check_warnings}
 """.format(
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
@@ -61,7 +60,6 @@ set -x
             erlang_version = erlang_version,
             apps_args = apps_args,
             plt_args = plt_args,
-            name = ctx.label.name,
             dirs = " ".join(dirs),
             opts = " ".join(ctx.attr.dialyzer_opts),
             check_warnings = " || test $? -eq 2" if not ctx.attr.warnings_as_errors else "",
@@ -72,8 +70,9 @@ set -x
 echo Erlang Version: {erlang_version}
 
 echo on
-"{erlang_home}\\bin\\dialyzer" {apps_args} {plt_args} ^
-    {dirs} {opts}
+"{erlang_home}\\bin\\dialyzer" {apps_args} ^
+    {plt_args} ^
+    -r {dirs} {opts}
 if %ERRORLEVEL% EQU 0 EXIT /B 0
 {check_warnings}
 EXIT /B 1
@@ -82,7 +81,6 @@ EXIT /B 1
             erlang_version = erlang_version,
             apps_args = apps_args,
             plt_args = plt_args,
-            name = ctx.label.name,
             dirs = " ".join(dirs),
             opts = " ".join(ctx.attr.dialyzer_opts),
             check_warnings = "if %ERRORLEVEL% EQU 2 EXIT /B 0" if not ctx.attr.warnings_as_errors else "",

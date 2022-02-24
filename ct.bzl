@@ -15,7 +15,7 @@ def additional_file_dest_relative_path(dep_label, f):
     return _additional_file_dest_relative_path(dep_label, f)
 
 def code_paths(ctx, dep):
-    return _code_paths(ctx, dep)
+    return _code_paths(dep)
 
 def sanitize_sname(s):
     return _sanitize_sname(s)
