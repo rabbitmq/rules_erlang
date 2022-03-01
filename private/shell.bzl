@@ -39,7 +39,7 @@ fi
 export ERL_LIBS=$PWD/{erl_libs_path}
 
 set -x
-"{erlang_home}"/bin/erl {extra_erl_args}
+"{erlang_home}"/bin/erl {extra_erl_args} $@
 """.format(
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
@@ -56,7 +56,7 @@ echo Erlang Version: {erlang_version}
 set ERL_LIBS=%cd%\\{erl_libs_path}
 
 echo on
-"{erlang_home}\\bin\\erl" {extra_erl_args} || exit /b 1
+"{erlang_home}\\bin\\erl" {extra_erl_args} %* || exit /b 1
 """.format(
             erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
             erlang_version = erlang_version,
