@@ -1,0 +1,4 @@
+module(
+    name = "rules_erlang",
+    version = "2.2.1",
+)
