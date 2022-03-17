@@ -19,6 +19,9 @@ def unique_dirnames(files):
             dirs.append(dirname)
     return dirs
 
+def _dirname(path):
+    return path.rpartition("/")[0]
+
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
@@ -37,7 +40,7 @@ def _impl(ctx):
         if lib_info.erlang_version != erlang_version:
             fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for dir in unique_dirnames(lib_info.include):
-            erl_args.add("-I", path_join(dir, "../.."))
+            erl_args.add("-I", _dirname(_dirname(dir)))
         for dir in unique_dirnames(lib_info.beam):
             erl_args.add("-pa", dir)
 
