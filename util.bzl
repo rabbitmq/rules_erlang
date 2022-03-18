@@ -10,3 +10,8 @@ def path_join(*components):
 
 def windows_path(path):
     return path.replace("/c/", "C:\\").replace("/", "\\")
+
+def without(item, elements):
+    c = list(elements)
+    c.remove(item)
+    return c
