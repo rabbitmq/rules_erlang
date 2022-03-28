@@ -119,7 +119,6 @@ dialyze_test = rule(
         "dialyzer_opts": attr.string_list(
             default = [
                 "-Werror_handling",
-                "-Wrace_conditions",
                 "-Wunmatched_returns",
             ],
         ),
