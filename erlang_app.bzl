@@ -151,7 +151,7 @@ def test_erlang_app(
     erlang_app_info(
         name = "test_erlang_app",
         app_name = app_name,
-        hdrs = native.glob(["include/**/*.hrl"]),
+        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
         app = app,
         beam = all_test_beam,
         priv = native.glob(["priv/**/*"]) + extra_priv,

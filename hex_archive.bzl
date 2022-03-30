@@ -64,7 +64,11 @@ def _impl(ctx):
     if ctx.attr.build_file and ctx.attr.build_file_content:
         fail("Only one of build_file and build_file_content can be provided.")
 
-    all_urls = ["https://repo.hex.pm/tarballs/{}-{}.tar".format(ctx.attr.name, ctx.attr.version)]
+    # we have package_name, because with bzlmod, the name is rewritten
+    # prior to download with a namespace
+    name = ctx.attr.package_name or ctx.attr.name
+
+    all_urls = ["https://repo.hex.pm/tarballs/{}-{}.tar".format(name, ctx.attr.version)]
 
     auth = _get_auth(ctx, all_urls)
 
@@ -83,6 +87,7 @@ def _impl(ctx):
     return update_attrs(ctx.attr, _hex_archive_attrs.keys(), {"sha256": download_info.sha256})
 
 _hex_archive_attrs = {
+    "package_name": attr.string(),
     "version": attr.string(mandatory = True),
     "sha256": attr.string(
         doc = """The expected SHA-256 of the file downloaded.

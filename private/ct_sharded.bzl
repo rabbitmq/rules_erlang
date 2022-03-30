@@ -1,15 +1,14 @@
 load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
-load("//:erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
-load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
-load("//:erlc.bzl", "erlc")
+load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     ":ct.bzl",
-    "ERL_LIBS_DIR",
-    "erl_libs_contents",
     "short_dirname",
     "sname",
 )
-load(":erlc.bzl", "beam_file")
+load(
+    ":util.bzl",
+    "erl_libs_contents",
+)
 load(
     "//:util.bzl",
     "BEGINS_WITH_FUN",
@@ -21,11 +20,13 @@ load(
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
-    erl_libs_files = erl_libs_contents(ctx)
+    erl_libs_dir = ctx.label.name + "_deps"
+
+    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
 
     package = ctx.label.package
 
-    erl_libs_path = path_join(package, ERL_LIBS_DIR)
+    erl_libs_path = path_join(package, erl_libs_dir)
 
     ct_hooks_args = ""
     if len(ctx.attr.ct_hooks) > 0:
