@@ -46,7 +46,7 @@ GitPackage = provider(fields = [
 
 _RESOLVE_MAX_PASSES = 500
 
-def _hex_package_repo(hex_package):
+def _hex_package_repo(ctx, hex_package):
     if hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
@@ -71,10 +71,11 @@ def _hex_package_repo(hex_package):
                 name = hex_package.name,
                 version = hex_package.version,
                 deps = deps,
+                make = ctx.which("make"),
             )],
         )
 
-def _git_package_repo(git_package):
+def _git_package_repo(ctx, git_package):
     if git_package.build_file_content != "":
         new_git_repository(
             name = git_package.name,
@@ -96,6 +97,7 @@ def _git_package_repo(git_package):
                 name = git_package.name,
                 version = "",
                 deps = [],
+                make = ctx.which("make"),
             )],
         )
 
@@ -308,7 +310,7 @@ def _erlang_package(ctx):
         _log(ctx, "    {}@{}".format(p.name, p.version))
 
     for p in resolved:
-        p.f_fetch(p)
+        p.f_fetch(ctx, p)
 
 hex_tree = tag_class(attrs = {
     "name": attr.string(mandatory = True),
@@ -347,35 +349,16 @@ PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail
 
 echo "Generating BUILD.bazel for {name}..."
 
-# if we have name, version and deps, we can just write
-# the file. this is the hex_tree case, and maybe others
-if [ -n "{version}" ]; then
-    if [ -n "{deps}" ]; then
-        cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    app_version = "{version}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
-    deps = {deps},
-)
-EOF
-    fi
-fi
-
 # if there is a Makefile and erlang.mk, use make to infer
 # the version and deps, error on name mismatch, and error
 # if the deps mismatch
 if [ ! -f BUILD.bazel ]; then
     if [ -f Makefile ]; then
         if [ -f erlang.mk ]; then
-            echo "\tAttempting auto-configure from erlang.mk files..."
+            if [ -n "{make}" ]; then
+                echo "\tAttempting auto-configure from erlang.mk files..."
 
-            cat << 'MK' > bazel-autobuild.mk
+                cat << 'MK' > bazel-autobuild.mk
 define BUILD_FILE_CONTENT
 load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
@@ -402,8 +385,32 @@ export BUILD_FILE_CONTENT
 BUILD.bazel:
 	echo "$$BUILD_FILE_CONTENT" >> $@
 MK
-            cat bazel-autobuild.mk
-            make -f Makefile -f bazel-autobuild.mk BUILD.bazel
+                cat bazel-autobuild.mk
+                {make} -f Makefile -f bazel-autobuild.mk BUILD.bazel
+            else
+                echo "Skipping erlang.mk import as make is unavailable"
+            fi
+        fi
+    fi
+fi
+
+# fallback to BUILD file with just the name, version & deps
+if [ ! -f BUILD.bazel ]; then
+    if [ -n "{version}" ]; then
+        if [ -n "{deps}" ]; then
+            cat << EOF > BUILD.bazel
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "{name}",
+    app_version = "{version}",
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+    deps = {deps},
+)
+EOF
         fi
     fi
 fi
