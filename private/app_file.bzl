@@ -25,7 +25,10 @@ def _impl(ctx):
 
     modules = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
 
-    registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
+    if len(ctx.attr.app_registered) > 0:
+        registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
+    else:
+        registered_list = ""
 
     applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
     for dep in ctx.attr.deps:
@@ -44,7 +47,7 @@ def _impl(ctx):
 if [ -n "{src}" ]; then
     cp {src} {out}
 else
-    echo "{{application,'{name}',[]}}." > {out}
+    echo "{{application,'{name}',[{{registered, ['{name}_sup']}},{{env, []}}]}}." > {out}
 fi
 
 if [ -n "{description}" ]; then
@@ -155,7 +158,7 @@ app_file_private = rule(
         "app_description": attr.string(),
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
-        "app_env": attr.string(default = "[]"),
+        "app_env": attr.string(),
         "app_extra_keys": attr.string_list(),
         "extra_apps": attr.string_list(),
         "app_src": attr.label_list(allow_files = [".app.src"]),
