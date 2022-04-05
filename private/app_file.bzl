@@ -50,9 +50,10 @@ else
     echo "{{application,'{name}',[{{registered, ['{name}_sup']}},{{env, []}}]}}." > {out}
 fi
 
-if [ -n "{description}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        description '"{description}"' \\
+if [ -n '{description}' ]; then
+    echo '"{description}".' | \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
+        description \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
@@ -73,42 +74,47 @@ else
     VSN={version}
 fi
 if [ -n "$VSN" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        vsn "\\"$VSN\\"" \\
+    echo "\\"$VSN\\"." | \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
+        vsn \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-"{erlang_home}"/bin/escript {app_file_tool} \\
-    modules '{modules}' \\
+echo '{modules}.' | \\
+    "{erlang_home}"/bin/escript {app_file_tool} \\
+    modules \\
     {out} > {out}.tmp && mv {out}.tmp {out}
 
-if [ -n "{registered}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        registered '{registered}' \\
+if [ -n '{registered}' ]; then
+    echo '{registered}.' | \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
+        registered \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-if [ -n "{applications}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        applications '{applications}' \\
+if [ -n '{applications}' ]; then
+    echo '{applications}.' | \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
+        applications \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-if [ -n "{app_module}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        mod '{{{app_module}, []}}' \\
+if [ -n '{app_module}' ]; then
+    echo '{{{app_module}, []}}.' | \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
+        mod \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-if [ -n "{env}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        env '{env}' \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+if [ -n '{env}' ]; then
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} env {out} > {out}.tmp && mv {out}.tmp {out}
+{env}.
+EOF
 fi
 
-if [ -n "{extra_tuples}" ]; then
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-        '{extra_tuples}' \\
+if [ -n '{extra_tuples}' ]; then
+    echo '{extra_tuples}' \\
+        "{erlang_home}"/bin/escript {app_file_tool} \\
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 """.format(
