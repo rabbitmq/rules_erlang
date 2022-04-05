@@ -80,30 +80,26 @@ if [ -n "$VSN" ]; then
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-echo '{modules}.' | \\
-    "{erlang_home}"/bin/escript {app_file_tool} \\
-    modules \\
-    {out} > {out}.tmp && mv {out}.tmp {out}
+cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} modules {out} > {out}.tmp && mv {out}.tmp {out}
+{modules}.
+EOF
 
 if [ -n '{registered}' ]; then
-    echo '{registered}.' | \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        registered \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} registered {out} > {out}.tmp && mv {out}.tmp {out}
+{registered}.
+EOF
 fi
 
 if [ -n '{applications}' ]; then
-    echo '{applications}.' | \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        applications \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} applications {out} > {out}.tmp && mv {out}.tmp {out}
+{applications}.
+EOF
 fi
 
 if [ -n '{app_module}' ]; then
-    echo '{{{app_module}, []}}.' | \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        mod \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} mod {out} > {out}.tmp && mv {out}.tmp {out}
+{{{app_module}, []}}.
+EOF
 fi
 
 if [ -n '{env}' ]; then
@@ -113,9 +109,9 @@ EOF
 fi
 
 if [ -n '{extra_tuples}' ]; then
-    echo '{extra_tuples}' \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} {out} > {out}.tmp && mv {out}.tmp {out}
+{extra_tuples}.
+EOF
 fi
 """.format(
         erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
