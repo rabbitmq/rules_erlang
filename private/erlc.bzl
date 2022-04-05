@@ -80,7 +80,7 @@ def _impl(ctx):
         fi
 
         # use the compile_first escript to determine the first pass, if present
-        if [ -f {compile_first} ]; then
+        if [ -n "{compile_first}" ]; then
             FIRST=$("{erlang_home}"/bin/escript {compile_first} $@)
         else
             FIRST=

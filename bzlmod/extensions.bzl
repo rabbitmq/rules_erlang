@@ -377,6 +377,7 @@ $(foreach dep,$(LOCAL_DEPS),        "$(dep)",\n)    ],
 $(foreach dep,$(BUILD_DEPS),        "@$(dep)//:erlang_app",\n)    ],
     deps = [
 $(foreach dep,$(DEPS),        "@$(dep)//:erlang_app",\n)    ],
+    stamp = 0,
 )
 endef
 
@@ -409,6 +410,7 @@ erlang_app(
         "+debug_info",
     ],
     deps = {deps},
+    stamp = 0,
 )
 EOF
         fi
@@ -428,6 +430,7 @@ erlang_app(
         "+deterministic",
         "+debug_info",
     ],
+    stamp = 0,
 )
 EOF
     fi
@@ -444,6 +447,7 @@ erlang_app(
         "+deterministic",
         "+debug_info",
     ],
+    stamp = 0,
 )
 EOF
 fi

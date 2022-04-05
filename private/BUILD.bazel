@@ -1,4 +1,4 @@
-exports_files([
-    "app_file.template",
-    "app_with_mod_file.template",
-])
+config_setting(
+    name = "private_stamp_detect",
+    values = {"stamp": "1"},
+)

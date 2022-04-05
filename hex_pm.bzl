@@ -33,5 +33,6 @@ erlang_app(
     first_srcs = {first_srcs},
     deps = {deps},
     runtime_deps = {runtime_deps},
+    stamp = 0,
 )
 """
