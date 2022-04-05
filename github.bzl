@@ -19,6 +19,7 @@ def github_erlang_app(
             first_srcs = first_srcs,
             deps = deps,
             runtime_deps = runtime_deps,
+            stamp = 0,
         ))
 
     repo = name if repo == None else repo

@@ -1,9 +1,12 @@
 load(
     "//private:ct.bzl",
     "ct_test",
-    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
     _code_paths = "code_paths",
     _sanitize_sname = "sanitize_sname",
+)
+load(
+    "//private:util.bzl",
+    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
 )
 load(":erlc.bzl", "erlc")
 load(

@@ -1,5 +1,5 @@
 load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
-load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     "//:util.bzl",
     "BEGINS_WITH_FUN",
@@ -7,9 +7,7 @@ load(
     "path_join",
     "windows_path",
 )
-load(":erlc.bzl", "beam_file")
-
-ERL_LIBS_DIR = "deps"
+load(":util.bzl", "erl_libs_contents")
 
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
@@ -34,52 +32,6 @@ def code_paths(dep):
         for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)
     ]
 
-def additional_file_dest_relative_path(dep_label, f):
-    if dep_label.workspace_root != "":
-        workspace_root = dep_label.workspace_root.replace("external/", "../")
-        rel_base = path_join(workspace_root, dep_label.package)
-    else:
-        rel_base = dep_label.package
-    if rel_base != "":
-        return f.short_path.replace(rel_base + "/", "")
-    else:
-        return f.short_path
-
-def erl_libs_contents(ctx, headers = False, dir = ERL_LIBS_DIR):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
-    erl_libs_files = []
-    for dep in flat_deps(ctx.attr.deps):
-        lib_info = dep[ErlangAppInfo]
-        dep_path = path_join(dir, lib_info.app_name)
-        if lib_info.erlang_version != erlang_version:
-            fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
-        if headers:
-            for hdr in lib_info.include:
-                dest = ctx.actions.declare_file(path_join(dep_path, "include", hdr.basename))
-                ctx.actions.symlink(output = dest, target_file = hdr)
-                erl_libs_files.append(dest)
-        for src in lib_info.beam:
-            if src.is_directory:
-                if len(lib_info.beam) != 1:
-                    fail("ErlangAppInfo.beam must be a collection of files, or a single ebin dir")
-                dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
-                ctx.actions.run_shell(
-                    inputs = [src],
-                    outputs = [dest],
-                    command = "cp -R {} {}".format(src.path, dest.dirname),
-                )
-            else:
-                dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
-                ctx.actions.symlink(output = dest, target_file = src)
-            erl_libs_files.append(dest)
-        for src in lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
-            dest = ctx.actions.declare_file(path_join(dep_path, rp))
-            ctx.actions.symlink(output = dest, target_file = src)
-            erl_libs_files.append(dest)
-    return erl_libs_files
-
 def sname(ctx):
     return sanitize_sname("ct-{}-{}".format(
         ctx.label.package.rpartition("/")[-1],
@@ -89,7 +41,9 @@ def sname(ctx):
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
-    erl_libs_files = erl_libs_contents(ctx)
+    erl_libs_dir = ctx.label.name + "_deps"
+
+    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
 
     package = ctx.label.package
 
@@ -102,7 +56,7 @@ def _impl(ctx):
         if len(ctx.attr.cases) > 0:
             filter_tests_args = filter_tests_args + " -case " + " ".join(ctx.attr.cases)
 
-    erl_libs_path = path_join(package, ERL_LIBS_DIR)
+    erl_libs_path = path_join(package, erl_libs_dir)
 
     ct_hooks_args = ""
     if len(ctx.attr.ct_hooks) > 0:

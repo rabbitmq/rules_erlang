@@ -1,0 +1,30 @@
+load("//private:erlc.bzl", "erlc_private")
+load("//:erl_eval.bzl", "erl_eval")
+
+erlc_private(
+    name = "beam",
+    srcs = [
+        "src/app_file_tool.erl",
+    ],
+)
+
+erl_eval(
+    name = "escript",
+    srcs = [
+        ":beam",
+    ],
+    outs = [
+        "escript/app_file_tool",
+    ],
+    expression = """
+io:format("Assembiling app_file_tool escript...~n", []),
+Beam = os:getenv("SRCS"),
+Dest = os:getenv("OUTS"),
+ok = escript:create(Dest,
+                    [shebang, comment,
+                     {beam, Beam}]),
+io:format("done.~n", []),
+halt().
+""",
+    visibility = ["//visibility:public"],
+)

@@ -8,8 +8,7 @@ load(
     "windows_path",
 )
 load(
-    ":ct.bzl",
-    "ERL_LIBS_DIR",
+    ":util.bzl",
     "erl_libs_contents",
 )
 

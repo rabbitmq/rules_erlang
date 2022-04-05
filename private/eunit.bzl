@@ -9,11 +9,7 @@ load(
     "path_join",
     "windows_path",
 )
-load(
-    ":ct.bzl",
-    "ERL_LIBS_DIR",
-    "erl_libs_contents",
-)
+load(":util.bzl", "erl_libs_contents")
 
 def _to_atom_list(l):
     return "[" + ",".join(["'{}'".format(i) for i in l]) + "]"
@@ -21,11 +17,13 @@ def _to_atom_list(l):
 def _impl(ctx):
     erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
 
-    erl_libs_files = erl_libs_contents(ctx)
+    erl_libs_dir = ctx.label.name + "_deps"
+
+    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
 
     package = ctx.label.package
 
-    erl_libs_path = path_join(package, ERL_LIBS_DIR)
+    erl_libs_path = path_join(package, erl_libs_dir)
 
     if not ctx.attr.is_windows:
         test_env_commands = []
