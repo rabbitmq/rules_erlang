@@ -4,12 +4,13 @@ module(
     compatibility_level = 2,
 )
 
-download_xrefr = use_extension(
+rules_erlang_dependencies = use_extension(
     "//bzlmod:extensions.bzl",
-    "download_xrefr",
+    "rules_erlang_dependencies",
 )
 
 use_repo(
-    download_xrefr,
+    rules_erlang_dependencies,
     "xrefr",
+    "jsx-source",
 )

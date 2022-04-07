@@ -1,0 +1,32 @@
+load("//:erlc.bzl", "erlc")
+load("//:erlang_app_info.bzl", "erlang_app_info")
+
+APP_NAME = "jsx"
+
+erlc(
+    name = "beam_files",
+    srcs = ["@jsx-source//:srcs"],
+    hdrs = ["@jsx-source//:hdrs"],
+    dest = "ebin",
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+)
+
+genrule(
+    name = "app_file",
+    srcs = ["@jsx-source//:src/jsx.app.src"],
+    outs = ["ebin/jsx.app"],
+    cmd = "cp $< $@",
+)
+
+erlang_app_info(
+    name = "erlang_app",
+    hdrs = ["@jsx-source//:hdrs"],
+    app = ":app_file",
+    app_name = APP_NAME,
+    beam = [":beam_files"],
+    priv = ["@jsx-source//:priv"],
+    visibility = ["//visibility:public"],
+)

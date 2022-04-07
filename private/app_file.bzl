@@ -2,6 +2,8 @@ load("//:erlang_home.bzl", "ErlangHomeProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 
+APP_FILE_TOOL_SPECIAL_MERGE_KEY = "app_file_tool_special_merge_key"
+
 def _module_name(f):
     return "'{}'".format(f.basename.replace(".beam", "", 1))
 
@@ -19,21 +21,32 @@ def _impl(ctx):
     else:
         src = ""
 
-    app_module = ctx.attr.app_module if ctx.attr.app_module != "" else ctx.attr.app_name + "_app"
-    if len([m for m in ctx.files.modules if m.basename == app_module + ".beam"]) != 1:
-        app_module = ""
-
-    modules = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
-
-    if len(ctx.attr.app_registered) > 0:
-        registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
-    else:
-        registered_list = ""
+    modules = [_module_name(m) for m in ctx.files.modules]
 
     applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
     for dep in ctx.attr.deps:
         applications.append(dep[ErlangAppInfo].app_name)
-    applications_list = "[" + ",".join(applications) + "]"
+
+    overrides = {
+        "modules": modules,
+        "applications": applications,
+    }
+
+    if ctx.attr.app_version != "":
+        overrides["vsn"] = ctx.attr.app_version
+
+    app_module = ctx.attr.app_module if ctx.attr.app_module != "" else ctx.attr.app_name + "_app"
+    if len([m for m in ctx.files.modules if m.basename == app_module + ".beam"]) == 1:
+        overrides["mod"] = "{" + app_module + ",[]}"
+
+    if len(ctx.attr.app_registered) > 0:
+        overrides["registered"] = [ctx.attr.app_name + "_sup"] + ctx.attr.app_registered
+
+    if ctx.attr.app_env != "":
+        overrides["env"] = ctx.attr.app_env
+
+    if ctx.attr.app_extra_keys != "":
+        overrides[APP_FILE_TOOL_SPECIAL_MERGE_KEY] = ctx.attr.app_extra_keys
 
     stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                     ctx.attr.private_stamp_detect)
@@ -46,11 +59,9 @@ else
     echo "{{application,'{name}',[{{registered, ['{name}_sup']}},{{env, []}}]}}." > {out}
 fi
 
-if [ -n '{description}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} description {out} > {out}.tmp && mv {out}.tmp {out}
-"{description}".
+cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} {out} > {out}.tmp && mv {out}.tmp {out}
+{json}
 EOF
-fi
 
 # set the version env var from the stable-status.txt
 # if stamping...
@@ -66,48 +77,11 @@ if [ -n "{stamp_version_key}" ]; then
         exit 1
     fi
 else
-    VSN={version}
+    VSN=""
 fi
 if [ -n "$VSN" ]; then
-    echo "\\"$VSN\\"." | \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        vsn \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
-fi
-
-cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} modules {out} > {out}.tmp && mv {out}.tmp {out}
-{modules}.
-EOF
-
-if [ -n '{registered}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} registered {out} > {out}.tmp && mv {out}.tmp {out}
-{registered}.
-EOF
-fi
-
-if [ -n '{applications}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} applications {out} > {out}.tmp && mv {out}.tmp {out}
-{applications}.
-EOF
-fi
-
-if [ -n '{app_module}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} mod {out} > {out}.tmp && mv {out}.tmp {out}
-{{{app_module}, []}}.
-EOF
-fi
-
-if [ -n '{env}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} env {out} > {out}.tmp && mv {out}.tmp {out}
-{env}.
-EOF
-fi
-
-if [ -n '{extra_keys}' ]; then
-    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} {out} > {out}.tmp && mv {out}.tmp {out}
-[
-{extra_keys}
-].
+    cat << EOF | "{erlang_home}"/bin/escript {app_file_tool} {out} > {out}.tmp && mv {out}.tmp {out}
+{{"vsn": "$VSN"}}
 EOF
 fi
 """.format(
@@ -115,15 +89,9 @@ fi
         app_file_tool = ctx.file._app_file_tool_escript.path,
         info_file = ctx.info_file.path,
         name = ctx.attr.app_name,
-        description = ctx.attr.app_description,
         stamp_version_key = ctx.attr.stamp_version_key if stamp else "",
         version = ctx.attr.app_version,
-        modules = modules,
-        registered = registered_list,
-        applications = applications_list,
-        app_module = app_module,
-        env = ctx.attr.app_env,
-        extra_keys = ctx.attr.app_extra_keys,
+        json = json.encode(overrides),
         src = src,
         out = app_file.path,
     )

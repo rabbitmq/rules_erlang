@@ -1,4 +1,7 @@
-load("//:rules_erlang.bzl", "rules_erlang_dependencies")
+load(
+    "//:rules_erlang.bzl",
+    _rules_erlang_dependencies = "rules_erlang_dependencies",
+)
 load("//:hex_archive.bzl", "hex_archive")
 load(
     ":hex_pm.bzl",
@@ -13,11 +16,11 @@ load(
     "new_git_repository",
 )
 
-def _download_xrefr(ctx):
-    rules_erlang_dependencies()
+def _rules_erlang_deps(ctx):
+    _rules_erlang_dependencies()
 
-download_xrefr = module_extension(
-    implementation = _download_xrefr,
+rules_erlang_dependencies = module_extension(
+    implementation = _rules_erlang_deps,
 )
 
 HexPackage = provider(fields = [
