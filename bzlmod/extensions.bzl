@@ -367,6 +367,7 @@ erlang_app(
     app_description = \"""$(PROJECT_DESCRIPTION)\""",
     app_version = "$(PROJECT_VERSION)",
     app_env = \"""$(PROJECT_ENV)\""",
+    app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\""",
     extra_apps = [
 $(foreach dep,$(LOCAL_DEPS),        "$(dep)",\n)    ],
     erlc_opts = [

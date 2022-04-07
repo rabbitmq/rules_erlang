@@ -35,10 +35,6 @@ def _impl(ctx):
         applications.append(dep[ErlangAppInfo].app_name)
     applications_list = "[" + ",".join(applications) + "]"
 
-    app_extra_keys_list = ""
-    if len(ctx.attr.app_extra_keys) > 0:
-        app_extra_keys_list = "[" + ",".join(ctx.attr.app_extra_keys) + "]"
-
     stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                     ctx.attr.private_stamp_detect)
 
@@ -51,10 +47,9 @@ else
 fi
 
 if [ -n '{description}' ]; then
-    echo '"{description}".' | \\
-        "{erlang_home}"/bin/escript {app_file_tool} \\
-        description \\
-        {out} > {out}.tmp && mv {out}.tmp {out}
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} description {out} > {out}.tmp && mv {out}.tmp {out}
+"{description}".
+EOF
 fi
 
 # set the version env var from the stable-status.txt
@@ -108,9 +103,11 @@ if [ -n '{env}' ]; then
 EOF
 fi
 
-if [ -n '{extra_tuples}' ]; then
+if [ -n '{extra_keys}' ]; then
     cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} {out} > {out}.tmp && mv {out}.tmp {out}
-{extra_tuples}.
+[
+{extra_keys}
+].
 EOF
 fi
 """.format(
@@ -126,7 +123,7 @@ fi
         applications = applications_list,
         app_module = app_module,
         env = ctx.attr.app_env,
-        extra_tuples = app_extra_keys_list,
+        extra_keys = ctx.attr.app_extra_keys,
         src = src,
         out = app_file.path,
     )
@@ -161,7 +158,7 @@ app_file_private = rule(
         "app_module": attr.string(),
         "app_registered": attr.string_list(),
         "app_env": attr.string(),
-        "app_extra_keys": attr.string_list(),
+        "app_extra_keys": attr.string(),
         "extra_apps": attr.string_list(),
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
