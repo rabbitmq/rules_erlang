@@ -9,9 +9,9 @@ Bazel rules for Erlang sources
 ```starlark
 http_archive(
     name = "rules_erlang",
-    sha256 = "56569bf2d161ee5007e17bc77919df4d83696cd7ad8ff9be5202751cad3332fd",
-    strip_prefix = "rules_erlang-2.4.0",
-    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/2.4.0.zip"],
+    sha256 = "920b564662d20c6ac0e6568ca1c8b015f81b422e027590981d7e97422751deaf",
+    strip_prefix = "rules_erlang-2.5.0",
+    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/2.5.0.zip"],
 )
 
 load("@rules_erlang//:rules_erlang.bzl", "rules_erlang_dependencies")
