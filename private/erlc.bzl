@@ -109,7 +109,7 @@ def _impl(ctx):
         include_args = " ".join(include_args),
         pa_args = " ".join(pa_args),
         out_dir = dest_dir,
-        erlc_opts = " ".join(ctx.attr.erlc_opts),
+        erlc_opts = " ".join(["'{}'".format(opt) for opt in ctx.attr.erlc_opts]),
     )
 
     inputs = []
