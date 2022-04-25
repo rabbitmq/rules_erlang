@@ -1,7 +1,5 @@
-load(":erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(":app_file.bzl", "app_file")
 load(":erlc.bzl", "erlc")
-load(":util.bzl", "path_join")
 load(
     ":erlang_app_info.bzl",
     "erlang_app_info",
