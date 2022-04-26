@@ -1,6 +1,6 @@
 load("//private:app_file.bzl", "app_file_private")
 
-_stamp_condition = str(Label("//private:private_stamp_detect"))
+_stamp_condition = Label("//private:private_stamp_detect")
 
 def app_file(
         app_extra_keys = [],
