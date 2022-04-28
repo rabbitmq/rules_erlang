@@ -1,17 +1,11 @@
-load(
-    "//:erlang_home.bzl",
-    "ErlangHomeProvider",
-    "ErlangVersionProvider",
-)
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(":erlang_bytecode.bzl", "unique_dirnames")
 load(
-    "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "windows_path",
+    ":erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
 )
-load(":erlc.bzl", "unique_dirnames")
-load(":ct.bzl", "code_paths")
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
@@ -32,36 +26,31 @@ def _impl(ctx):
 
     dirs = unique_dirnames(files)
 
+    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+
     script = """set -euo pipefail
 
-export HOME=$PWD
+{maybe_symlink_erlang}
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
+export HOME=$PWD
 
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
     {source_plt_arg} \\{dirs}
     --output_plt {output}
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
         apps_args = apps_args,
         source_plt_arg = source_plt_arg,
         dirs = "".join(["\n    {} \\".format(d) for d in dirs]),
         output = ctx.outputs.plt.path,
     )
 
-    inputs = []
-    if ctx.file.plt != None:
-        inputs.append(ctx.file.plt)
-    inputs.extend(files)
+    inputs = depset(
+        direct = ctx.files.plt + files,
+        transitive = [runfiles.files],
+    )
 
     ctx.actions.run_shell(
         inputs = inputs,
@@ -73,11 +62,9 @@ set -x
 plt = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(
-            default = Label("//:erlang_home"),
-        ),
-        "_erlang_version": attr.label(
-            default = Label("//:erlang_version"),
+        "erlang_installation": attr.label(
+            mandatory = True,
+            providers = [ErlangInstallationInfo],
         ),
         "plt": attr.label(
             allow_single_file = [".plt"],

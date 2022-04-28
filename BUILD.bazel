@@ -1,4 +1,12 @@
-load("erlang_home.bzl", "erlang_home", "erlang_version")
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "bool_flag",
+)
+load(
+    ":erlang_home.bzl",
+    "erlang_home",
+    "erlang_version",
+)
 
 # This allows us to
 # `bazel build //my/target \
@@ -15,5 +23,11 @@ erlang_home(
 erlang_version(
     name = "erlang_version",
     build_setting_default = "23.1",
+    visibility = ["//visibility:public"],
+)
+
+bool_flag(
+    name = "use_external_erlang",
+    build_setting_default = False,
     visibility = ["//visibility:public"],
 )

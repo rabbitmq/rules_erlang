@@ -1,0 +1,3 @@
+load(":compile_first.bzl", "compile_first")
+
+compile_first()

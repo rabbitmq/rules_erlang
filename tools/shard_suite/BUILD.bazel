@@ -7,7 +7,9 @@ load(
 load("//:xref.bzl", "xref")
 load("//:dialyze.bzl", "DEFAULT_PLT_APPS", "dialyze", "plt")
 load("//:ct.bzl", "ct_suite")
-load("//:erl_eval.bzl", "erl_eval")
+load(":shard_suite.bzl", "shard_suite")
+
+shard_suite()
 
 APP_NAME = "shard_suite"
 
@@ -45,25 +47,4 @@ ct_suite(
     additional_srcs = [
         "test/example_suite.erl",
     ],
-)
-
-erl_eval(
-    name = "escript",
-    srcs = [
-        "src/shard_suite.erl",
-    ],
-    outs = [
-        "escript/shard_suite",
-    ],
-    expression = """
-io:format("Assembiling shard_suite escript...~n", []),
-Src = os:getenv("SRCS"),
-Dest = os:getenv("OUTS"),
-ok = escript:create(Dest,
-                    [shebang, comment, {emu_args, "-sname shard_suite"},
-                     {source, Src}]),
-io:format("done.~n", []),
-halt().
-""",
-    visibility = ["//visibility:public"],
 )

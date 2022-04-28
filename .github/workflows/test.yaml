@@ -19,15 +19,14 @@ jobs:
     - name: CONFIGURE BAZEL
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        cat << EOF >> .bazelrc
+        cat << EOF >> user.bazelrc
+          build --@//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home=${ERLANG_HOME}
-
-          build --incompatible_strict_action_env
         EOF
     - name: TEST
       run: |
-        bazelisk test //...
+        bazelisk test //... --noexperimental_enable_bzlmod
     - name: RESOVLE TEST LOGS PATH
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
@@ -56,19 +55,18 @@ jobs:
       shell: bash
       run: |
         ERL_PATH="$(which erl)"
-        cat << EOF >> .bazelrc
+        cat << EOF >> user.bazelrc
           startup --windows_enable_symlinks
           build --enable_runfiles
 
+          build --@//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home="${ERL_PATH/\/bin\/erl/}"
-
-          build --incompatible_strict_action_env
         EOF
         cat .bazelrc
     - name: TEST
       run: |
-        bazelisk test //...
+        bazelisk test //... --noexperimental_enable_bzlmod
     #! https://github.com/actions/upload-artifact/issues/240
     #! - name: RESOVLE TEST LOGS PATH
     #!   run: |
@@ -98,15 +96,93 @@ jobs:
     - name: CONFIGURE BAZEL
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        cat << EOF >> .bazelrc
+        cat << EOF >> user.bazelrc
+          build --@//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home=${ERLANG_HOME}
-
-          build --incompatible_strict_action_env
         EOF
     - name: TEST
       run: |
-        bazelisk test //... --experimental_enable_bzlmod
+        bazelisk test //...
+    - name: RESOVLE TEST LOGS PATH
+      run: |
+        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      uses: actions/upload-artifact@v2
+      with:
+        name: bazel-testlogs-bzlmod-${{matrix.otp}}
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  test-bzlmod-internal-erlang:
+    runs-on: ubuntu-latest
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: CONFIGURE BAZEL
+      run: |
+        cat << 'EOF' >> WORKSPACE.bazel
+
+        http_archive(
+            name = "io_buildbuddy_buildbuddy_toolchain",
+            sha256 = "a2a5cccec251211e2221b1587af2ce43c36d32a42f5d881737db3b546a536510",
+            strip_prefix = "buildbuddy-toolchain-829c8a574f706de5c96c54ca310f139f4acda7dd",
+            urls = ["https://github.com/buildbuddy-io/buildbuddy-toolchain/archive/829c8a574f706de5c96c54ca310f139f4acda7dd.tar.gz"],
+        )
+
+        load("@io_buildbuddy_buildbuddy_toolchain//:deps.bzl", "buildbuddy_deps")
+
+        buildbuddy_deps()
+
+        load("@io_buildbuddy_buildbuddy_toolchain//:rules.bzl", "buildbuddy")
+
+        buildbuddy(
+            name = "buildbuddy_toolchain",
+            llvm = True,
+        )
+
+        load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+        git_repository(
+            name = "rbe",
+            branch = "linux-rbe",
+            remote = "https://github.com/rabbitmq/rbe-erlang-platform.git",
+        )
+        EOF
+
+        cat << EOF >> user.bazelrc
+
+        build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/
+        build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io
+        build:buildbuddy --remote_cache=grpcs://remote.buildbuddy.io
+        build:buildbuddy --remote_timeout=1200
+        build:buildbuddy --grpc_keepalive_time=360s
+        build:buildbuddy --grpc_keepalive_timeout=360s
+        build:buildbuddy --remote_download_minimal
+        build:buildbuddy --build_metadata=REPO_URL=https://github.com/rabbitmq/rules_erlang.git
+
+        build:rbe --config=buildbuddy
+
+        build:rbe --remote_executor=grpcs://remote.buildbuddy.io
+
+        build:rbe --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+
+        build:rbe --spawn_strategy=remote
+        build:rbe --test_strategy=""
+        build:rbe --jobs=100
+
+        build:rbe --crosstool_top=@rbe//cc:toolchain
+        build:rbe --extra_toolchains=@rbe//config:cc-toolchain
+
+        build:rbe --host_platform=@rbe//config:platform
+        build:rbe --platforms=@rbe//config:platform
+        build:rbe --extra_execution_platforms=@rbe//config:platform
+
+        build:rbe --host_cpu=k8
+        build:rbe --cpu=k8
+        EOF
+    - name: TEST
+      run: |
+        bazelisk test //... --config=rbe
     - name: RESOVLE TEST LOGS PATH
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"

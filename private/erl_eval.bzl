@@ -1,22 +1,22 @@
 load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(
-    "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "path_join",
+    ":erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
 )
 
 def _impl(ctx):
-    outs = [ctx.actions.declare_file(f) for f in ctx.attr.outs]
+    outs = [
+        ctx.actions.declare_file(f)
+        for f in ctx.attr.outs
+    ]
+
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     script = """set -euo pipefail
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
+{maybe_symlink_erlang}
 
 export SRCS="{srcs}"
 export OUTS="{outs}"
@@ -25,16 +25,19 @@ export OUTS="{outs}"
     -noshell \\
     -eval "$1"
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
         srcs = ctx.configuration.host_path_separator.join([src.path for src in ctx.files.srcs]),
         outs = ctx.configuration.host_path_separator.join([out.path for out in outs]),
     )
 
+    inputs = depset(
+        direct = ctx.files.srcs,
+        transitive = [runfiles.files],
+    )
+
     ctx.actions.run_shell(
-        inputs = ctx.files.srcs,
+        inputs = inputs,
         outputs = outs,
         command = script,
         arguments = [ctx.attr.expression],
@@ -47,8 +50,10 @@ export OUTS="{outs}"
 erl_eval_private = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "erlang_installation": attr.label(
+            mandatory = True,
+            providers = [ErlangInstallationInfo],
+        ),
         "srcs": attr.label_list(allow_files = True),
         "outs": attr.string_list(),
         "expression": attr.string(

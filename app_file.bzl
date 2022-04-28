@@ -1,23 +1,18 @@
-load("//private:app_file.bzl", "app_file_private")
-
-_stamp_condition = Label("//private:private_stamp_detect")
+load(
+    "//private:app_file.bzl",
+    _app_file = "app_file",
+)
+load("//tools:erlang.bzl", "DEFAULT_LABEL")
 
 def app_file(
-        app_extra_keys = [],
-        app_extra = "",
+        erlang_version_label = DEFAULT_LABEL,
         **kwargs):
-    if len(app_extra_keys) > 0 and app_extra != "":
-        all_app_extra = ",".join(app_extra_keys + [app_extra])
-    elif len(app_extra_keys) > 0:
-        all_app_extra = ",".join(app_extra_keys)
-    else:
-        all_app_extra = app_extra
-
-    app_file_private(
+    _app_file(
+        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
+        app_file_tool = Label("//tools/app_file_tool:escript-{}".format(erlang_version_label)),
         private_stamp_detect = select({
-            _stamp_condition: True,
+            Label("//private:private_stamp_detect"): True,
             "//conditions:default": False,
         }),
-        app_extra_keys = all_app_extra,
         **kwargs
     )

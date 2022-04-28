@@ -12,6 +12,10 @@ load(
     "git_repository",
     "new_git_repository",
 )
+load(
+    ":erlang_src.bzl",
+    _erlang_src = "erlang_src",
+)
 
 def _download_xrefr(ctx):
     rules_erlang_dependencies()
@@ -458,3 +462,5 @@ PATCH_AUTO_BUILD_BAZEL_WINDOWS = """REM bzlmod+windows dependency autobuild not 
 REM you may use 'build_file_content' instead
 EXIT /B 1
 """
+
+erlang_src = _erlang_src

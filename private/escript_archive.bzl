@@ -2,8 +2,6 @@ load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(
     "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
     "path_join",
 )
 load(":util.bzl", "additional_file_dest_relative_path")
@@ -14,15 +12,11 @@ DEFAULT_HEADERS = [
 ]
 
 def _build_erl_libs(ctx, dir = None):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
     deps = flat_deps([ctx.attr.app])
 
     entries = {}
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
-        if lib_info.erlang_version != erlang_version:
-            fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         for src in lib_info.beam:
             if src.is_directory:
                 fail("beam directories are not supported with this rule")
@@ -58,14 +52,11 @@ def _impl(ctx):
 
     entry_list = "[" + ", ".join(app_entries + file_entries) + "]"
 
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+
     script = """set -euo pipefail
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
+{maybe_symlink_erlang}
 
 "{erlang_home}"/bin/erl \\
     -noshell \\
@@ -81,17 +72,18 @@ io:format("done.~n", []),
 halt().
 '
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
         name = name,
         headers = "".join(["{}, ".format(h) for h in ctx.attr.headers]),
         entry_list = entry_list,
         output = output.path,
     )
 
-    inputs = app_files + ctx.files.srcs + ctx.files.beam
+    inputs = depset(
+        direct = app_files + ctx.files.srcs + ctx.files.beam,
+        transitive = [runfiles.files],
+    )
 
     ctx.actions.run_shell(
         inputs = inputs,
@@ -100,14 +92,19 @@ halt().
     )
 
     return [
-        DefaultInfo(executable = output),
+        DefaultInfo(
+            executable = output,
+            runfiles = runfiles,
+        ),
     ]
 
 escript_private = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "erlang_installation": attr.label(
+            mandatory = True,
+            providers = [ErlangInstallationInfo],
+        ),
         "out": attr.string(),
         "headers": attr.string_list(
             default = DEFAULT_HEADERS,

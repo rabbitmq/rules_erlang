@@ -19,8 +19,6 @@ def additional_file_dest_relative_path(dep_label, f):
         return f.short_path
 
 def erl_libs_contents(ctx, transitive = True, headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
     if transitive:
         deps = flat_deps(ctx.attr.deps)
     else:
@@ -30,8 +28,6 @@ def erl_libs_contents(ctx, transitive = True, headers = False, dir = _DEFAULT_ER
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
         dep_path = path_join(dir, lib_info.app_name)
-        if lib_info.erlang_version != erlang_version:
-            fail("Mismatched erlang versions", erlang_version, lib_info.erlang_version)
         if headers:
             for hdr in lib_info.include:
                 rp = additional_file_dest_relative_path(dep.label, hdr)

@@ -4,12 +4,32 @@ module(
     compatibility_level = 2,
 )
 
-download_xrefr = use_extension(
-    "//bzlmod:extensions.bzl",
-    "download_xrefr",
+bazel_dep(
+    name = "bazel_skylib",
+    version = "1.2.0",
+)
+
+# download_xrefr = use_extension(
+#     "//bzlmod:extensions.bzl",
+#     "download_xrefr",
+# )
+
+# use_repo(
+#     download_xrefr,
+#     "xrefr",
+# )
+
+erlang_src = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "erlang_src",
+)
+
+erlang_src.github_otp_erlang_release(
+    version = "24.3.3",
+    sha256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d",
 )
 
 use_repo(
-    download_xrefr,
-    "xrefr",
+    erlang_src,
+    "otp_src_24.3.3",
 )

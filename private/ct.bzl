@@ -1,13 +1,16 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
     "path_join",
     "windows_path",
 )
 load(":util.bzl", "erl_libs_contents")
+load(
+    ":erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
@@ -39,8 +42,6 @@ def sname(ctx):
     ))
 
 def _impl(ctx):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
     erl_libs_dir = ctx.label.name + "_deps"
 
     erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
@@ -62,6 +63,8 @@ def _impl(ctx):
     if len(ctx.attr.ct_hooks) > 0:
         ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
 
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+
     if not ctx.attr.is_windows:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
@@ -70,15 +73,9 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
+{maybe_symlink_erlang}
+
 export HOME=${{TEST_TMPDIR}}
-
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
 
 {test_env}
@@ -99,11 +96,9 @@ set -x
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
-            begins_with_fun = BEGINS_WITH_FUN,
-            query_erlang_version = QUERY_ERL_VERSION,
+            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            erlang_home = erlang_home,
             package = package,
-            erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-            erlang_version = erlang_version,
             erl_libs_path = erl_libs_path,
             filter_tests_args = filter_tests_args,
             dir = short_dirname(ctx.files.compiled_suites[0]),
@@ -118,8 +113,6 @@ set -x
 
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
-echo Erlang Version: {erlang_version}
-
 REM TEST_SRCDIR is provided by bazel but with unix directory separators
 set dir=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
 set dir=%dir:/=\\%
@@ -149,9 +142,8 @@ set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
 subst b: /d
 exit /b %CT_RUN_ERRORLEVEL%
 """.format(
+            erlang_home = windows_path(erlang_home),
             package = package,
-            erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
-            erlang_version = erlang_version,
             erl_libs_path = erl_libs_path,
             filter_tests_args = filter_tests_args,
             dir = short_dirname(ctx.files.compiled_suites[0]),
@@ -165,12 +157,14 @@ exit /b %CT_RUN_ERRORLEVEL%
         content = script,
     )
 
-    runfiles = ctx.runfiles(
-        files = ctx.files.compiled_suites + ctx.files.data,
-        transitive_files = depset(erl_libs_files),
+    runfiles = runfiles.merge_all(
+        [
+            ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
+        ] + [
+            tool[DefaultInfo].default_runfiles
+            for tool in ctx.attr.tools
+        ],
     )
-    for tool in ctx.attr.tools:
-        runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
 
     return [DefaultInfo(
         runfiles = runfiles,
@@ -180,8 +174,10 @@ exit /b %CT_RUN_ERRORLEVEL%
 ct_test = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "erlang_installation": attr.label(
+            mandatory = True,
+            providers = [ErlangInstallationInfo],
+        ),
         "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],

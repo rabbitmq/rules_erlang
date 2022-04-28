@@ -8,7 +8,8 @@ load(
     "//private:util.bzl",
     _additional_file_dest_relative_path = "additional_file_dest_relative_path",
 )
-load(":erlc.bzl", "erlc")
+load("//tools:erlang.bzl", "DEFAULT_LABEL")
+load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
     ":erlang_app.bzl",
     "DEFAULT_TEST_ERLC_OPTS",
@@ -25,6 +26,7 @@ def sanitize_sname(s):
 
 def ct_suite(
         name = "",
+        erlang_version_label = DEFAULT_LABEL,
         suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
@@ -34,8 +36,9 @@ def ct_suite(
     if suite_name == "":
         suite_name = name
 
-    erlc(
+    erlang_bytecode(
         name = "{}_beam_files".format(suite_name),
+        erlang_version_label = erlang_version_label,
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,
@@ -46,6 +49,7 @@ def ct_suite(
 
     ct_suite_variant(
         name = name,
+        erlang_version_label = erlang_version_label,
         suite_name = suite_name,
         deps = deps,
         **kwargs
@@ -55,6 +59,7 @@ def ct_suite(
 
 def ct_suite_variant(
         name = "",
+        erlang_version_label = DEFAULT_LABEL,
         suite_name = "",
         additional_beam = [],
         data = [],
@@ -70,6 +75,7 @@ def ct_suite_variant(
 
     ct_test(
         name = name,
+        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,

@@ -1,25 +1,23 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     ":ct.bzl",
     "short_dirname",
     "sname",
 )
-load(
-    ":util.bzl",
-    "erl_libs_contents",
-)
+load(":util.bzl", "erl_libs_contents")
 load(
     "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
     "path_join",
     "windows_path",
 )
+load(
+    ":erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def _impl(ctx):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
     erl_libs_dir = ctx.label.name + "_deps"
 
     erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
@@ -32,6 +30,8 @@ def _impl(ctx):
     if len(ctx.attr.ct_hooks) > 0:
         ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
 
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+
     if not ctx.attr.is_windows:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
@@ -40,19 +40,13 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -eo pipefail
 
+{maybe_symlink_erlang}
+
 if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
     touch ${{TEST_SHARD_STATUS_FILE}}
 fi
 
 export HOME=${{TEST_TMPDIR}}
-
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
-
 export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
 
 {test_env}
@@ -97,11 +91,9 @@ set -x
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
-            begins_with_fun = BEGINS_WITH_FUN,
-            query_erlang_version = QUERY_ERL_VERSION,
+            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            erlang_home = erlang_home,
             package = package,
-            erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-            erlang_version = erlang_version,
             erl_libs_path = erl_libs_path,
             shard_suite = ctx.file._shard_suite_escript.short_path,
             sharding_method = ctx.attr.sharding_method,
@@ -118,8 +110,6 @@ set -x
 
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
-echo Erlang Version: {erlang_version}
-
 SETLOCAL EnableDelayedExpansion
 if defined TEST_SHARD_STATUS_FILE type nul > !TEST_SHARD_STATUS_FILE!
 
@@ -179,8 +169,7 @@ exit /b %CT_RUN_ERRORLEVEL%
 :skip_test
 """.format(
             package = package,
-            erlang_home = windows_path(ctx.attr._erlang_home[ErlangHomeProvider].path),
-            erlang_version = erlang_version,
+            erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path,
             shard_suite = ctx.file._shard_suite_escript.short_path,
             sharding_method = ctx.attr.sharding_method,
@@ -196,12 +185,16 @@ exit /b %CT_RUN_ERRORLEVEL%
         content = script,
     )
 
-    runfiles = ctx.runfiles(
-        files = ctx.files.compiled_suites + ctx.files.data + ctx.files._shard_suite_escript,
-        transitive_files = depset(erl_libs_files),
+    runfiles = runfiles.merge_all(
+        [
+            ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
+        ] + [
+            ctx.attr.shard_suite[DefaultInfo].default_runfiles,
+        ] + [
+            tool[DefaultInfo].default_runfiles
+            for tool in ctx.attr.tools
+        ],
     )
-    for tool in ctx.attr.tools:
-        runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
 
     return [DefaultInfo(
         runfiles = runfiles,
@@ -211,11 +204,13 @@ exit /b %CT_RUN_ERRORLEVEL%
 ct_sharded_test = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
-        "_shard_suite_escript": attr.label(
-            default = Label("//shard_suite:escript"),
-            allow_single_file = True,
+        "erlang_installation": attr.label(
+            mandatory = True,
+            providers = [ErlangInstallationInfo],
+        ),
+        "shard_suite": attr.label(
+            executable = True,
+            cfg = "exec",
         ),
         "is_windows": attr.bool(mandatory = True),
         "suite_name": attr.string(mandatory = True),

@@ -1,2 +1,2 @@
-/.bazelrc
 /bazel-*
+/user.bazelrc

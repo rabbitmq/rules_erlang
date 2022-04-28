@@ -1,14 +1,14 @@
-load("//private:shell.bzl", "shell_private")
+load(
+    "//private:erlang_bytecode.bzl",
+    _erlang_bytecode = "erlang_bytecode",
+)
 load("//tools:erlang.bzl", "DEFAULT_LABEL")
 
-def shell(
+def erlang_bytecode(
         erlang_version_label = DEFAULT_LABEL,
         **kwargs):
-    shell_private(
+    _erlang_bytecode(
         erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
+        compile_first = Label("//tools/compile_first:escript-{}".format(erlang_version_label)),
         **kwargs
     )

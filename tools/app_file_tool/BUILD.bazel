@@ -1,0 +1,3 @@
+load(":app_file_tool.bzl", "app_file_tool")
+
+app_file_tool()
