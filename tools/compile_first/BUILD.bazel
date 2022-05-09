@@ -1,3 +1,1 @@
-load(":compile_first.bzl", "compile_first")
-
-compile_first()
+exports_files(["src/compile_first.erl"])

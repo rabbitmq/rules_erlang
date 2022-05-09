@@ -1,19 +1,21 @@
 load("//private:erlang_bytecode.bzl", "erlang_bytecode")
 load("//private:escript_flat.bzl", "escript_flat")
-load("//tools:erlang.bzl", "DEFAULT_LABEL")
+load("//tools:erlang.bzl", "DEFAULT_VERSION")
 
-def compile_first(erlang_version_label = DEFAULT_LABEL):
+DEFAULT_COMPILE_FIRST = "@otp_{}//:compile_first".format(DEFAULT_VERSION)
+
+def compile_first(name_suffix = ""):
     erlang_bytecode(
-        name = "beam-{}".format(erlang_version_label),
-        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
+        name = "compile_first_beam{}".format(name_suffix),
+        erlang_installation = ":otp{}".format(name_suffix),
         srcs = [
-            "src/compile_first.erl",
+            Label("//tools/compile_first:src/compile_first.erl"),
         ],
     )
 
     escript_flat(
-        name = "escript-{}".format(erlang_version_label),
-        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
-        beam = [":beam-{}".format(erlang_version_label)],
+        name = "compile_first{}".format(name_suffix),
+        erlang_installation = ":otp{}".format(name_suffix),
+        beam = ["compile_first_beam{}".format(name_suffix)],
         visibility = ["//visibility:public"],
     )

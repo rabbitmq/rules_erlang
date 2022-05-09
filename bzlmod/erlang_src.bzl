@@ -3,6 +3,29 @@ load(
     "http_archive",
 )
 
+OTP_BUILD_FILE_CONTENT = """load(
+    "@rules_erlang//tools:erlang.bzl",
+    "standard_erlang_tools",
+)
+load(
+    "@rules_erlang//tools/app_file_tool:app_file_tool.bzl",
+    "app_file_tool",
+)
+load(
+    "@rules_erlang//tools/compile_first:compile_first.bzl",
+    "compile_first",
+)
+load(
+    "@rules_erlang//tools/shard_suite:shard_suite.bzl",
+    "shard_suite",
+)
+
+standard_erlang_tools()
+app_file_tool()
+compile_first()
+shard_suite()
+"""
+
 def _merge(an_archive, archives):
     for archive in archives:
         if archive["url"] == an_archive["url"]:
@@ -27,7 +50,7 @@ def _erlang_src(ctx):
         for release in mod.tags.github_otp_erlang_release:
             url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = release.version)
             props = {
-                "name": "otp_src_{}".format(release.version),
+                "name": "otp_{}".format(release.version),
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
@@ -36,11 +59,7 @@ def _erlang_src(ctx):
 
     for props in archives:
         http_archive(
-            build_file_content = """filegroup(
-name = "all",
-srcs = glob(["**/*"], exclude = ["BUILD.bazel", "WORKSPACE.bazel"]),
-visibility = ["//visibility:public"],
-)""",
+            build_file_content = OTP_BUILD_FILE_CONTENT,
             **props
         )
 

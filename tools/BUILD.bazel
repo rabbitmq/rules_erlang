@@ -1,6 +1,0 @@
-load(
-    ":erlang.bzl",
-    "standard_erlang_tools",
-)
-
-standard_erlang_tools()

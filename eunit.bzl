@@ -1,11 +1,18 @@
 load("//private:eunit.bzl", "eunit_test")
 load(":erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
-load(":erlc.bzl", "erlc")
+load(":erlang_bytecode.bzl", "erlang_bytecode")
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_COMPILE_FIRST",
+    "DEFAULT_ERLANG_INSTALLATION",
+)
 
 def _module_name(p):
     return p.rpartition("/")[-1].replace(".erl", "")
 
 def eunit(
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        compile_first = DEFAULT_COMPILE_FIRST,
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         data = [],
         deps = [],
@@ -14,8 +21,10 @@ def eunit(
         test_env = {},
         **kwargs):
     srcs = native.glob(["test/**/*.erl"])
-    erlc(
+    erlang_bytecode(
         name = "test_case_beam_files",
+        erlang_installation = erlang_installation,
+        compile_first = compile_first,
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
         srcs = srcs,
         erlc_opts = erlc_opts,
@@ -35,6 +44,7 @@ def eunit(
 
     eunit_test(
         name = "eunit",
+        erlang_installation = erlang_installation,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,

@@ -1,4 +1,3 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load(
     ":erlang_installation.bzl",
     "ErlangInstallationInfo",
@@ -47,7 +46,7 @@ export OUTS="{outs}"
         DefaultInfo(files = depset(outs)),
     ]
 
-erl_eval_private = rule(
+erl_eval = rule(
     implementation = _impl,
     attrs = {
         "erlang_installation": attr.label(

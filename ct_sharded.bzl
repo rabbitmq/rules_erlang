@@ -1,8 +1,24 @@
 load("//private:ct_sharded.bzl", "ct_sharded_test")
-load("//tools:erlang.bzl", "DEFAULT_LABEL")
-load(":erlang_bytecode.bzl", "erlang_bytecode")
-load(":erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
-load(":erlc.bzl", "erlc")
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_INSTALLATION",
+)
+load(
+    "//tools/compile_first:compile_first.bzl",
+    "DEFAULT_COMPILE_FIRST",
+)
+load(
+    "//tools/shard_suite:shard_suite.bzl",
+    "DEFAULT_SHARD_SUITE",
+)
+load(
+    ":erlang_bytecode.bzl",
+    "erlang_bytecode",
+)
+load(
+    ":erlang_app.bzl",
+    "DEFAULT_TEST_ERLC_OPTS",
+)
 load(
     ":ct.bzl",
     _assert_suites = "assert_suites",
@@ -13,7 +29,9 @@ def assert_suites(*args):
 
 def ct_suite(
         name = "",
-        erlang_version_label = DEFAULT_LABEL,
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        compile_first = DEFAULT_COMPILE_FIRST,
+        shard_suite = DEFAULT_SHARD_SUITE,
         suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
@@ -25,7 +43,8 @@ def ct_suite(
 
     erlang_bytecode(
         name = "{}_beam_files".format(suite_name),
-        erlang_version_label = erlang_version_label,
+        erlang_installation = erlang_installation,
+        compile_first = compile_first,
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,
@@ -36,7 +55,8 @@ def ct_suite(
 
     ct_suite_variant(
         name = name,
-        erlang_version_label = erlang_version_label,
+        erlang_installation = erlang_installation,
+        shard_suite = shard_suite,
         suite_name = suite_name,
         deps = deps,
         **kwargs
@@ -46,7 +66,8 @@ def ct_suite(
 
 def ct_suite_variant(
         name = "",
-        erlang_version_label = DEFAULT_LABEL,
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        shard_suite = DEFAULT_SHARD_SUITE,
         suite_name = "",
         additional_beam = [],
         data = [],
@@ -60,7 +81,8 @@ def ct_suite_variant(
 
     ct_sharded_test(
         name = name,
-        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
+        erlang_installation = erlang_installation,
+        shard_suite = shard_suite,
         suite_name = suite_name,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,

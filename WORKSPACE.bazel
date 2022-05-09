@@ -15,4 +15,4 @@ bazel_skylib_workspace()
 
 load(":rules_erlang.bzl", "rules_erlang_dependencies")
 
-rules_erlang_dependencies()
+rules_erlang_dependencies(rules_erlang_workspace = "@")

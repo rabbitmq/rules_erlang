@@ -5,6 +5,18 @@ load(
     "erlang_app_info",
     _ErlangAppInfo = "ErlangAppInfo",
 )
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_INSTALLATION",
+)
+load(
+    "//tools/app_file_tool:app_file_tool.bzl",
+    "DEFAULT_APP_FILE_TOOL",
+)
+load(
+    "//tools/compile_first:compile_first.bzl",
+    "DEFAULT_COMPILE_FIRST",
+)
 
 DEFAULT_ERLC_OPTS = [
     "-Werror",
@@ -27,6 +39,9 @@ DEFAULT_TEST_ERLC_OPTS = [
 ErlangAppInfo = _ErlangAppInfo
 
 def erlang_app(
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        app_file_tool = DEFAULT_APP_FILE_TOOL,
+        compile_first = DEFAULT_COMPILE_FIRST,
         app_name = "",
         app_version = "",
         app_description = "",
@@ -49,6 +64,8 @@ def erlang_app(
         all_beam = [":first_beam_files"]
         erlang_bytecode(
             name = "first_beam_files",
+            erlang_installation = erlang_installation,
+            compile_first = compile_first,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
             erlc_opts = erlc_opts,
@@ -58,6 +75,8 @@ def erlang_app(
 
     erlang_bytecode(
         name = "beam_files",
+        erlang_installation = erlang_installation,
+        compile_first = compile_first,
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
         srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_beam,
@@ -71,6 +90,8 @@ def erlang_app(
     if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
         app_file(
             name = "app_file",
+            erlang_installation = erlang_installation,
+            app_file_tool = app_file_tool,
             app_name = app_name,
             app_version = app_version,
             app_description = app_description,
@@ -101,6 +122,9 @@ def erlang_app(
     )
 
 def test_erlang_app(
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        app_file_tool = DEFAULT_APP_FILE_TOOL,
+        compile_first = DEFAULT_COMPILE_FIRST,
         app_name = "",
         app_version = "",
         app_description = "",
@@ -122,6 +146,8 @@ def test_erlang_app(
         all_test_beam = [":first_test_beam_files"]
         erlang_bytecode(
             name = "first_test_beam_files",
+            erlang_installation = erlang_installation,
+            compile_first = compile_first,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(first_srcs),
             erlc_opts = erlc_opts,
@@ -132,6 +158,8 @@ def test_erlang_app(
 
     erlang_bytecode(
         name = "test_beam_files",
+        erlang_installation = erlang_installation,
+        compile_first = compile_first,
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
         srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
         beam = all_test_beam,

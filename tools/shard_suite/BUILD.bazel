@@ -7,9 +7,8 @@ load(
 load("//:xref.bzl", "xref")
 load("//:dialyze.bzl", "DEFAULT_PLT_APPS", "dialyze", "plt")
 load("//:ct.bzl", "ct_suite")
-load(":shard_suite.bzl", "shard_suite")
 
-shard_suite()
+exports_files(["src/shard_suite.erl"])
 
 APP_NAME = "shard_suite"
 

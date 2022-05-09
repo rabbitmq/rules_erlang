@@ -1,27 +1,22 @@
 load(
     "//private:erlang_installation.bzl",
-    _erlang_installation = "erlang_installation",
+    "erlang_installation",
 )
 load(
     "//private:erlang_tool.bzl",
-    _erlang_tool = "erlang_tool",
+    "erlang_tool",
 )
 
-def erlang_installation(**kwargs):
-    _erlang_installation(**kwargs)
+DEFAULT_VERSION = "24.3.3"  # <- must match MODULE.bazel
+DEFAULT_ERLANG_INSTALLATION = "@otp_{}//:otp".format(DEFAULT_VERSION)
 
-def erlang_tool(**kwargs):
-    _erlang_tool(**kwargs)
-
-DEFAULT_LABEL = "default-24"
-DEFAULT_VERSION = "24.3.3"
-
-def standard_erlang_tools(
-        label = DEFAULT_LABEL,
-        version = DEFAULT_VERSION):
+def standard_erlang_tools(name_suffix = ""):
     erlang_installation(
-        name = "otp-{}-installation".format(label),
-        sources = ["@otp_src_{}//:all".format(version)],
+        name = "otp{}".format(name_suffix),
+        sources = native.glob(
+            ["**/*"],
+            exclude = ["BUILD.bazel", "WORKSPACE.bazel"],
+        ),
         extra_env = select({
             "@bazel_tools//src/conditions:darwin": {
                 "CC": "clang",
@@ -39,22 +34,22 @@ def standard_erlang_tools(
     )
 
     erlang_tool(
-        name = "erl-{}".format(label),
-        erlang_installation = ":otp-{}-installation".format(label),
+        name = "erl{}".format(name_suffix),
+        erlang_installation = ":otp{}".format(name_suffix),
         path = "bin/erl",
         visibility = ["//visibility:public"],
     )
 
     erlang_tool(
-        name = "erlc-{}".format(label),
-        erlang_installation = ":otp-{}-installation".format(label),
+        name = "erlc{}".format(name_suffix),
+        erlang_installation = ":otp{}".format(name_suffix),
         path = "bin/erlc",
         visibility = ["//visibility:public"],
     )
 
     erlang_tool(
-        name = "escript-{}".format(label),
-        erlang_installation = ":otp-{}-installation".format(label),
+        name = "escript{}".format(name_suffix),
+        erlang_installation = ":otp{}".format(name_suffix),
         path = "bin/escript",
         visibility = ["//visibility:public"],
     )

@@ -1,12 +1,15 @@
 load("//private:xref.bzl", "xref_test")
-load("//tools:erlang.bzl", "DEFAULT_LABEL")
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_INSTALLATION",
+)
 
 def xref(
-        erlang_version_label = DEFAULT_LABEL,
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
         **kwargs):
     xref_test(
         name = "xref",
-        erlang_installation = Label("//tools:otp-{}-installation".format(erlang_version_label)),
+        erlang_installation = erlang_installation,
         target = ":erlang_app",
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,

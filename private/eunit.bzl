@@ -1,11 +1,6 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
-load("//:erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
-load("//:erlc.bzl", "erlc")
 load(
     "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
     "path_join",
     "windows_path",
 )

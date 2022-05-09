@@ -31,5 +31,5 @@ erlang_src.github_otp_erlang_release(
 
 use_repo(
     erlang_src,
-    "otp_src_24.3.3",
+    "otp_24.3.3",
 )

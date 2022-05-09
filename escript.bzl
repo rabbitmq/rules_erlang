@@ -1,17 +1,28 @@
-load("//private:erlang_bytecode.bzl", "erlang_bytecode")
 load(
-    "//private:escript_beam.bzl",
-    _escript_beam = "escript_beam",
+    "//private:escript_archive.bzl",
+    _escript_archive = "escript_archive",
+)
+load(
+    "//private:escript_flat.bzl",
+    _escript_flat = "escript_flat",
+)
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_INSTALLATION",
 )
 
-def escript_beam(
-        name = "",
-        beam = [],
-        out = "",
-        erlang_label = DEFAULT_LABEL):
-    _escript_beam(
-        name = name,
-        erl = Label("//tools:erl-{}".format(erlang_label)),
-        beam = beam,
-        out = out,
+def escript_archive(
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        **kwargs):
+    _escript_archive(
+        erlang_installation = erlang_installation,
+        **kwargs
+    )
+
+def escript_flat(
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        **kwargs):
+    _escript_flat(
+        erlang_installation = erlang_installation,
+        **kwargs
     )
