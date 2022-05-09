@@ -20,7 +20,7 @@ jobs:
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         cat << EOF >> user.bazelrc
-          build --@//:use_external_erlang
+          build --//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home=${ERLANG_HOME}
         EOF
@@ -59,7 +59,7 @@ jobs:
           startup --windows_enable_symlinks
           build --enable_runfiles
 
-          build --@//:use_external_erlang
+          build --//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home="${ERL_PATH/\/bin\/erl/}"
         EOF
@@ -97,7 +97,7 @@ jobs:
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         cat << EOF >> user.bazelrc
-          build --@//:use_external_erlang
+          build --//:use_external_erlang
           build --//:erlang_version=${{ matrix.otp }}
           build --//:erlang_home=${ERLANG_HOME}
         EOF
