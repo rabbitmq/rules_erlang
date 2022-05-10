@@ -1,7 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",

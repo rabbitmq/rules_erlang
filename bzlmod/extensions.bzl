@@ -1,220 +1,41 @@
-load("//:rules_erlang.bzl", "rules_erlang_dependencies")
-load("//:hex_archive.bzl", "hex_archive")
+load(
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
+)
 load(
     ":hex_pm.bzl",
     "hex_package_info",
-    "hex_release_info",
     "newest",
     "satisfies",
 )
 load(
-    "@bazel_tools//tools/build_defs/repo:git.bzl",
-    "git_repository",
-    "new_git_repository",
+    ":otp.bzl",
+    "OTP_BUILD_FILE_CONTENT",
+    "OTP_PATCH_GETOPT_DIR",
+    "OTP_PATCH_XREF_RUNNER_DIR",
+    "merge_archive",
 )
 load(
-    ":erlang_src.bzl",
-    _erlang_src = "erlang_src",
+    ":erlang_package.bzl",
+    "git_package",
+    "hex_package",
+    "hex_tree",
+    "log",
+    "without_requirement",
+)
+load(
+    "//:rules_erlang.bzl",
+    "xref_runner",
 )
 
-def _download_xrefr(ctx):
-    rules_erlang_dependencies()
+def _rules_erlang_deps(ctx):
+    xref_runner()
 
-download_xrefr = module_extension(
-    implementation = _download_xrefr,
+rules_erlang_deps = module_extension(
+    implementation = _rules_erlang_deps,
 )
-
-HexPackage = provider(fields = [
-    "name",
-    "version",
-    "sha256",
-    "build_file_content",
-    "patch_cmds",
-    "deps",
-    "requirements",
-    "f_fetch",
-])
-
-GitPackage = provider(fields = [
-    "name",
-    "version",
-    "remote",
-    "repository",
-    "branch",
-    "tag",
-    "commit",
-    "build_file_content",
-    "patch_cmds",
-    "f_fetch",
-])
 
 _RESOLVE_MAX_PASSES = 500
-
-def _hex_package_repo(ctx, hex_package):
-    if hex_package.build_file_content != "":
-        hex_archive(
-            name = hex_package.name,
-            package_name = hex_package.name,
-            version = hex_package.version,
-            sha256 = hex_package.sha256,
-            build_file_content = hex_package.build_file_content,
-            patch_cmds = hex_package.patch_cmds,
-        )
-    else:
-        if hex_package.deps != None:
-            deps = ["@{}//:erlang_app".format(d) for d in hex_package.deps]
-        else:
-            deps = ""
-
-        hex_archive(
-            name = hex_package.name,
-            package_name = hex_package.name,
-            version = hex_package.version,
-            sha256 = hex_package.sha256,
-            patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = hex_package.name,
-                version = hex_package.version,
-                deps = deps,
-                make = ctx.which("make"),
-            )],
-        )
-
-def _git_package_repo(ctx, git_package):
-    if git_package.build_file_content != "":
-        new_git_repository(
-            name = git_package.name,
-            remote = git_package.remote,
-            branch = git_package.branch,
-            tag = git_package.tag,
-            commit = git_package.commit,
-            build_file_content = git_package.build_file_content,
-            patch_cmds = git_package.patch_cmds,
-        )
-    else:
-        git_repository(
-            name = git_package.name,
-            remote = git_package.remote,
-            branch = git_package.branch,
-            tag = git_package.tag,
-            commit = git_package.commit,
-            patch_cmds = git_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = git_package.name,
-                version = "",
-                deps = [],
-                make = ctx.which("make"),
-            )],
-        )
-
-def _hex_tree(ctx, name, version):
-    _log(ctx, "Fetching release info for {}@{} from hex.pm".format(name, version))
-    release_info = hex_release_info(ctx, name, version)
-
-    sha256 = release_info["checksum"]
-
-    deps = []
-    requirements = []
-    for (_, props) in release_info["requirements"].items():
-        if not props["optional"]:
-            deps.append(props["app"])
-            requirements.append(props)
-
-    return HexPackage(
-        name = name,
-        version = version,
-        sha256 = sha256,
-        build_file_content = "",
-        patch_cmds = [],
-        deps = deps,
-        requirements = requirements,
-        f_fetch = _hex_package_repo,
-    )
-
-def _hex_package(
-        ctx,
-        name = None,
-        version = None,
-        sha256 = None,
-        build_file_content = None,
-        patch_cmds = None):
-    return HexPackage(
-        name = name,
-        version = version,
-        sha256 = sha256,
-        build_file_content = build_file_content,
-        patch_cmds = patch_cmds,
-        deps = None,
-        requirements = [],
-        f_fetch = _hex_package_repo,
-    )
-
-def _infer_app_name(remote):
-    (_, _, repo) = remote.rpartition("/")
-    if repo == remote:
-        fail("Could not extract erlang app name from {}".format(remote))
-    if not repo.endswith(".git"):
-        fail("Could not extract erlang app name from {}".format(remote))
-    return repo[0:-4]
-
-def _git_package(ctx, dep):
-    if dep.remote != "" and dep.repository != "":
-        fail("'remote' and 'repository' are mutually exclusive options")
-
-    if dep.repository != "":
-        remote = "https://github.com/{}.git".format(dep.repository)
-    elif dep.remote != "":
-        remote = dep.remote
-    else:
-        fail("either 'remote' or 'repository' are required")
-
-    if dep.name != "":
-        name = dep.name
-    else:
-        name = _infer_app_name(remote)
-
-    if dep.commit != "":
-        version = dep.commit
-    elif dep.tag != "":
-        version = dep.tag
-    else:
-        version = dep.branch
-
-    return GitPackage(
-        name = name,
-        version = version,
-        remote = remote,
-        branch = dep.branch,
-        tag = dep.tag,
-        commit = dep.commit,
-        build_file_content = dep.build_file_content,
-        patch_cmds = dep.patch_cmds,
-        f_fetch = _git_package_repo,
-    )
-
-def _without_requirement(name, package):
-    requirements = getattr(package, "requirements", [])
-    if len(requirements) == 0:
-        return package
-    else:
-        # currently only HexPackage has "requirements", so we
-        # can always return one
-        new_requirements = []
-        for r in requirements:
-            if r["app"] != name:
-                new_requirements.append(r)
-
-        return HexPackage(
-            name = package.name,
-            version = package.version,
-            sha256 = package.sha256,
-            build_file_content = package.build_file_content,
-            patch_cmds = package.patch_cmds,
-            deps = package.deps,
-            requirements = new_requirements,
-            f_fetch = package.f_fetch,
-        )
-
-def _log(ctx, msg):
-    ctx.execute([ctx.which("echo"), "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
 
 def _resolve_pass(ctx, packages):
     all_requirements = []
@@ -241,27 +62,27 @@ def _resolve_pass(ctx, packages):
         for p in packages:
             if p.name == name:
                 if not all([satisfies(p.version, r) for r in requirements]):
-                    _log(ctx, "Ignoring conflicting requirements for {}, {} does not satisfy {} as required by {}".format(
+                    log(ctx, "Ignoring conflicting requirements for {}, {} does not satisfy {} as required by {}".format(
                         name,
                         p.version,
                         requirements,
                         requirers,
                     ))
-                return (False, [_without_requirement(name, p) for p in packages])
+                return (False, [without_requirement(name, p) for p in packages])
 
         # check if a version exists on hex
-        _log(ctx, "Fetching package info for {} from hex.pm".format(name))
+        log(ctx, "Fetching package info for {} from hex.pm".format(name))
         package_info = hex_package_info(ctx, name)
         for release in package_info["releases"]:
             if all([satisfies(release["version"], r) for r in requirements]):
-                _log(ctx, "Using {}@{} required by {} satisfying {}".format(
+                log(ctx, "Using {}@{} required by {} satisfying {}".format(
                     name,
                     release["version"],
                     requirers,
                     requirements,
                 ))
-                hp = _hex_package(ctx, name, release["version"], "", "")
-                return (False, [_without_requirement(name, p) for p in packages] + [hp])
+                hp = hex_package(ctx, name, release["version"], "", "")
+                return (False, [without_requirement(name, p) for p in packages] + [hp])
 
         fail("Unable to find a version of {} satisfying".format(name), requirements)
 
@@ -289,39 +110,97 @@ def _resolve_local(packages):
     return deduped
 
 def _erlang_package(ctx):
+    otp_archives = []
+    for mod in ctx.modules:
+        for archive in mod.tags.otp_http_archive:
+            props = {
+                "name": archive.name,
+                "url": archive.url,
+                "strip_prefix": archive.strip_prefix,
+                "sha256": archive.sha256,
+            }
+            otp_archives = merge_archive(props, otp_archives)
+        for release in mod.tags.otp_github_release:
+            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = release.version)
+            props = {
+                "name": "otp_{}".format(release.version),
+                "url": url,
+                "strip_prefix": "otp_src_{}".format(release.version),
+                "sha256": release.sha256,
+            }
+            otp_archives = merge_archive(props, otp_archives)
+
+    for props in otp_archives:
+        http_archive(
+            build_file_content = OTP_BUILD_FILE_CONTENT,
+            patch_cmds = [
+                OTP_PATCH_GETOPT_DIR,
+                OTP_PATCH_XREF_RUNNER_DIR,
+            ],
+            **props
+        )
+
+    otp_installation_names = [
+        props["name"]
+        for props in otp_archives
+    ]
+
     packages = []
     for mod in ctx.modules:
-        for dep in mod.tags.hex_tree:
-            packages.append(_hex_tree(ctx, dep.name, dep.version))
-        for dep in mod.tags.hex:
-            packages.append(_hex_package(
+        for dep in mod.tags.hex_package_tree:
+            packages.append(hex_tree(
                 ctx,
+                otp_installation_names = otp_installation_names,
+                name = dep.name,
+                version = dep.version,
+            ))
+        for dep in mod.tags.hex_package:
+            packages.append(hex_package(
+                ctx,
+                otp_installation_names = otp_installation_names,
                 name = dep.name,
                 version = dep.version,
                 sha256 = dep.sha256,
                 build_file_content = dep.build_file_content,
                 patch_cmds = dep.patch_cmds,
             ))
-        for dep in mod.tags.git:
-            packages.append(_git_package(ctx, dep))
+        for dep in mod.tags.git_package:
+            packages.append(git_package(
+                ctx,
+                otp_installation_names = otp_installation_names,
+                dep = dep,
+            ))
 
     deduped = _resolve_local(packages)
 
     resolved = _resolve_hex_pm(ctx, deduped)
 
-    _log(ctx, "Final package list:")
+    if len(resolved) > 0:
+        log(ctx, "Final package list:")
     for p in resolved:
-        _log(ctx, "    {}@{}".format(p.name, p.version))
+        log(ctx, "    {}@{}".format(p.name, p.version))
 
     for p in resolved:
         p.f_fetch(ctx, p)
 
-hex_tree = tag_class(attrs = {
+otp_http_archive_tag = tag_class(attrs = {
+    "name": attr.string(),
+    "url": attr.string(),
+    "strip_prefix": attr.string(),
+    "sha256": attr.string(),
+})
+
+otp_github_release_tag = tag_class(attrs = {
+    "version": attr.string(),
+    "sha256": attr.string(),
+})
+
+hex_package_tree_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
     "version": attr.string(mandatory = True),
 })
 
-hex = tag_class(attrs = {
+hex_package_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
     "version": attr.string(mandatory = True),
     "sha256": attr.string(),
@@ -329,7 +208,7 @@ hex = tag_class(attrs = {
     "patch_cmds": attr.string_list(),
 })
 
-git = tag_class(attrs = {
+git_package_tag = tag_class(attrs = {
     "name": attr.string(),
     "remote": attr.string(),
     "repository": attr.string(),
@@ -343,124 +222,10 @@ git = tag_class(attrs = {
 erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
-        "hex": hex,
-        "hex_tree": hex_tree,
-        "git": git,
+        "otp_http_archive": otp_http_archive_tag,
+        "otp_github_release": otp_github_release_tag,
+        "hex_package": hex_package_tag,
+        "hex_package_tree": hex_package_tree_tag,
+        "git_package": git_package_tag,
     },
 )
-
-PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail
-
-echo "Generating BUILD.bazel for {name}..."
-
-# if there is a Makefile and erlang.mk, use make to infer
-# the version and deps, error on name mismatch, and error
-# if the deps mismatch
-if [ ! -f BUILD.bazel ]; then
-    if [ -f Makefile ]; then
-        if [ -f erlang.mk ]; then
-            if [ -n "{make}" ]; then
-                echo "\tAttempting auto-configure from erlang.mk files..."
-
-                cat << 'MK' > bazel-autobuild.mk
-define BUILD_FILE_CONTENT
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "$(PROJECT)",
-    app_description = \"""$(PROJECT_DESCRIPTION)\""",
-    app_version = "$(PROJECT_VERSION)",
-    app_env = \"""$(PROJECT_ENV)\""",
-    app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\""",
-    extra_apps = [
-$(foreach dep,$(LOCAL_DEPS),        "$(dep)",\n)    ],
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
-    build_deps = [
-$(foreach dep,$(BUILD_DEPS),        "@$(dep)//:erlang_app",\n)    ],
-    deps = [
-$(foreach dep,$(DEPS),        "@$(dep)//:erlang_app",\n)    ],
-    stamp = 0,
-)
-endef
-
-export BUILD_FILE_CONTENT
-
-BUILD.bazel:
-	echo "$$BUILD_FILE_CONTENT" >> $@
-MK
-                cat bazel-autobuild.mk
-                {make} -f Makefile -f bazel-autobuild.mk BUILD.bazel
-            else
-                echo "Skipping erlang.mk import as make is unavailable"
-            fi
-        fi
-    fi
-fi
-
-# fallback to BUILD file with just the name, version & deps
-if [ ! -f BUILD.bazel ]; then
-    if [ -n "{version}" ]; then
-        if [ -n "{deps}" ]; then
-            cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    app_version = "{version}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
-    deps = {deps},
-    stamp = 0,
-)
-EOF
-        fi
-    fi
-fi
-
-# fallback to BUILD file with just the name and version
-if [ ! -f BUILD.bazel ]; then
-    if [ -n "{version}" ]; then
-        cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    app_version = "{version}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
-    stamp = 0,
-)
-EOF
-    fi
-fi
-
-# fallback to BUILD file with just the name
-if [ ! -f BUILD.bazel ]; then
-    cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
-    stamp = 0,
-)
-EOF
-fi
-"""
-
-PATCH_AUTO_BUILD_BAZEL_WINDOWS = """REM bzlmod+windows dependency autobuild not yet supported
-REM you may use 'build_file_content' instead
-EXIT /B 1
-"""
-
-erlang_src = _erlang_src

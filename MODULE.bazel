@@ -9,27 +9,29 @@ bazel_dep(
     version = "1.2.0",
 )
 
-# download_xrefr = use_extension(
-#     "//bzlmod:extensions.bzl",
-#     "download_xrefr",
-# )
-
-# use_repo(
-#     download_xrefr,
-#     "xrefr",
-# )
-
-erlang_src = use_extension(
-    "@rules_erlang//bzlmod:extensions.bzl",
-    "erlang_src",
+rules_erlang_deps = use_extension(
+    "//bzlmod:extensions.bzl",
+    "rules_erlang_deps",
 )
 
-erlang_src.github_otp_erlang_release(
+use_repo(
+    rules_erlang_deps,
+    "getopt_src",
+    "xref_runner_src",
+)
+
+erlang_package = use_extension(
+    "//bzlmod:extensions.bzl",
+    "erlang_package",
+)
+
+erlang_package.otp_github_release(
     version = "24.3.3",
     sha256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d",
 )
 
 use_repo(
-    erlang_src,
+    erlang_package,
     "otp_24.3.3",
+    "xref_runner",
 )

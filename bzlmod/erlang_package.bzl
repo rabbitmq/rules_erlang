@@ -1,0 +1,325 @@
+load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+    "new_git_repository",
+)
+load(
+    "//:hex_archive.bzl",
+    "hex_archive",
+)
+load(
+    ":hex_pm.bzl",
+    "hex_release_info",
+)
+
+HexPackage = provider(fields = [
+    "name",
+    "version",
+    "sha256",
+    "build_file_content",
+    "patch_cmds",
+    "deps",
+    "requirements",
+    "f_fetch",
+])
+
+GitPackage = provider(fields = [
+    "name",
+    "version",
+    "remote",
+    "repository",
+    "branch",
+    "tag",
+    "commit",
+    "build_file_content",
+    "patch_cmds",
+    "f_fetch",
+])
+
+def log(ctx, msg):
+    ctx.execute([ctx.which("echo"), "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
+
+def hex_tree(
+        ctx,
+        otp_installation_names = None,
+        name = None,
+        version = None):
+    log(ctx, "Fetching release info for {}@{} from hex.pm".format(name, version))
+    release_info = hex_release_info(ctx, name, version)
+
+    sha256 = release_info["checksum"]
+
+    deps = []
+    requirements = []
+    for (_, props) in release_info["requirements"].items():
+        if not props["optional"]:
+            deps.append(props["app"])
+            requirements.append(props)
+
+    return HexPackage(
+        name = name,
+        version = version,
+        sha256 = sha256,
+        build_file_content = "",
+        patch_cmds = [],
+        deps = deps,
+        requirements = requirements,
+        f_fetch = _hex_package_repo,
+    )
+
+def hex_package(
+        ctx,
+        otp_installation_names = None,
+        name = None,
+        version = None,
+        sha256 = None,
+        build_file_content = None,
+        patch_cmds = None):
+    return HexPackage(
+        name = name,
+        version = version,
+        sha256 = sha256,
+        build_file_content = build_file_content,
+        patch_cmds = patch_cmds,
+        deps = None,
+        requirements = [],
+        f_fetch = _hex_package_repo,
+    )
+
+def _infer_app_name(remote):
+    (_, _, repo) = remote.rpartition("/")
+    if repo == remote:
+        fail("Could not extract erlang app name from {}".format(remote))
+    if not repo.endswith(".git"):
+        fail("Could not extract erlang app name from {}".format(remote))
+    return repo[0:-4]
+
+def git_package(
+        ctx,
+        otp_installation_names = None,
+        dep = None):
+    if dep.remote != "" and dep.repository != "":
+        fail("'remote' and 'repository' are mutually exclusive options")
+
+    if dep.repository != "":
+        remote = "https://github.com/{}.git".format(dep.repository)
+    elif dep.remote != "":
+        remote = dep.remote
+    else:
+        fail("either 'remote' or 'repository' are required")
+
+    if dep.name != "":
+        name = dep.name
+    else:
+        name = _infer_app_name(remote)
+
+    if dep.commit != "":
+        version = dep.commit
+    elif dep.tag != "":
+        version = dep.tag
+    else:
+        version = dep.branch
+
+    return GitPackage(
+        name = name,
+        version = version,
+        remote = remote,
+        branch = dep.branch,
+        tag = dep.tag,
+        commit = dep.commit,
+        build_file_content = dep.build_file_content,
+        patch_cmds = dep.patch_cmds,
+        f_fetch = _git_package_repo,
+    )
+
+def without_requirement(name, package):
+    requirements = getattr(package, "requirements", [])
+    if len(requirements) == 0:
+        return package
+    else:
+        # currently only HexPackage has "requirements", so we
+        # can always return one
+        new_requirements = []
+        for r in requirements:
+            if r["app"] != name:
+                new_requirements.append(r)
+
+        return HexPackage(
+            name = package.name,
+            version = package.version,
+            sha256 = package.sha256,
+            build_file_content = package.build_file_content,
+            patch_cmds = package.patch_cmds,
+            deps = package.deps,
+            requirements = new_requirements,
+            f_fetch = package.f_fetch,
+        )
+
+def _hex_package_repo(ctx, hex_package):
+    if hex_package.build_file_content != "":
+        hex_archive(
+            name = hex_package.name,
+            package_name = hex_package.name,
+            version = hex_package.version,
+            sha256 = hex_package.sha256,
+            build_file_content = hex_package.build_file_content,
+            patch_cmds = hex_package.patch_cmds,
+        )
+    else:
+        if hex_package.deps != None:
+            deps = ["@{}//:erlang_app".format(d) for d in hex_package.deps]
+        else:
+            deps = ""
+
+        hex_archive(
+            name = hex_package.name,
+            package_name = hex_package.name,
+            version = hex_package.version,
+            sha256 = hex_package.sha256,
+            patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
+                name = hex_package.name,
+                version = hex_package.version,
+                deps = deps,
+                make = ctx.which("make"),
+            )],
+        )
+
+def _git_package_repo(ctx, git_package):
+    if git_package.build_file_content != "":
+        new_git_repository(
+            name = git_package.name,
+            remote = git_package.remote,
+            branch = git_package.branch,
+            tag = git_package.tag,
+            commit = git_package.commit,
+            build_file_content = git_package.build_file_content,
+            patch_cmds = git_package.patch_cmds,
+        )
+    else:
+        git_repository(
+            name = git_package.name,
+            remote = git_package.remote,
+            branch = git_package.branch,
+            tag = git_package.tag,
+            commit = git_package.commit,
+            patch_cmds = git_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
+                name = git_package.name,
+                version = "",
+                deps = [],
+                make = ctx.which("make"),
+            )],
+        )
+
+PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail
+
+echo "Generating BUILD.bazel for {name}..."
+
+# if there is a Makefile and erlang.mk, use make to infer
+# the version and deps, error on name mismatch, and error
+# if the deps mismatch
+if [ ! -f BUILD.bazel ]; then
+    if [ -f Makefile ]; then
+        if [ -f erlang.mk ]; then
+            if [ -n "{make}" ]; then
+                echo "\tAttempting auto-configure from erlang.mk files..."
+
+                cat << 'MK' > bazel-autobuild.mk
+define BUILD_FILE_CONTENT
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "$(PROJECT)",
+    app_description = \"""$(PROJECT_DESCRIPTION)\""",
+    app_version = "$(PROJECT_VERSION)",
+    app_env = \"""$(PROJECT_ENV)\""",
+    app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\""",
+    extra_apps = [
+$(foreach dep,$(LOCAL_DEPS),        "$(dep)",\n)    ],
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+    build_deps = [
+$(foreach dep,$(BUILD_DEPS),        "@$(dep)//:erlang_app",\n)    ],
+    deps = [
+$(foreach dep,$(DEPS),        "@$(dep)//:erlang_app",\n)    ],
+    stamp = 0,
+)
+endef
+
+export BUILD_FILE_CONTENT
+
+BUILD.bazel:
+	echo "$$BUILD_FILE_CONTENT" >> $@
+MK
+                cat bazel-autobuild.mk
+                {make} -f Makefile -f bazel-autobuild.mk BUILD.bazel
+            else
+                echo "Skipping erlang.mk import as make is unavailable"
+            fi
+        fi
+    fi
+fi
+
+# fallback to BUILD file with just the name, version & deps
+if [ ! -f BUILD.bazel ]; then
+    if [ -n "{version}" ]; then
+        if [ -n "{deps}" ]; then
+            cat << EOF > BUILD.bazel
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "{name}",
+    app_version = "{version}",
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+    deps = {deps},
+    stamp = 0,
+)
+EOF
+        fi
+    fi
+fi
+
+# fallback to BUILD file with just the name and version
+if [ ! -f BUILD.bazel ]; then
+    if [ -n "{version}" ]; then
+        cat << EOF > BUILD.bazel
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "{name}",
+    app_version = "{version}",
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+    stamp = 0,
+)
+EOF
+    fi
+fi
+
+# fallback to BUILD file with just the name
+if [ ! -f BUILD.bazel ]; then
+    cat << EOF > BUILD.bazel
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "{name}",
+    erlc_opts = [
+        "+deterministic",
+        "+debug_info",
+    ],
+    stamp = 0,
+)
+EOF
+fi
+"""
+
+PATCH_AUTO_BUILD_BAZEL_WINDOWS = """REM bzlmod+windows dependency autobuild not yet supported
+REM you may use 'build_file_content' instead
+EXIT /B 1
+"""

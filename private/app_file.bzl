@@ -1,7 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -44,6 +44,9 @@ def _impl(ctx):
                                     ctx.attr.private_stamp_detect)
 
     (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+
+    app_file_tool = ctx.attr.erlang_installation[ErlangInstallationInfo].app_file_tool
+    app_file_tool_path = app_file_tool[DefaultInfo].files_to_run.executable.path
 
     script = """set -euo pipefail
 
@@ -122,7 +125,7 @@ fi
 """.format(
         maybe_symlink_erlang = maybe_symlink_erlang(ctx),
         erlang_home = erlang_home,
-        app_file_tool = ctx.attr.app_file_tool[DefaultInfo].files_to_run.executable.path,
+        app_file_tool = app_file_tool_path,
         info_file = ctx.info_file.path,
         name = ctx.attr.app_name,
         description = ctx.attr.app_description,
@@ -139,7 +142,7 @@ fi
     )
 
     runfiles = runfiles.merge(
-        ctx.attr.app_file_tool[DefaultInfo].default_runfiles,
+        app_file_tool[DefaultInfo].default_runfiles,
     )
 
     inputs = depset(
@@ -164,11 +167,6 @@ app_file = rule(
         "erlang_installation": attr.label(
             mandatory = True,
             providers = [ErlangInstallationInfo],
-        ),
-        "app_file_tool": attr.label(
-            mandatory = True,
-            executable = True,
-            cfg = "exec",
         ),
         "app_name": attr.string(mandatory = True),
         "app_version": attr.string(),

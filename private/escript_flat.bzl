@@ -1,5 +1,5 @@
 load(
-    "//private:erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -8,35 +8,29 @@ load(
 def _impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.out if ctx.attr.out != "" else ctx.label.name)
 
-    source_entries = [
-        "{{source,\"{}\"}}".format(f.path)
-        for f in ctx.files.srcs
-    ]
-
-    beam_entries = [
-        "{{beam,\"{}\"}}".format(f.path)
-        for f in ctx.files.beam
-    ]
-
-    entries = ",".join(source_entries + beam_entries)
+    if ctx.attr.src != None and ctx.attr.beam != None:
+        fail("both src and beam attributes cannot be specified simultaneously")
+    elif ctx.attr.src != None:
+        body = "{{source,\"{}\"}}".format(ctx.file.src.path)
+    else:
+        body = "{{beam,\"{}\"}}".format(ctx.file.beam.path)
 
     args = ctx.actions.args()
     args.add("""io:format("Assembiling {out} escript...~n", []),
 ok = escript:create("{out}",
                     [shebang, comment,
-                    {entries}]),
+                    {body}]),
 io:format("done.~n", []),
 halt().
 """.format(
         out = out.path,
-        source_entries = source_entries,
-        entries = entries,
+        body = body,
     ))
 
     (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
 
     inputs = depset(
-        direct = ctx.files.srcs + ctx.files.beam,
+        direct = ctx.files.src + ctx.files.beam,
         transitive = [runfiles.files],
     )
 
@@ -68,11 +62,11 @@ escript_flat = rule(
             mandatory = True,
             providers = [ErlangInstallationInfo],
         ),
-        "srcs": attr.label_list(
-            allow_files = [".erl"],
+        "src": attr.label(
+            allow_single_file = [".erl"],
         ),
-        "beam": attr.label_list(
-            allow_files = [".beam"],
+        "beam": attr.label(
+            allow_single_file = [".beam"],
         ),
         "out": attr.string(),
     },

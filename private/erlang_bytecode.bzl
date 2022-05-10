@@ -2,7 +2,7 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(":util.bzl", "erl_libs_contents")
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -62,11 +62,11 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    compile_first = ""
-    if ctx.attr.compile_first != None:
-        cf_info = ctx.attr.compile_first[DefaultInfo]
-        compile_first = cf_info.files_to_run.executable.path
-        runfiles = runfiles.merge(cf_info.default_runfiles)
+    compile_first_path = ""
+    compile_first = ctx.attr.erlang_installation[ErlangInstallationInfo].compile_first
+    if compile_first != None:
+        compile_first_path = compile_first[DefaultInfo].files_to_run.executable.path
+        runfiles = runfiles.merge(compile_first[DefaultInfo].default_runfiles)
 
     script = """set -euo pipefail
 
@@ -102,7 +102,7 @@ fi
         erlang_home = erlang_home,
         dest_dir = dest_dir,
         erl_libs_path = erl_libs_path,
-        compile_first = compile_first,
+        compile_first = compile_first_path,
         include_args = " ".join(include_args),
         pa_args = " ".join(pa_args),
         out_dir = dest_dir,
@@ -133,17 +133,19 @@ erlang_bytecode = rule(
             mandatory = True,
             providers = [ErlangInstallationInfo],
         ),
-        "compile_first": attr.label(
-            executable = True,
-            cfg = "exec",
+        "hdrs": attr.label_list(
+            allow_files = [".hrl"],
         ),
-        "hdrs": attr.label_list(allow_files = [".hrl"]),
         "srcs": attr.label_list(
             mandatory = True,
             allow_files = [".erl"],
         ),
-        "beam": attr.label_list(allow_files = [".beam"]),
-        "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "beam": attr.label_list(
+            allow_files = [".beam"],
+        ),
+        "deps": attr.label_list(
+            providers = [ErlangAppInfo],
+        ),
         "erlc_opts": attr.string_list(),
         "dest": attr.string(
             default = "ebin",

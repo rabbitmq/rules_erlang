@@ -6,7 +6,7 @@ load(
 )
 load(":ct.bzl", "code_paths")
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -46,12 +46,10 @@ def _impl(ctx):
         content = xref_config,
     )
 
-    xrefr_path = path_join(
-        ctx.attr._xrefr.label.workspace_root,
-        ctx.file._xrefr.short_path,
-    )
-
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
+
+    xrefr = ctx.attr.erlang_installation[ErlangInstallationInfo].xrefr
+    xrefr_path = xrefr[DefaultInfo].files_to_run.executable.short_path
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)
@@ -66,7 +64,7 @@ export HOME=${{TEST_TMPDIR}}
     -noshell
 
 set -x
-"{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{xrefr} \\
+"{erlang_home}"/bin/escript {xrefr} \\
     --config {config_path}
 """.format(
             maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
@@ -77,15 +75,12 @@ set -x
     else:
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
-REM TEST_SRCDIR is provided by bazel but with unix directory separators
-set xrefr=%TEST_SRCDIR%/%TEST_WORKSPACE%/{xrefr}
-set xrefr=%xrefr:/=\\%
 echo on
-"{erlang_home}\\bin\\escript" %xrefr% ^
+"{erlang_home}\\bin\\escript" {xrefr} ^
     --config {config_path} || exit /b 1
 """.format(
             erlang_home = windows_path(erlang_home),
-            xrefr = xrefr_path,
+            xrefr = windows_path(xrefr_path),
             config_path = windows_path(config_file.short_path),
         )
 
@@ -95,10 +90,10 @@ echo on
     )
 
     runfiles = ctx.runfiles([
-        ctx.file._xrefr,
         config_file,
     ]).merge_all([
         runfiles,
+        xrefr[DefaultInfo].default_runfiles,
         ctx.attr.target[DefaultInfo].default_runfiles,
     ] + [
         dep[DefaultInfo].default_runfiles
@@ -115,12 +110,6 @@ xref_test = rule(
         "erlang_installation": attr.label(
             mandatory = True,
             providers = [ErlangInstallationInfo],
-        ),
-        "_xrefr": attr.label(
-            default = Label("@xrefr//file"),
-            executable = True,
-            cfg = "target",
-            allow_single_file = True,
         ),
         "is_windows": attr.bool(mandatory = True),
         "target": attr.label(

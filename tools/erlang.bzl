@@ -1,18 +1,30 @@
 load(
-    "//private:erlang_installation.bzl",
-    "erlang_installation",
+    "//private:erlang_build.bzl",
+    "erlang_build",
+)
+load(
+    "//private:erlang_bytecode.bzl",
+    "erlang_bytecode",
 )
 load(
     "//private:erlang_tool.bzl",
     "erlang_tool",
 )
+load(
+    "//private:escript_flat.bzl",
+    "escript_flat",
+)
+load(
+    ":erlang_installation.bzl",
+    "erlang_installation",
+)
 
-DEFAULT_VERSION = "24.3.3"  # <- must match MODULE.bazel
-DEFAULT_ERLANG_INSTALLATION = "@otp_{}//:otp".format(DEFAULT_VERSION)
+DEFAULT_ERLANG_VERSION = "24.3.3"  # <- must match MODULE.bazel
+DEFAULT_ERLANG_INSTALLATION = "@otp_{}//:erlang_installation".format(DEFAULT_ERLANG_VERSION)
 
-def standard_erlang_tools(name_suffix = ""):
-    erlang_installation(
-        name = "otp{}".format(name_suffix),
+def standard_erlang_tools():
+    erlang_build(
+        name = "otp",
         sources = native.glob(
             ["**/*"],
             exclude = ["BUILD.bazel", "WORKSPACE.bazel"],
@@ -30,26 +42,100 @@ def standard_erlang_tools(name_suffix = ""):
             ],
             "//conditions:default": [],
         }),
-        visibility = ["//visibility:public"],
     )
 
     erlang_tool(
-        name = "erl{}".format(name_suffix),
-        erlang_installation = ":otp{}".format(name_suffix),
+        name = "erl",
+        otp = ":otp",
         path = "bin/erl",
         visibility = ["//visibility:public"],
     )
 
     erlang_tool(
-        name = "erlc{}".format(name_suffix),
-        erlang_installation = ":otp{}".format(name_suffix),
+        name = "erlc",
+        otp = ":otp",
         path = "bin/erlc",
         visibility = ["//visibility:public"],
     )
 
     erlang_tool(
-        name = "escript{}".format(name_suffix),
-        erlang_installation = ":otp{}".format(name_suffix),
+        name = "escript",
+        otp = ":otp",
         path = "bin/escript",
+        visibility = ["//visibility:public"],
+    )
+
+    erlang_installation(
+        name = "erlang_installation_minimal",
+        otp = ":otp",
+        erl = ":erl",
+        erlc = ":erlc",
+        escript = ":escript",
+    )
+
+    erlang_bytecode(
+        name = "app_file_tool_beam",
+        erlang_installation = ":erlang_installation_minimal",
+        srcs = [
+            Label("//tools/app_file_tool:src/app_file_tool.erl"),
+        ],
+    )
+
+    escript_flat(
+        name = "app_file_tool",
+        erlang_installation = ":erlang_installation_minimal",
+        beam = ":app_file_tool_beam",
+    )
+
+    erlang_bytecode(
+        name = "compile_first_beam",
+        erlang_installation = ":erlang_installation_minimal",
+        srcs = [
+            Label("//tools/compile_first:src/compile_first.erl"),
+        ],
+    )
+
+    escript_flat(
+        name = "compile_first",
+        erlang_installation = ":erlang_installation_minimal",
+        beam = ":compile_first_beam",
+    )
+
+    erlang_bytecode(
+        name = "shard_suite_beam",
+        dest = "alt",
+        erlang_installation = ":erlang_installation_minimal",
+        srcs = [
+            Label("//tools/shard_suite:src/shard_suite.erl"),
+        ],
+    )
+
+    escript_flat(
+        name = "shard_suite",
+        erlang_installation = ":erlang_installation_minimal",
+        beam = ":shard_suite_beam",
+    )
+
+    erlang_installation(
+        name = "erlang_installation_compilation",
+        otp = ":otp",
+        erl = ":erl",
+        erlc = ":erlc",
+        escript = ":escript",
+        app_file_tool = ":app_file_tool",
+        compile_first = ":compile_first",
+        visibility = ["//:__subpackages__"],
+    )
+
+    erlang_installation(
+        name = "erlang_installation",
+        otp = ":otp",
+        erl = ":erl",
+        erlc = ":erlc",
+        escript = ":escript",
+        app_file_tool = ":app_file_tool",
+        compile_first = ":compile_first",
+        shard_suite = ":shard_suite",
+        xrefr = "//bazel/xref_runner:xrefr",
         visibility = ["//visibility:public"],
     )

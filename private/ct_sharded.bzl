@@ -11,7 +11,7 @@ load(
     "windows_path",
 )
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -31,6 +31,9 @@ def _impl(ctx):
         ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
+
+    shard_suite = ctx.attr.erlang_installation[ErlangInstallationInfo].shard_suite
+    shard_suite_path = shard_suite[DefaultInfo].files_to_run.executable.short_path
 
     if not ctx.attr.is_windows:
         test_env_commands = []
@@ -95,7 +98,7 @@ set -x
             erlang_home = erlang_home,
             package = package,
             erl_libs_path = erl_libs_path,
-            shard_suite = ctx.file._shard_suite_escript.short_path,
+            shard_suite = shard_suite_path,
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
             dir = short_dirname(ctx.files.compiled_suites[0]),
@@ -171,7 +174,7 @@ exit /b %CT_RUN_ERRORLEVEL%
             package = package,
             erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path,
-            shard_suite = ctx.file._shard_suite_escript.short_path,
+            shard_suite = shard_suite_path,
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
             dir = short_dirname(ctx.files.compiled_suites[0]),
@@ -189,7 +192,7 @@ exit /b %CT_RUN_ERRORLEVEL%
         [
             ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
         ] + [
-            ctx.attr.shard_suite[DefaultInfo].default_runfiles,
+            shard_suite[DefaultInfo].default_runfiles,
         ] + [
             tool[DefaultInfo].default_runfiles
             for tool in ctx.attr.tools
@@ -207,10 +210,6 @@ ct_sharded_test = rule(
         "erlang_installation": attr.label(
             mandatory = True,
             providers = [ErlangInstallationInfo],
-        ),
-        "shard_suite": attr.label(
-            executable = True,
-            cfg = "exec",
         ),
         "is_windows": attr.bool(mandatory = True),
         "suite_name": attr.string(mandatory = True),

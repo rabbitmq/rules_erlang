@@ -14,7 +14,7 @@ load(
     "path_join",
 )
 
-ErlangInstallationInfo = provider(
+ErlangBuildInfo = provider(
     doc = "A Home directory of a built Erlang/OTP",
     fields = ["release_dir", "erlang_home"],
 )
@@ -74,7 +74,7 @@ echo "$V" >> {status_path}
             DefaultInfo(
                 files = depset([status_file]),
             ),
-            ErlangInstallationInfo(
+            ErlangBuildInfo(
                 release_dir = None,
                 erlang_home = erlang_home,
             ),
@@ -145,13 +145,13 @@ find . -type l | xargs rm
             DefaultInfo(
                 files = depset([release_dir]),
             ),
-            ErlangInstallationInfo(
+            ErlangBuildInfo(
                 release_dir = release_dir,
                 erlang_home = install_path,
             ),
         ]
 
-erlang_installation = rule(
+erlang_build = rule(
     implementation = _impl,
     attrs = {
         "_use_external_erlang": attr.label(default = Label("//:use_external_erlang")),
@@ -164,8 +164,11 @@ erlang_installation = rule(
     },
 )
 
+def _build_info(ctx):
+    return ctx.attr.otp[ErlangBuildInfo]
+
 def erlang_dirs(ctx):
-    info = ctx.attr.erlang_installation[ErlangInstallationInfo]
+    info = _build_info(ctx)
     if info.release_dir != None:
         runfiles = ctx.runfiles([info.release_dir])
     else:
@@ -173,7 +176,7 @@ def erlang_dirs(ctx):
     return (info.erlang_home, info.release_dir, runfiles)
 
 def maybe_symlink_erlang(ctx, short_path = False):
-    info = ctx.attr.erlang_installation[ErlangInstallationInfo]
+    info = _build_info(ctx)
     release_dir = info.release_dir
     if release_dir == None:
         return ""

@@ -13,10 +13,6 @@ load(
     "DEFAULT_ERLANG_INSTALLATION",
 )
 load(
-    "//tools/compile_first:compile_first.bzl",
-    "DEFAULT_COMPILE_FIRST",
-)
-load(
     ":erlang_bytecode.bzl",
     "erlang_bytecode",
 )
@@ -37,7 +33,6 @@ def sanitize_sname(s):
 def ct_suite(
         name = "",
         erlang_installation = DEFAULT_ERLANG_INSTALLATION,
-        compile_first = DEFAULT_COMPILE_FIRST,
         suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
@@ -50,7 +45,6 @@ def ct_suite(
     erlang_bytecode(
         name = "{}_beam_files".format(suite_name),
         erlang_installation = erlang_installation,
-        compile_first = compile_first,
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
         erlc_opts = erlc_opts,

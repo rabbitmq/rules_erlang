@@ -1,10 +1,22 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
-load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(
+    "//tools:erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
 load(
     "//:util.bzl",
     "path_join",
 )
-load(":util.bzl", "additional_file_dest_relative_path")
+load(
+    ":util.bzl",
+    "additional_file_dest_relative_path",
+)
 
 DEFAULT_HEADERS = [
     "shebang",
@@ -98,7 +110,7 @@ halt().
         ),
     ]
 
-escript_private = rule(
+escript_archive = rule(
     implementation = _impl,
     attrs = {
         "erlang_installation": attr.label(

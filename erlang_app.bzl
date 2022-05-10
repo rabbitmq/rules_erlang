@@ -9,14 +9,6 @@ load(
     "//tools:erlang.bzl",
     "DEFAULT_ERLANG_INSTALLATION",
 )
-load(
-    "//tools/app_file_tool:app_file_tool.bzl",
-    "DEFAULT_APP_FILE_TOOL",
-)
-load(
-    "//tools/compile_first:compile_first.bzl",
-    "DEFAULT_COMPILE_FIRST",
-)
 
 DEFAULT_ERLC_OPTS = [
     "-Werror",
@@ -39,9 +31,7 @@ DEFAULT_TEST_ERLC_OPTS = [
 ErlangAppInfo = _ErlangAppInfo
 
 def erlang_app(
-        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
-        app_file_tool = DEFAULT_APP_FILE_TOOL,
-        compile_first = DEFAULT_COMPILE_FIRST,
+        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         app_name = "",
         app_version = "",
         app_description = "",
@@ -58,73 +48,69 @@ def erlang_app(
         deps = [],
         runtime_deps = [],
         stamp = -1):
-    all_beam = []
+    for erlang_installation in erlang_installations:
+        all_beam = []
 
-    if len(first_srcs) > 0:
-        all_beam = [":first_beam_files"]
+        if len(first_srcs) > 0:
+            all_beam = [":first_beam_files"]
+            erlang_bytecode(
+                name = "first_beam_files",
+                erlang_installation = erlang_installation,
+                hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
+                srcs = native.glob(first_srcs),
+                erlc_opts = erlc_opts,
+                dest = "ebin",
+                deps = build_deps + deps,
+            )
+
         erlang_bytecode(
-            name = "first_beam_files",
+            name = "beam_files",
             erlang_installation = erlang_installation,
-            compile_first = compile_first,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
-            srcs = native.glob(first_srcs),
+            srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
+            beam = all_beam,
             erlc_opts = erlc_opts,
             dest = "ebin",
             deps = build_deps + deps,
         )
 
-    erlang_bytecode(
-        name = "beam_files",
-        erlang_installation = erlang_installation,
-        compile_first = compile_first,
-        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
-        srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
-        beam = all_beam,
-        erlc_opts = erlc_opts,
-        dest = "ebin",
-        deps = build_deps + deps,
-    )
+        all_beam = all_beam + [":beam_files"]
 
-    all_beam = all_beam + [":beam_files"]
+        if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
+            app_file(
+                name = "app_file",
+                erlang_installation = erlang_installation,
+                app_name = app_name,
+                app_version = app_version,
+                app_description = app_description,
+                app_module = app_module,
+                app_registered = app_registered,
+                app_env = app_env,
+                app_extra_keys = app_extra_keys,
+                extra_apps = extra_apps,
+                app_src = native.glob(["src/{}.app.src".format(app_name)]),
+                modules = all_beam,
+                deps = deps + runtime_deps,
+                stamp = stamp,
+            )
+            app = ":app_file"
+        else:
+            app = "ebin/{}.app".format(app_name)
 
-    if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
-        app_file(
-            name = "app_file",
-            erlang_installation = erlang_installation,
-            app_file_tool = app_file_tool,
+        erlang_app_info(
+            name = "erlang_app",
             app_name = app_name,
-            app_version = app_version,
-            app_description = app_description,
-            app_module = app_module,
-            app_registered = app_registered,
-            app_env = app_env,
-            app_extra_keys = app_extra_keys,
-            extra_apps = extra_apps,
-            app_src = native.glob(["src/{}.app.src".format(app_name)]),
-            modules = all_beam,
+            hdrs = native.glob(["include/**/*.hrl"]),
+            app = app,
+            beam = all_beam,
+            priv = native.glob(["priv/**/*"]) + extra_priv,
+            license_files = native.glob(["LICENSE*"]) + extra_license_files,
             deps = deps + runtime_deps,
-            stamp = stamp,
+            visibility = ["//visibility:public"],
         )
-        app = ":app_file"
-    else:
-        app = "ebin/{}.app".format(app_name)
-
-    erlang_app_info(
-        name = "erlang_app",
-        app_name = app_name,
-        hdrs = native.glob(["include/**/*.hrl"]),
-        app = app,
-        beam = all_beam,
-        priv = native.glob(["priv/**/*"]) + extra_priv,
-        license_files = native.glob(["LICENSE*"]) + extra_license_files,
-        deps = deps + runtime_deps,
-        visibility = ["//visibility:public"],
-    )
 
 def test_erlang_app(
-        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
-        app_file_tool = DEFAULT_APP_FILE_TOOL,
-        compile_first = DEFAULT_COMPILE_FIRST,
+        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         app_name = "",
         app_version = "",
         app_description = "",
@@ -140,51 +126,50 @@ def test_erlang_app(
         build_deps = [],
         deps = [],
         runtime_deps = []):
-    all_test_beam = []
+    for erlang_installation in erlang_installations:
+        all_test_beam = []
 
-    if len(first_srcs) > 0:
-        all_test_beam = [":first_test_beam_files"]
+        if len(first_srcs) > 0:
+            all_test_beam = [":first_test_beam_files"]
+            erlang_bytecode(
+                name = "first_test_beam_files",
+                erlang_installation = erlang_installation,
+                hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
+                srcs = native.glob(first_srcs),
+                erlc_opts = erlc_opts,
+                dest = "test",
+                deps = build_deps + deps,
+                testonly = True,
+            )
+
         erlang_bytecode(
-            name = "first_test_beam_files",
+            name = "test_beam_files",
             erlang_installation = erlang_installation,
-            compile_first = compile_first,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
-            srcs = native.glob(first_srcs),
+            srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
+            beam = all_test_beam,
             erlc_opts = erlc_opts,
             dest = "test",
             deps = build_deps + deps,
             testonly = True,
         )
 
-    erlang_bytecode(
-        name = "test_beam_files",
-        erlang_installation = erlang_installation,
-        compile_first = compile_first,
-        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
-        srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
-        beam = all_test_beam,
-        erlc_opts = erlc_opts,
-        dest = "test",
-        deps = build_deps + deps,
-        testonly = True,
-    )
+        all_test_beam = all_test_beam + [":test_beam_files"]
 
-    all_test_beam = all_test_beam + [":test_beam_files"]
+        if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
+            app = ":app_file"
+        else:
+            app = "ebin/{}.app".format(app_name)
 
-    if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
-        app = ":app_file"
-    else:
-        app = "ebin/{}.app".format(app_name)
-
-    erlang_app_info(
-        name = "test_erlang_app",
-        app_name = app_name,
-        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
-        app = app,
-        beam = all_test_beam,
-        priv = native.glob(["priv/**/*"]) + extra_priv,
-        license_files = native.glob(["LICENSE*"]) + extra_license_files,
-        deps = deps + runtime_deps,
-        visibility = ["//visibility:public"],
-        testonly = True,
-    )
+        erlang_app_info(
+            name = "test_erlang_app",
+            app_name = app_name,
+            hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
+            app = app,
+            beam = all_test_beam,
+            priv = native.glob(["priv/**/*"]) + extra_priv,
+            license_files = native.glob(["LICENSE*"]) + extra_license_files,
+            deps = deps + runtime_deps,
+            visibility = ["//visibility:public"],
+            testonly = True,
+        )
