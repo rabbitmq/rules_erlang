@@ -28,13 +28,6 @@ load(
     "xref_runner",
 )
 
-def _rules_erlang_deps(ctx):
-    xref_runner()
-
-rules_erlang_deps = module_extension(
-    implementation = _rules_erlang_deps,
-)
-
 _RESOLVE_MAX_PASSES = 500
 
 def _resolve_pass(ctx, packages):
@@ -139,6 +132,8 @@ def _erlang_package(ctx):
             ],
             **props
         )
+
+    xref_runner()
 
     otp_installation_names = [
         props["name"]

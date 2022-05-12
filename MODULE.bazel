@@ -9,17 +9,6 @@ bazel_dep(
     version = "1.2.0",
 )
 
-rules_erlang_deps = use_extension(
-    "//bzlmod:extensions.bzl",
-    "rules_erlang_deps",
-)
-
-use_repo(
-    rules_erlang_deps,
-    "getopt_src",
-    "xref_runner_src",
-)
-
 erlang_package = use_extension(
     "//bzlmod:extensions.bzl",
     "erlang_package",
@@ -33,5 +22,6 @@ erlang_package.otp_github_release(
 use_repo(
     erlang_package,
     "otp_24.3.3",
-    "xref_runner",
+    "getopt_src",
+    "xref_runner_src",
 )
