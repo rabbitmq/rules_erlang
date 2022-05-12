@@ -62,7 +62,7 @@ def ct_suite(
             hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
             srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
             erlc_opts = erlc_opts,
-            dest = "test",
+            dest = "test-{}".format(suffix),
             deps = [":test_erlang_app-{}".format(suffix)] + deps_for_this_erlang,
             testonly = True,
         )
