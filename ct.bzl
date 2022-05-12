@@ -88,6 +88,7 @@ def ct_suite_variant(
         runtime_deps = [],
         tools = [],
         test_env = {},
+        tags = [],
         **kwargs):
     if suite_name == "":
         suite_name = name
@@ -109,6 +110,7 @@ def ct_suite_variant(
         tools = tools,
         test_env = test_env,
         suites = [suite_name],
+        tags = tags + [suffix],
         **kwargs
     )
 

@@ -25,6 +25,7 @@ def plt(
 
 def dialyze(
         erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
+        tags = [],
         **kwargs):
     for erlang_installation in erlang_installations:
         suffix = installation_suffix(erlang_installation)
@@ -36,5 +37,6 @@ def dialyze(
                 "@bazel_tools//src/conditions:host_windows": True,
                 "//conditions:default": False,
             }),
+            tags = tags + [suffix],
             **kwargs
         )
