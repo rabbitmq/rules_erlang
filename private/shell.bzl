@@ -6,7 +6,7 @@ load(
 )
 load(":util.bzl", "erl_libs_contents")
 load(
-    ":erlang_installation.bzl",
+    "//tools:erlang_installation.bzl",
     "ErlangInstallationInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
@@ -67,7 +67,7 @@ echo on
         executable = output,
     )]
 
-shell_private = rule(
+shell = rule(
     implementation = _impl,
     attrs = {
         "erlang_installation": attr.label(

@@ -22,6 +22,14 @@ load(
 DEFAULT_ERLANG_VERSION = "24.3.3"  # <- must match MODULE.bazel
 DEFAULT_ERLANG_INSTALLATION = "@otp_{}//:erlang_installation".format(DEFAULT_ERLANG_VERSION)
 
+ERLC_OPTS = [
+    "-Werror",
+    "+deterministic",
+    "+warn_export_vars",
+    "+warn_shadow_vars",
+    "+warn_obsolete_guard",
+]
+
 def standard_erlang_tools():
     erlang_build(
         name = "otp",
@@ -76,6 +84,7 @@ def standard_erlang_tools():
     erlang_bytecode(
         name = "app_file_tool_beam",
         erlang_installation = ":erlang_installation_minimal",
+        erlc_opts = ERLC_OPTS,
         srcs = [
             Label("//tools/app_file_tool:src/app_file_tool.erl"),
         ],
@@ -90,6 +99,7 @@ def standard_erlang_tools():
     erlang_bytecode(
         name = "compile_first_beam",
         erlang_installation = ":erlang_installation_minimal",
+        erlc_opts = ERLC_OPTS,
         srcs = [
             Label("//tools/compile_first:src/compile_first.erl"),
         ],
@@ -105,6 +115,7 @@ def standard_erlang_tools():
         name = "shard_suite_beam",
         dest = "alt",
         erlang_installation = ":erlang_installation_minimal",
+        erlc_opts = ERLC_OPTS,
         srcs = [
             Label("//tools/shard_suite:src/shard_suite.erl"),
         ],
@@ -142,4 +153,4 @@ def standard_erlang_tools():
 
 def installation_suffix(erlang_installation):
     wn = Label(erlang_installation).workspace_name
-    return wn.removeprefix(".erlang_package.")
+    return wn.removeprefix("rules_erlang").removeprefix(".erlang_package.")

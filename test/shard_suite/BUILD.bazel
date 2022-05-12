@@ -1,0 +1,84 @@
+load("@rules_erlang//:app_file.bzl", "app_file")
+load("@rules_erlang//:erlang_bytecode.bzl", "erlang_bytecode")
+load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
+load(
+    "@rules_erlang//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
+    "DEFAULT_TEST_ERLC_OPTS",
+)
+load("@rules_erlang//:xref.bzl", "xref")
+load(
+    "@rules_erlang//:dialyze.bzl",
+    "DEFAULT_PLT_APPS",
+    "dialyze",
+    "plt",
+)
+load("@rules_erlang//:ct.bzl", "ct_suite")
+load(
+    "@rules_erlang//tools:erlang.bzl",
+    "DEFAULT_ERLANG_INSTALLATION",
+    "installation_suffix",
+)
+
+APP_NAME = "shard_suite"
+
+APP_VERSION = "1.0.0"
+
+erlang_bytecode(
+    name = "beam_files",
+    srcs = ["@rules_erlang//tools/shard_suite:src/shard_suite.erl"],
+    dest = "ebin",
+    erlc_opts = DEFAULT_ERLC_OPTS,
+)
+
+erlang_bytecode(
+    name = "test_beam_files",
+    testonly = True,
+    srcs = ["@rules_erlang//tools/shard_suite:src/shard_suite.erl"],
+    dest = "test",
+    erlc_opts = DEFAULT_TEST_ERLC_OPTS + [
+        "+nowarn_export_all",
+    ],
+)
+
+app_file(
+    name = "app_file",
+    app_name = APP_NAME,
+    app_version = APP_VERSION,
+)
+
+erlang_app_info(
+    name = "erlang_app-{}".format(installation_suffix(DEFAULT_ERLANG_INSTALLATION)),
+    app = ":app_file",
+    app_name = APP_NAME,
+    beam = [":beam_files"],
+)
+
+erlang_app_info(
+    name = "test_erlang_app-{}".format(installation_suffix(DEFAULT_ERLANG_INSTALLATION)),
+    testonly = True,
+    app = ":app_file",
+    app_name = APP_NAME,
+    beam = [":test_beam_files"],
+)
+
+xref()
+
+plt(
+    name = "base_plt",
+    apps = DEFAULT_PLT_APPS + [
+        "crypto",
+    ],
+)
+
+dialyze(
+    plt = ":base_plt",
+)
+
+ct_suite(
+    name = "shard_suite_SUITE",
+    size = "small",
+    additional_srcs = [
+        "test/example_suite.erl",
+    ],
+)

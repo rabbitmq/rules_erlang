@@ -1,0 +1,5 @@
+load("@rules_erlang//:shell.bzl", "shell")
+
+shell(
+    name = "repl",
+)
