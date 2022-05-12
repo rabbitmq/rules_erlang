@@ -25,3 +25,12 @@ git_repository(
     branch = "linux-rbe",
     remote = "https://github.com/rabbitmq/rbe-erlang-platform.git",
 )
+
+local_repository(
+    name = "rules_erlang",
+    path = "..",
+)
+
+load(":rules_erlang.bzl", "rules_erlang_dependencies")
+
+rules_erlang_dependencies()
