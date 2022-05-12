@@ -12,7 +12,7 @@ def _module_name(f):
 
 def _impl(ctx):
     app_file = ctx.actions.declare_file(
-        path_join("ebin", "{}.app".format(ctx.attr.app_name)),
+        path_join(ctx.attr.dest, "{}.app".format(ctx.attr.app_name)),
     )
 
     if len(ctx.files.app_src) > 1:
@@ -179,6 +179,9 @@ app_file = rule(
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "dest": attr.string(
+            default = "ebin",
+        ),
         "stamp": attr.int(default = -1),
         "stamp_version_key": attr.string(
             default = "GIT_COMMIT",

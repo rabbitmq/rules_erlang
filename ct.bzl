@@ -11,6 +11,7 @@ load(
 load(
     "//tools:erlang.bzl",
     "DEFAULT_ERLANG_INSTALLATION",
+    "installation_suffix",
 )
 load(
     ":erlang_bytecode.bzl",
@@ -32,34 +33,48 @@ def sanitize_sname(s):
 
 def ct_suite(
         name = "",
-        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         suite_name = "",
         additional_hdrs = [],
         additional_srcs = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         deps = [],
+        runtime_deps = [],
         **kwargs):
     if suite_name == "":
         suite_name = name
 
-    erlang_bytecode(
-        name = "{}_beam_files".format(suite_name),
-        erlang_installation = erlang_installation,
-        hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
-        srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
-        erlc_opts = erlc_opts,
-        dest = "test",
-        deps = [":test_erlang_app"] + deps,
-        testonly = True,
-    )
+    for erlang_installation in erlang_installations:
+        suffix = installation_suffix(erlang_installation)
 
-    ct_suite_variant(
-        name = name,
-        erlang_installation = erlang_installation,
-        suite_name = suite_name,
-        deps = deps,
-        **kwargs
-    )
+        deps_for_this_erlang = [
+            "{}-{}".format(dep, suffix)
+            for dep in deps
+        ]
+        runtime_deps_for_this_erlang = [
+            "{}-{}".format(dep, suffix)
+            for dep in runtime_deps
+        ]
+
+        erlang_bytecode(
+            name = "{}_beam_files-{}".format(suite_name, suffix),
+            erlang_installation = erlang_installation,
+            hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
+            srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
+            erlc_opts = erlc_opts,
+            dest = "test",
+            deps = [":test_erlang_app-{}".format(suffix)] + deps_for_this_erlang,
+            testonly = True,
+        )
+
+        ct_suite_variant(
+            name = "{}-{}".format(name, suffix),
+            erlang_installation = erlang_installation,
+            suite_name = suite_name,
+            deps = deps_for_this_erlang,
+            runtime_deps = runtime_deps_for_this_erlang,
+            **kwargs
+        )
 
     return suite_name
 
@@ -79,6 +94,8 @@ def ct_suite_variant(
 
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
+    suffix = installation_suffix(erlang_installation)
+
     ct_test(
         name = name,
         erlang_installation = erlang_installation,
@@ -86,9 +103,9 @@ def ct_suite_variant(
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
         }),
-        compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
+        compiled_suites = [":{}_beam_files-{}".format(suite_name, suffix)] + additional_beam,
         data = data_dir_files + data,
-        deps = [":test_erlang_app"] + deps + runtime_deps,
+        deps = [":test_erlang_app-{}".format(suffix)] + deps + runtime_deps,
         tools = tools,
         test_env = test_env,
         suites = [suite_name],

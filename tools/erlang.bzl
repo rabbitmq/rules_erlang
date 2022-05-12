@@ -139,3 +139,7 @@ def standard_erlang_tools():
         xrefr = "//bazel/xref_runner:xrefr",
         visibility = ["//visibility:public"],
     )
+
+def installation_suffix(erlang_installation):
+    wn = Label(erlang_installation).workspace_name
+    return wn.removeprefix(".erlang_package.")

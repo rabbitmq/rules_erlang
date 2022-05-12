@@ -10,6 +10,7 @@ load(
 load(
     "//tools:erlang.bzl",
     "DEFAULT_ERLANG_INSTALLATION",
+    "installation_suffix",
 )
 
 DEFAULT_PLT_APPS = _DEFAULT_PLT_APPS
@@ -23,15 +24,17 @@ def plt(
     )
 
 def dialyze(
-        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
+        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         **kwargs):
-    dialyze_test(
-        name = "dialyze",
-        erlang_installation = erlang_installation,
-        target = ":erlang_app",
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
-        **kwargs
-    )
+    for erlang_installation in erlang_installations:
+        suffix = installation_suffix(erlang_installation)
+        dialyze_test(
+            name = "dialyze-{}".format(suffix),
+            erlang_installation = erlang_installation,
+            target = ":erlang_app-{}".format(suffix),
+            is_windows = select({
+                "@bazel_tools//src/conditions:host_windows": True,
+                "//conditions:default": False,
+            }),
+            **kwargs
+        )

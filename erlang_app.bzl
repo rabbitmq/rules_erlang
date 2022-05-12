@@ -8,6 +8,7 @@ load(
 load(
     "//tools:erlang.bzl",
     "DEFAULT_ERLANG_INSTALLATION",
+    "installation_suffix",
 )
 
 DEFAULT_ERLC_OPTS = [
@@ -49,36 +50,38 @@ def erlang_app(
         runtime_deps = [],
         stamp = -1):
     for erlang_installation in erlang_installations:
+        suffix = installation_suffix(erlang_installation)
+
         all_beam = []
 
         if len(first_srcs) > 0:
-            all_beam = [":first_beam_files"]
+            all_beam = [":first_beam_files-{}".format(suffix)]
             erlang_bytecode(
-                name = "first_beam_files",
+                name = "first_beam_files-{}".format(suffix),
                 erlang_installation = erlang_installation,
                 hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
                 srcs = native.glob(first_srcs),
                 erlc_opts = erlc_opts,
-                dest = "ebin",
+                dest = "ebin-{}".format(suffix),
                 deps = build_deps + deps,
             )
 
         erlang_bytecode(
-            name = "beam_files",
+            name = "beam_files-{}".format(suffix),
             erlang_installation = erlang_installation,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
             beam = all_beam,
             erlc_opts = erlc_opts,
-            dest = "ebin",
+            dest = "ebin-{}".format(suffix),
             deps = build_deps + deps,
         )
 
-        all_beam = all_beam + [":beam_files"]
+        all_beam = all_beam + [":beam_files-{}".format(suffix)]
 
         if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
             app_file(
-                name = "app_file",
+                name = "app_file-{}".format(suffix),
                 erlang_installation = erlang_installation,
                 app_name = app_name,
                 app_version = app_version,
@@ -91,14 +94,15 @@ def erlang_app(
                 app_src = native.glob(["src/{}.app.src".format(app_name)]),
                 modules = all_beam,
                 deps = deps + runtime_deps,
+                dest = "ebin-{}".format(suffix),
                 stamp = stamp,
             )
-            app = ":app_file"
+            app = ":app_file-{}".format(suffix)
         else:
             app = "ebin/{}.app".format(app_name)
 
         erlang_app_info(
-            name = "erlang_app",
+            name = "erlang_app-{}".format(suffix),
             app_name = app_name,
             hdrs = native.glob(["include/**/*.hrl"]),
             app = app,
@@ -127,42 +131,44 @@ def test_erlang_app(
         deps = [],
         runtime_deps = []):
     for erlang_installation in erlang_installations:
+        suffix = installation_suffix(erlang_installation)
+
         all_test_beam = []
 
         if len(first_srcs) > 0:
-            all_test_beam = [":first_test_beam_files"]
+            all_test_beam = [":first_test_beam_files-{}".format(suffix)]
             erlang_bytecode(
-                name = "first_test_beam_files",
+                name = "first_test_beam_files-{}".format(suffix),
                 erlang_installation = erlang_installation,
                 hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
                 srcs = native.glob(first_srcs),
                 erlc_opts = erlc_opts,
-                dest = "test",
+                dest = "test-{}".format(suffix),
                 deps = build_deps + deps,
                 testonly = True,
             )
 
         erlang_bytecode(
-            name = "test_beam_files",
+            name = "test_beam_files-{}".format(suffix),
             erlang_installation = erlang_installation,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             srcs = native.glob(["src/**/*.erl"], exclude = first_srcs),
             beam = all_test_beam,
             erlc_opts = erlc_opts,
-            dest = "test",
+            dest = "test-{}".format(suffix),
             deps = build_deps + deps,
             testonly = True,
         )
 
-        all_test_beam = all_test_beam + [":test_beam_files"]
+        all_test_beam = all_test_beam + [":test_beam_files-{}".format(suffix)]
 
         if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
-            app = ":app_file"
+            app = ":app_file-{}".format(suffix)
         else:
             app = "ebin/{}.app".format(app_name)
 
         erlang_app_info(
-            name = "test_erlang_app",
+            name = "test_erlang_app-{}".format(suffix),
             app_name = app_name,
             hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]),
             app = app,
