@@ -1,12 +1,15 @@
 load(
     "//private:ct.bzl",
-    "ct_test",
     _code_paths = "code_paths",
     _sanitize_sname = "sanitize_sname",
 )
 load(
     "//private:util.bzl",
     _additional_file_dest_relative_path = "additional_file_dest_relative_path",
+)
+load(
+    "//private:ct_sharded.bzl",
+    "ct_sharded_test",
 )
 load(
     "//tools:erlang.bzl",
@@ -33,8 +36,8 @@ def sanitize_sname(s):
 
 def ct_suite(
         name = "",
-        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         suite_name = "",
+        erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         additional_hdrs = [],
         additional_srcs = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
@@ -80,14 +83,12 @@ def ct_suite(
 
 def ct_suite_variant(
         name = "",
-        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
         suite_name = "",
+        erlang_installation = DEFAULT_ERLANG_INSTALLATION,
         additional_beam = [],
         data = [],
         deps = [],
         runtime_deps = [],
-        tools = [],
-        test_env = {},
         tags = [],
         **kwargs):
     if suite_name == "":
@@ -97,8 +98,9 @@ def ct_suite_variant(
 
     suffix = installation_suffix(erlang_installation)
 
-    ct_test(
+    ct_sharded_test(
         name = name,
+        suite_name = suite_name,
         erlang_installation = erlang_installation,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
@@ -107,9 +109,6 @@ def ct_suite_variant(
         compiled_suites = [":{}_beam_files-{}".format(suite_name, suffix)] + additional_beam,
         data = data_dir_files + data,
         deps = [":test_erlang_app-{}".format(suffix)] + deps + runtime_deps,
-        tools = tools,
-        test_env = test_env,
-        suites = [suite_name],
         tags = tags + [suffix],
         **kwargs
     )
