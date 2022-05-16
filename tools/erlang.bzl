@@ -19,8 +19,9 @@ load(
     "erlang_installation",
 )
 
-DEFAULT_ERLANG_VERSION = "24.3.3"  # <- must match MODULE.bazel
-DEFAULT_ERLANG_INSTALLATION = "@otp_{}//:erlang_installation".format(DEFAULT_ERLANG_VERSION)
+DEFAULT_ERLANG_VERSION = "24.3.3"
+DEFAULT_ERLANG_SHA256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d"
+DEFAULT_ERLANG_INSTALLATION = "@otp_default//:erlang_installation"
 
 ERLC_OPTS = [
     "-Werror",

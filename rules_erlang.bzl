@@ -9,25 +9,22 @@ load(
     "OTP_PATCH_XREF_RUNNER_DIR",
 )
 load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_VERSION",
+    "DEFAULT_ERLANG_SHA256",
+)
+load(
     ":hex_archive.bzl",
     "hex_archive",
 )
 
-def rules_erlang_dependencies(
-        erlang_version = "24.3.3",
-        erlang_sha256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d",
-        rules_erlang_workspace = "@rules_erlang"):
+def rules_erlang_dependencies(rules_erlang_workspace = "@rules_erlang"):
     xref_runner()
-    http_archive(
-        name = "otp_{}".format(erlang_version),
-        url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = erlang_version),
-        strip_prefix = "otp_src_{}".format(erlang_version),
-        sha256 = erlang_sha256,
-        build_file_content = OTP_BUILD_FILE_CONTENT.replace("@rules_erlang", rules_erlang_workspace),
-        patch_cmds = [
-            OTP_PATCH_GETOPT_DIR.replace("@rules_erlang", rules_erlang_workspace),
-            OTP_PATCH_XREF_RUNNER_DIR.replace("@rules_erlang", rules_erlang_workspace),
-        ],
+    otp_github_release(
+        name = "otp_default",
+        version = DEFAULT_ERLANG_VERSION,
+        sha256 = DEFAULT_ERLANG_SHA256,
+        rules_erlang_workspace = rules_erlang_workspace,
     )
 
 def xref_runner():
@@ -64,4 +61,22 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 """,
+    )
+
+def otp_github_release(
+    name = None,
+    version = None,
+    sha256 = None,
+    rules_erlang_workspace = "@rules_erlang",
+):
+    http_archive(
+        name = name,
+        url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = version),
+        strip_prefix = "otp_src_{}".format(version),
+        sha256 = sha256,
+        build_file_content = OTP_BUILD_FILE_CONTENT.replace("@rules_erlang", rules_erlang_workspace),
+        patch_cmds = [
+            OTP_PATCH_GETOPT_DIR.replace("@rules_erlang", rules_erlang_workspace),
+            OTP_PATCH_XREF_RUNNER_DIR.replace("@rules_erlang", rules_erlang_workspace),
+        ],
     )

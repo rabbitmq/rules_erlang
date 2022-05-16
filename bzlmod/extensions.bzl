@@ -27,6 +27,11 @@ load(
     "//:rules_erlang.bzl",
     "xref_runner",
 )
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_VERSION",
+    "DEFAULT_ERLANG_SHA256",
+)
 
 _RESOLVE_MAX_PASSES = 500
 
@@ -113,6 +118,15 @@ def _erlang_package(ctx):
                 "sha256": archive.sha256,
             }
             otp_archives = merge_archive(props, otp_archives)
+        for archive in mod.tags.otp_default:
+            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = DEFAULT_ERLANG_VERSION)
+            props = {
+                "name": "otp_default",
+                "url": url,
+                "strip_prefix": "otp_src_{}".format(DEFAULT_ERLANG_VERSION),
+                "sha256": DEFAULT_ERLANG_SHA256,
+            }
+            otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
             url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = release.version)
             props = {
@@ -178,6 +192,8 @@ def _erlang_package(ctx):
     for p in resolved:
         p.f_fetch(ctx, p)
 
+otp_default_tag = tag_class()
+
 otp_http_archive_tag = tag_class(attrs = {
     "name": attr.string(),
     "url": attr.string(),
@@ -217,6 +233,7 @@ git_package_tag = tag_class(attrs = {
 erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
+        "otp_default": otp_default_tag,
         "otp_http_archive": otp_http_archive_tag,
         "otp_github_release": otp_github_release_tag,
         "hex_package": hex_package_tag,

@@ -18,12 +18,9 @@ erlang_package = use_extension(
     "erlang_package",
 )
 
-erlang_package.otp_github_release(
-    version = "24.3.3",
-    sha256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d",
-)
+erlang_package.otp_default()
 
 use_repo(
     erlang_package,
-    "otp_24.3.3",
+    "otp_default",
 )
