@@ -1,28 +1,18 @@
 load(
     "@bazel_skylib//rules:common_settings.bzl",
     "bool_flag",
-)
-load(
-    ":erlang_home.bzl",
-    "erlang_home",
-    "erlang_version",
+    "string_list_flag",
 )
 
-# This allows us to
-# `bazel build //my/target \
-#    --@bazel-erlang//:erlang_home=/path/to/erlang/installation`
-erlang_home(
+string_list_flag(
     name = "erlang_home",
-    build_setting_default = "~/kerl/23.1",
+    build_setting_default = ["/usr/local/lib/erlang"],
     visibility = ["//visibility:public"],
 )
 
-# This allows us to
-# `bazel build //my/target \
-#    --@bazel-erlang//:erlang_version=23.1`
-erlang_version(
+string_list_flag(
     name = "erlang_version",
-    build_setting_default = "23.1",
+    build_setting_default = ["24.3"],
     visibility = ["//visibility:public"],
 )
 

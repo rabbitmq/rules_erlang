@@ -3,11 +3,6 @@ load(
     "BuildSettingInfo",
 )
 load(
-    "//:erlang_home.bzl",
-    "ErlangHomeProvider",
-    "ErlangVersionProvider",
-)
-load(
     "//:util.bzl",
     "BEGINS_WITH_FUN",
     "QUERY_ERL_VERSION",
@@ -41,8 +36,8 @@ def _install_root(install_prefix):
 
 def _impl(ctx):
     if ctx.attr._use_external_erlang[BuildSettingInfo].value:
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path
+        erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value[ctx.attr.index]
+        erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value[ctx.attr.index]
 
         status_file = ctx.actions.declare_file(ctx.label.name + "_status")
 
@@ -161,6 +156,7 @@ erlang_build = rule(
         "sources": attr.label_list(allow_files = True, mandatory = True),
         "extra_env": attr.string_dict(),
         "extra_configure_opts": attr.string_list(),
+        "index": attr.int(mandatory = True),
     },
 )
 

@@ -3,7 +3,7 @@ OTP_BUILD_FILE_CONTENT = """load(
     "standard_erlang_tools",
 )
 
-standard_erlang_tools()
+standard_erlang_tools({index})
 """
 
 OTP_PATCH_GETOPT_DIR = """mkdir -p bazel/getopt

@@ -31,7 +31,7 @@ ERLC_OPTS = [
     "+warn_obsolete_guard",
 ]
 
-def standard_erlang_tools():
+def standard_erlang_tools(index):
     erlang_build(
         name = "otp",
         sources = native.glob(
@@ -51,6 +51,7 @@ def standard_erlang_tools():
             ],
             "//conditions:default": [],
         }),
+        index = index,
     )
 
     erlang_tool(

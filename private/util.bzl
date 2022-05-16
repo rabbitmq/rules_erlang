@@ -1,5 +1,8 @@
-load("//:erlang_home.bzl", "ErlangVersionProvider")
-load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
 load(
     "//:util.bzl",
     "path_join",
