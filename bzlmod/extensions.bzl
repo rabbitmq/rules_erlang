@@ -146,6 +146,11 @@ def _erlang_package(ctx):
         if indexes[i] != i:
             fail("otp versions specified are not indexed properly: {}".format(name_index_map))
 
+    if len(otp_archives) > 0:
+        log(ctx, "Final OTP list:")
+    for props in otp_archives:
+        log(ctx, "    {} -> {}".format(props["name"], props["url"]))
+
     for props in otp_archives:
         index = props.pop("index")
         http_archive(
