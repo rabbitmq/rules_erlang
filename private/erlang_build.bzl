@@ -35,9 +35,12 @@ def _install_root(install_prefix):
     return "/" + root_dir
 
 def _impl(ctx):
-    if ctx.attr._use_external_erlang[BuildSettingInfo].value:
-        erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value[ctx.attr.index]
-        erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value[ctx.attr.index]
+    use_external_erlang = ctx.attr._use_external_erlang[BuildSettingInfo].value
+    erlang_homes = ctx.attr._erlang_home[BuildSettingInfo].value
+    erlang_versions = ctx.attr._erlang_version[BuildSettingInfo].value
+    if use_external_erlang and ctx.attr.index < len(erlang_homes) and ctx.attr.index < len(erlang_versions):
+        erlang_version = erlang_versions[ctx.attr.index]
+        erlang_home = erlang_homes[ctx.attr.index]
 
         status_file = ctx.actions.declare_file(ctx.label.name + "_status")
 

@@ -6,13 +6,13 @@ load(
 
 string_list_flag(
     name = "erlang_home",
-    build_setting_default = ["/usr/local/lib/erlang"],
+    build_setting_default = [],
     visibility = ["//visibility:public"],
 )
 
 string_list_flag(
     name = "erlang_version",
-    build_setting_default = ["24.3"],
+    build_setting_default = [],
     visibility = ["//visibility:public"],
 )
 
