@@ -2,7 +2,6 @@ ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",
     fields = {
         "app_name": "Name of the erlang application",
-        "erlang_version": "The erlang version used to produce the beam files",
         "include": "Public header files",
         "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",

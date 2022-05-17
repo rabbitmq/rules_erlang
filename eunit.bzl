@@ -36,7 +36,6 @@ def eunit(
         erlang_bytecode(
             name = "test_case_beam_files-{}".format(suffix),
             erlang_installation = erlang_installation,
-            compile_first = compile_first,
             hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
             srcs = srcs,
             erlc_opts = erlc_opts,
