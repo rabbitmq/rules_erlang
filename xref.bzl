@@ -5,6 +5,8 @@ load(
     "installation_suffix",
 )
 
+XREF_TAG = "xref"
+
 def xref(
         erlang_installations = [DEFAULT_ERLANG_INSTALLATION],
         tags = [],
@@ -19,6 +21,6 @@ def xref(
                 "@bazel_tools//src/conditions:host_windows": True,
                 "//conditions:default": False,
             }),
-            tags = tags + [suffix],
+            tags = tags + [suffix, XREF_TAG],
             **kwargs
         )

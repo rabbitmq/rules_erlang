@@ -5,6 +5,12 @@ load(
     "windows_path",
 )
 load(":util.bzl", "erl_libs_contents")
+load(
+    "//tools:erlang_installation.bzl",
+    "ErlangInstallationInfo",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def _to_atom_list(l):
     return "[" + ",".join(["'{}'".format(i) for i in l]) + "]"
