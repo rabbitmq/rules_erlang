@@ -1,6 +1,5 @@
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -58,10 +57,10 @@ halt().
 escript_flat = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
+        # "erlang_installation": attr.label(
+        #     mandatory = True,
+        #     providers = [ErlangInstallationInfo],
+        # ),
         "src": attr.label(
             allow_single_file = [".erl"],
         ),
@@ -70,4 +69,5 @@ escript_flat = rule(
         ),
         "out": attr.string(),
     },
+    toolchains = ["//tools:toolchain_type"],
 )

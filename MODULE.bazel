@@ -14,8 +14,11 @@ erlang_package = use_extension(
     "erlang_package",
 )
 
+erlang_package.otp_default()
+
 use_repo(
     erlang_package,
+    "otp_default",
     "getopt_src",
     "xref_runner_src",
 )

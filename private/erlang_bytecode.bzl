@@ -2,8 +2,7 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(":util.bzl", "erl_libs_contents")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -63,10 +62,10 @@ def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     compile_first_path = ""
-    compile_first = ctx.attr.erlang_installation[ErlangInstallationInfo].compile_first
-    if compile_first != None:
-        compile_first_path = compile_first[DefaultInfo].files_to_run.executable.path
-        runfiles = runfiles.merge(compile_first[DefaultInfo].default_runfiles)
+    # compile_first = ctx.attr.erlang_installation[ErlangInstallationInfo].compile_first
+    # if compile_first != None:
+    #     compile_first_path = compile_first[DefaultInfo].files_to_run.executable.path
+    #     runfiles = runfiles.merge(compile_first[DefaultInfo].default_runfiles)
 
     script = """set -euo pipefail
 
@@ -129,10 +128,10 @@ fi
 erlang_bytecode = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
+        # "erlang_installation": attr.label(
+        #     mandatory = True,
+        #     providers = [ErlangInstallationInfo],
+        # ),
         "hdrs": attr.label_list(
             allow_files = [".hrl"],
         ),
@@ -151,4 +150,5 @@ erlang_bytecode = rule(
             default = "ebin",
         ),
     },
+    toolchains = ["//tools:toolchain_type"],
 )

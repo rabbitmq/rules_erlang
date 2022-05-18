@@ -1,6 +1,5 @@
 load(
     ":erlang_build.bzl",
-    "ErlangBuildInfo",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -36,11 +35,12 @@ exec "{erlang_home}"/{path} $@
 erlang_tool = rule(
     implementation = _impl,
     attrs = {
-        "otp": attr.label(
-            mandatory = True,
-            providers = [ErlangBuildInfo],
-        ),
+        # "otp": attr.label(
+        #     mandatory = True,
+        #     providers = [ErlangBuildInfo],
+        # ),
         "path": attr.string(default = DEFAULT_PATH),
     },
+    toolchains = ["//tools:toolchain_type"],
     executable = True,
 )

@@ -3,76 +3,24 @@ load(
     "OtpInfo",
 )
 
-# NOTE: probably this file goes away
-
-ErlangInstallationInfo = provider(
-    fields = [
-        "otp",
-        "erl",
-        "erlc",
-        "escript",
-        "app_file_tool",
-        "compile_first",
-        "shard_suite",
-        "xrefr",
-    ],
-)
-
 def _impl(ctx):
-    return [ErlangInstallationInfo(
-        otp = ctx.attr.otp,
-        erl = ctx.attr.erl,
-        erlc = ctx.attr.erlc,
-        escript = ctx.attr.escript,
-        app_file_tool = ctx.attr.app_file_tool,
-        compile_first = ctx.attr.compile_first,
-        shard_suite = ctx.attr.shard_suite,
-        xrefr = ctx.attr.xrefr,
-    )]
+    toolchain_info = platform_common.ToolchainInfo(
+        otpinfo = ctx.attr.otp[OtpInfo],
+    )
+    return [toolchain_info]
 
-erlang_installation = rule(
+erlang_toolchain = rule(
     implementation = _impl,
     attrs = {
         "otp": attr.label(
             mandatory = True,
             providers = [OtpInfo],
         ),
-        "erl": attr.label(
-            mandatory = True,
-            executable = True,
-            cfg = "exec",
-        ),
-        "erlc": attr.label(
-            mandatory = True,
-            executable = True,
-            cfg = "exec",
-        ),
-        "escript": attr.label(
-            mandatory = True,
-            executable = True,
-            cfg = "exec",
-        ),
-        "app_file_tool": attr.label(
-            executable = True,
-            cfg = "exec",
-        ),
-        "compile_first": attr.label(
-            executable = True,
-            cfg = "exec",
-        ),
-        "shard_suite": attr.label(
-            executable = True,
-            cfg = "exec",
-        ),
-        "xrefr": attr.label(
-            executable = True,
-            cfg = "exec",
-        ),
     },
 )
 
 def _build_info(ctx):
-    return ctx.attr.erlang_installation[ErlangInstallationInfo].otp[OtpInfo]
+    return ctx.toolchains["//tools:toolchain_type"].otpinfo
 
 def erlang_dirs(ctx):
     info = _build_info(ctx)

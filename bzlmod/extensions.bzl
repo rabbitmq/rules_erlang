@@ -29,6 +29,7 @@ load(
 )
 load(
     "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_MAJOR",
     "DEFAULT_ERLANG_SHA256",
     "DEFAULT_ERLANG_VERSION",
 )
@@ -116,7 +117,7 @@ def _erlang_package(ctx):
                 "url": archive.url,
                 "strip_prefix": archive.strip_prefix,
                 "sha256": archive.sha256,
-                "index": archive.index,
+                "major_version": archive.major_version,
             }
             otp_archives = merge_archive(props, otp_archives)
         for archive in mod.tags.otp_default:
@@ -126,7 +127,7 @@ def _erlang_package(ctx):
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(DEFAULT_ERLANG_VERSION),
                 "sha256": DEFAULT_ERLANG_SHA256,
-                "index": 0,
+                "major_version": DEFAULT_ERLANG_MAJOR,
             }
             otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
@@ -136,15 +137,23 @@ def _erlang_package(ctx):
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
-                "index": release.index,
+                "major_version": release.major_version,
             }
             otp_archives = merge_archive(props, otp_archives)
 
-    name_index_map = {props["name"]: props["index"] for props in otp_archives}
-    indexes = [props["index"] for props in otp_archives]
-    for i in range(len(indexes)):
-        if indexes[i] != i:
-            fail("otp versions specified are not indexed properly: {}".format(name_index_map))
+    # name_index_map = {props["name"]: props["index"] for props in otp_archives}
+    # indexes = [props["index"] for props in otp_archives]
+    # for i in range(len(indexes)):
+    #     if indexes[i] != i:
+    #         fail("otp versions specified are not indexed properly: {}".format(name_index_map))
+    # toolchains = [
+    #     "@{}//:erlang_linux_toolchain".format(props["name"])
+    #     for props in otp_archives
+    # ]
+    # native.register_toolchains(
+    #     "@rules_erlang//tools:erlang_external_toolchain",
+    #     *toolchains
+    # )
 
     if len(otp_archives) > 0:
         log(ctx, "Final OTP list:")
@@ -152,9 +161,9 @@ def _erlang_package(ctx):
         log(ctx, "    {} -> {}".format(props["name"], props["url"]))
 
     for props in otp_archives:
-        index = props.pop("index")
+        major_version = props.pop("major_version")
         http_archive(
-            build_file_content = OTP_BUILD_FILE_CONTENT.format(index = index),
+            build_file_content = OTP_BUILD_FILE_CONTENT.format(major_version = major_version),
             patch_cmds = [
                 OTP_PATCH_GETOPT_DIR,
                 OTP_PATCH_XREF_RUNNER_DIR,
@@ -214,13 +223,13 @@ otp_http_archive_tag = tag_class(attrs = {
     "url": attr.string(),
     "strip_prefix": attr.string(),
     "sha256": attr.string(),
-    "index": attr.int(),
+    "major_version": attr.int(),
 })
 
 otp_github_release_tag = tag_class(attrs = {
     "version": attr.string(),
     "sha256": attr.string(),
-    "index": attr.int(),
+    "major_version": attr.int(),
 })
 
 hex_package_tree_tag = tag_class(attrs = {
