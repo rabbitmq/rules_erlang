@@ -17,15 +17,8 @@ load(
     "hex_archive",
 )
 
-def rules_erlang_dependencies(rules_erlang_workspace = "@rules_erlang"):
+def rules_erlang_dependencies():
     xref_runner_sources()
-    otp_github_release(
-        name = "otp_default",
-        version = DEFAULT_ERLANG_VERSION,
-        sha256 = DEFAULT_ERLANG_SHA256,
-        major_version = DEFAULT_ERLANG_MAJOR,
-        rules_erlang_workspace = rules_erlang_workspace,
-    )
 
 def xref_runner_sources():
     hex_archive(
@@ -61,6 +54,15 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 """,
+    )
+
+def otp_default(rules_erlang_workspace = "@rules_erlang"):
+    otp_github_release(
+        name = "otp_default",
+        version = DEFAULT_ERLANG_VERSION,
+        sha256 = DEFAULT_ERLANG_SHA256,
+        major_version = DEFAULT_ERLANG_MAJOR,
+        rules_erlang_workspace = rules_erlang_workspace,
     )
 
 def otp_github_release(

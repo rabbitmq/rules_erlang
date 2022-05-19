@@ -161,7 +161,6 @@ echo "$V" >> {status_path}
 erlang_external = rule(
     implementation = _erlang_external_impl,
     attrs = {
-        # "_use_external_erlang": attr.label(default = Label("//:use_external_erlang")),
         "_erlang_home": attr.label(default = Label("//:erlang_home")),
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
     },

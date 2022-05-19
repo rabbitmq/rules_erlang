@@ -13,14 +13,14 @@ local_path_override(
     path = "..",
 )
 
-# erlang_package = use_extension(
-#     "@rules_erlang//bzlmod:extensions.bzl",
-#     "erlang_package",
-# )
+erlang_package = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "erlang_package",
+)
 
-# erlang_package.otp_default()
+erlang_package.otp_default()
 
-# use_repo(
-#     erlang_package,
-#     "otp_default",
-# )
+use_repo(
+    erlang_package,
+    "otp_default",
+)

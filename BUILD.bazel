@@ -1,6 +1,5 @@
 load(
     "@bazel_skylib//rules:common_settings.bzl",
-    "bool_flag",
     "string_flag",
 )
 
@@ -16,11 +15,6 @@ string_flag(
 string_flag(
     name = "erlang_version",
     build_setting_default = "",
-)
-
-bool_flag(
-    name = "use_external_erlang",
-    build_setting_default = False,
 )
 
 constraint_setting(name = "erlang_major_version")
