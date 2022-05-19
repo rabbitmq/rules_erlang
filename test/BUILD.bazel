@@ -5,6 +5,11 @@ platform(
     constraint_values = [
         "@rules_erlang//:erlang_23",
     ],
+    exec_properties = {
+        "OSFamily": "Linux",
+        # linux-rbe
+        "container-image": "docker://pivotalrabbitmq/rabbitmq-server-buildenv:linux-rbe",
+    },
 )
 
 platform(
@@ -25,6 +30,11 @@ platform(
     constraint_values = [
         "@rules_erlang//:erlang_25",
     ],
+    exec_properties = {
+        "OSFamily": "Linux",
+        # linux-rbe
+        "container-image": "docker://pivotalrabbitmq/rabbitmq-server-buildenv:linux-rbe",
+    },
 )
 
 platform(
