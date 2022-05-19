@@ -28,7 +28,9 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //... --noexperimental_enable_bzlmod
+        bazelisk test //... \
+          --noexperimental_enable_bzlmod \
+          --platforms @rules_erlang//:erlang_external_platform
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
@@ -71,7 +73,7 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //... --noexperimental_enable_bzlmod
+        bazelisk test //... --noexperimental_enable_bzlmod --platforms @rules_erlang//:erlang_external_platform
     #! https://github.com/actions/upload-artifact/issues/240
     #! - name: RESOVLE TEST LOGS PATH
     #!   run: |
@@ -136,7 +138,9 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //... --config=rbe
+        bazelisk test //... \
+          --config=rbe \
+          --platforms @rules_erlang//:erlang_24_platform
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
