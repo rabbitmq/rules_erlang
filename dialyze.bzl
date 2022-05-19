@@ -18,7 +18,6 @@ def plt(**kwargs):
 def dialyze(
         name = "dialyze",
         target = ":erlang_app",
-        plt_apps = DEFAULT_PLT_APPS,
         tags = [],
         **kwargs):
     dialyze_test(
@@ -28,7 +27,6 @@ def dialyze(
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
         }),
-        plt_apps = plt_apps,
         tags = tags + [DIALYZE_TAG],
         **kwargs
     )

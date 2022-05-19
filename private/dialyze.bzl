@@ -1,6 +1,5 @@
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -80,10 +79,6 @@ EXIT /B 1
 dialyze_test = rule(
     implementation = _impl,
     attrs = {
-        # "erlang_installation": attr.label(
-        #     mandatory = True,
-        #     providers = [ErlangInstallationInfo],
-        # ),
         "is_windows": attr.bool(mandatory = True),
         "plt": attr.label(
             allow_single_file = [".plt"],
@@ -101,5 +96,6 @@ dialyze_test = rule(
         ),
         "warnings_as_errors": attr.bool(default = True),
     },
+    toolchains = ["//tools:toolchain_type"],
     test = True,
 )
