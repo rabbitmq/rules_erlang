@@ -14,22 +14,25 @@ build:rbe --config=buildbuddy
 
 build:rbe --remote_executor=grpcs://remote.buildbuddy.io
 
-build:rbe --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
-
-build:rbe --@rules_erlang//:use_external_erlang=false
+# build:rbe --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 
 build:rbe --spawn_strategy=remote
 build:rbe --test_strategy=""
 build:rbe --jobs=100
 
-build:rbe --crosstool_top=@rbe//cc:toolchain
-build:rbe --extra_toolchains=@rbe//config:cc-toolchain
+# build:rbe --crosstool_top=@rbe//cc:toolchain
+# build:rbe --extra_toolchains=@rbe//config:cc-toolchain
 
-build:rbe --host_platform=@rbe//config:platform
-build:rbe --platforms=@rbe//config:platform
-build:rbe --extra_execution_platforms=@rbe//config:platform
+# build:rbe --host_platform=@rbe//config:platform
+# build:rbe --platforms=@rbe//config:platform
+# build:rbe --extra_execution_platforms=@rbe//config:platform
 
-build:rbe --host_cpu=k8
-build:rbe --cpu=k8
+# build:rbe --host_cpu=k8
+# build:rbe --cpu=k8
+
+build:rbe-24 --config=rbe
+# build:rbe-24 --host_platform=//:erlang_24_platform
+build:rbe-24 --extra_execution_platforms=//:erlang_24_platform
+build:rbe-24 --platforms=//:erlang_24_platform
 
 try-import %workspace%/user.bazelrc

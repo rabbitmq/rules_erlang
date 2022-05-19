@@ -19,9 +19,10 @@ rules_erlang_dependencies(rules_erlang_workspace = "@")
 
 register_execution_platforms(
     "//:erlang_external_platform",
+    "//:erlang_24_platform",
 )
 
 register_toolchains(
     "//tools:erlang_external_toolchain",
-    # "@otp_default//:erlang_linux_toolchain",
+    "@otp_default//:erlang_linux_toolchain",
 )

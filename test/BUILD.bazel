@@ -1,32 +1,38 @@
 load("@rules_erlang//:shell.bzl", "shell")
 
-# platform(
-#     name = "erlang_23_platform",
-#     constraint_values = [
-#         "@rules_erlang//:erlang_23",
-#     ],
-# )
+platform(
+    name = "erlang_23_platform",
+    constraint_values = [
+        "@rules_erlang//:erlang_23",
+    ],
+)
 
-# platform(
-#     name = "erlang_24_platform",
-#     constraint_values = [
-#         "@rules_erlang//:erlang_24",
-#     ],
-# )
+platform(
+    name = "erlang_24_platform",
+    constraint_values = [
+        "@rules_erlang//:erlang_24",
+        # "@bazel_tools//tools/cpp:clang",
+    ],
+    exec_properties = {
+        "OSFamily": "Linux",
+        # linux-rbe
+        "container-image": "docker://pivotalrabbitmq/rabbitmq-server-buildenv:linux-rbe",
+    },
+)
 
-# platform(
-#     name = "erlang_25_platform",
-#     constraint_values = [
-#         "@rules_erlang//:erlang_25",
-#     ],
-# )
+platform(
+    name = "erlang_25_platform",
+    constraint_values = [
+        "@rules_erlang//:erlang_25",
+    ],
+)
 
-# platform(
-#     name = "erlang_external_platform",
-#     constraint_values = [
-#         "@rules_erlang//:erlang_external",
-#     ],
-# )
+platform(
+    name = "erlang_external_platform",
+    constraint_values = [
+        "@rules_erlang//:erlang_external",
+    ],
+)
 
 shell(
     name = "repl",

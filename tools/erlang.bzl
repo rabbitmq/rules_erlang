@@ -3,18 +3,6 @@ load(
     "erlang_build",
 )
 load(
-    "//private:erlang_bytecode.bzl",
-    "erlang_bytecode",
-)
-load(
-    "//private:erlang_tool.bzl",
-    "erlang_tool",
-)
-load(
-    "//private:escript_flat.bzl",
-    "escript_flat",
-)
-load(
     ":erlang_toolchain.bzl",
     "erlang_toolchain",
 )
@@ -34,7 +22,7 @@ ERLC_OPTS = [
 
 def standard_erlang_tools(major_version = -1):
     erlang_build(
-        name = "erlang_linux_build",
+        name = "otp_linux",
         sources = native.glob(
             ["**/*"],
             exclude = ["BUILD.bazel", "WORKSPACE.bazel"],
@@ -56,123 +44,21 @@ def standard_erlang_tools(major_version = -1):
 
     erlang_toolchain(
         name = "erlang_linux",
-        otp = ":erlang_linux_build",
+        otp = ":otp_linux",
     )
 
     native.toolchain(
         name = "erlang_linux_toolchain",
-        exec_compatible_with = [
-            "@platforms//os:linux",
-            "@platforms//cpu:x86_64",
-        ],
+        # exec_compatible_with = [
+        #     "@platforms//os:linux",
+        #     # "@platforms//cpu:x86_64",
+        # ],
         target_compatible_with = [
-            "@platforms//os:linux",
-            "@platforms//cpu:x86_64",
-            "@rules_erlang//:erlang_{}_platform".format(major_version),
+            # "@platforms//os:linux",
+            # "@platforms//cpu:x86_64",
+            "@rules_erlang//:erlang_{}".format(major_version),
         ],
         toolchain = ":erlang_linux",
         toolchain_type = "@rules_erlang//tools:toolchain_type",
+        visibility = ["//visibility:public"],
     )
-
-    # erlang_tool(
-    #     name = "erl",
-    #     otp = ":otp",
-    #     path = "bin/erl",
-    #     visibility = ["//visibility:public"],
-    # )
-
-    # erlang_tool(
-    #     name = "erlc",
-    #     otp = ":otp",
-    #     path = "bin/erlc",
-    #     visibility = ["//visibility:public"],
-    # )
-
-    # erlang_tool(
-    #     name = "escript",
-    #     otp = ":otp",
-    #     path = "bin/escript",
-    #     visibility = ["//visibility:public"],
-    # )
-
-    # erlang_toolchain(
-    #     name = "erlang_installation_minimal",
-    #     otp = ":otp",
-    #     erl = ":erl",
-    #     erlc = ":erlc",
-    #     escript = ":escript",
-    # )
-
-    # erlang_bytecode(
-    #     name = "app_file_tool_beam",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     erlc_opts = ERLC_OPTS,
-    #     srcs = [
-    #         Label("//tools/app_file_tool:src/app_file_tool.erl"),
-    #     ],
-    # )
-
-    # escript_flat(
-    #     name = "app_file_tool",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     beam = ":app_file_tool_beam",
-    # )
-
-    # erlang_bytecode(
-    #     name = "compile_first_beam",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     erlc_opts = ERLC_OPTS,
-    #     srcs = [
-    #         Label("//tools/compile_first:src/compile_first.erl"),
-    #     ],
-    # )
-
-    # escript_flat(
-    #     name = "compile_first",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     beam = ":compile_first_beam",
-    # )
-
-    # erlang_bytecode(
-    #     name = "shard_suite_beam",
-    #     dest = "alt",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     erlc_opts = ERLC_OPTS,
-    #     srcs = [
-    #         Label("//tools/shard_suite:src/shard_suite.erl"),
-    #     ],
-    # )
-
-    # escript_flat(
-    #     name = "shard_suite",
-    #     erlang_installation = ":erlang_installation_minimal",
-    #     beam = ":shard_suite_beam",
-    # )
-
-    # erlang_installation(
-    #     name = "erlang_installation_compilation",
-    #     otp = ":otp",
-    #     erl = ":erl",
-    #     erlc = ":erlc",
-    #     escript = ":escript",
-    #     app_file_tool = ":app_file_tool",
-    #     compile_first = ":compile_first",
-    #     visibility = ["//:__subpackages__"],
-    # )
-
-    # erlang_installation(
-    #     name = "erlang_installation",
-    #     otp = ":otp",
-    #     erl = ":erl",
-    #     erlc = ":erlc",
-    #     escript = ":escript",
-    #     app_file_tool = ":app_file_tool",
-    #     compile_first = ":compile_first",
-    #     shard_suite = ":shard_suite",
-    #     xrefr = "//bazel/xref_runner:xrefr",
-    #     visibility = ["//visibility:public"],
-    # )
-
-def installation_suffix(erlang_installation):
-    wn = Label(erlang_installation).workspace_name
-    return wn.removeprefix("rules_erlang").removeprefix(".erlang_package.")
