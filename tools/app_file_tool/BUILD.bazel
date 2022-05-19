@@ -12,12 +12,13 @@ load(
 )
 
 erlang_bytecode(
-    name = "app_file_tool_beam",
+    name = "beam_files",
     srcs = glob(["src/*.erl"]),
     erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 escript_flat(
     name = "app_file_tool",
-    beam = ":app_file_tool_beam",
+    beam = ":beam_files",
+    visibility = ["//visibility:public"],
 )

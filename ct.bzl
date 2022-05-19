@@ -4,9 +4,9 @@ load(
 )
 load(
     "//private:ct.bzl",
+    "ct_test",
     _code_paths = "code_paths",
     _sanitize_sname = "sanitize_sname",
-    "ct_test",
 )
 load(
     ":erlang_bytecode.bzl",

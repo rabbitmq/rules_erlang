@@ -14,12 +14,13 @@ load(
 exports_files(["src/shard_suite.erl"])
 
 erlang_bytecode(
-    name = "shard_suite_beam",
+    name = "beam_files",
     srcs = glob(["src/*.erl"]),
     erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 escript_flat(
     name = "shard_suite",
-    beam = ":shard_suite_beam",
+    beam = ":beam_files",
+    visibility = ["//visibility:public"],
 )

@@ -12,12 +12,13 @@ load(
 )
 
 erlang_bytecode(
-    name = "compile_first_beam",
+    name = "beam_files",
     srcs = glob(["src/*.erl"]),
     erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 escript_flat(
     name = "compile_first",
-    beam = ":compile_first_beam",
+    beam = ":beam_files",
+    visibility = ["//visibility:public"],
 )

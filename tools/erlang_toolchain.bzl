@@ -17,6 +17,7 @@ erlang_toolchain = rule(
             providers = [OtpInfo],
         ),
     },
+    provides = [platform_common.ToolchainInfo],
 )
 
 def _build_info(ctx):

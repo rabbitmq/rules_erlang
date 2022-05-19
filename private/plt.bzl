@@ -6,7 +6,6 @@ load(
     "maybe_symlink_erlang",
 )
 
-
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
 def _impl(ctx):
