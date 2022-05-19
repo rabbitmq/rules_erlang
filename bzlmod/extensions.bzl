@@ -11,8 +11,6 @@ load(
 load(
     ":otp.bzl",
     "OTP_BUILD_FILE_CONTENT",
-    "OTP_PATCH_GETOPT_DIR",
-    "OTP_PATCH_XREF_RUNNER_DIR",
     "merge_archive",
 )
 load(
@@ -25,7 +23,7 @@ load(
 )
 load(
     "//:rules_erlang.bzl",
-    "xref_runner",
+    "xref_runner_sources",
 )
 load(
     "//tools:erlang.bzl",
@@ -164,14 +162,10 @@ def _erlang_package(ctx):
         major_version = props.pop("major_version")
         http_archive(
             build_file_content = OTP_BUILD_FILE_CONTENT.format(major_version = major_version),
-            patch_cmds = [
-                OTP_PATCH_GETOPT_DIR,
-                OTP_PATCH_XREF_RUNNER_DIR,
-            ],
             **props
         )
 
-    xref_runner()
+    xref_runner_sources()
 
     otp_installation_names = [
         props["name"]

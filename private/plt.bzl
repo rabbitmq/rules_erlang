@@ -1,11 +1,11 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
+
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
@@ -62,10 +62,6 @@ set -x
 plt = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
         "plt": attr.label(
             allow_single_file = [".plt"],
         ),
@@ -79,4 +75,5 @@ plt = rule(
     outputs = {
         "plt": ".%{name}.plt",
     },
+    toolchains = ["//tools:toolchain_type"],
 )

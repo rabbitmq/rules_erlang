@@ -1,1 +1,25 @@
+load(
+    "//private:erlang_bytecode.bzl",
+    "erlang_bytecode",
+)
+load(
+    "//private:escript_flat.bzl",
+    "escript_flat",
+)
+load(
+    "//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
+)
+
 exports_files(["src/shard_suite.erl"])
+
+erlang_bytecode(
+    name = "shard_suite_beam",
+    srcs = glob(["src/*.erl"]),
+    erlc_opts = DEFAULT_ERLC_OPTS,
+)
+
+escript_flat(
+    name = "shard_suite",
+    beam = ":shard_suite_beam",
+)

@@ -7,16 +7,14 @@ load(
     "escript_flat",
 )
 load(
-    "//tools:erlang.bzl",
-    "ERLC_OPTS",
+    "//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
 )
-
-exports_files(["src/app_file_tool.erl"])
 
 erlang_bytecode(
     name = "app_file_tool_beam",
     srcs = glob(["src/*.erl"]),
-    erlc_opts = ERLC_OPTS,
+    erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 escript_flat(

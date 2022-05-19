@@ -14,11 +14,6 @@ load(
     "plt",
 )
 load("@rules_erlang//:ct.bzl", "ct_suite")
-load(
-    "@rules_erlang//tools:erlang.bzl",
-    "DEFAULT_ERLANG_INSTALLATION",
-    "installation_suffix",
-)
 
 APP_NAME = "shard_suite"
 
@@ -48,14 +43,14 @@ app_file(
 )
 
 erlang_app_info(
-    name = "erlang_app-{}".format(installation_suffix(DEFAULT_ERLANG_INSTALLATION)),
+    name = "erlang_app",
     app = ":app_file",
     app_name = APP_NAME,
     beam = [":beam_files"],
 )
 
 erlang_app_info(
-    name = "test_erlang_app-{}".format(installation_suffix(DEFAULT_ERLANG_INSTALLATION)),
+    name = "test_erlang_app",
     testonly = True,
     app = ":app_file",
     app_name = APP_NAME,

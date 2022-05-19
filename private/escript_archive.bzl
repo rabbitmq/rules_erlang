@@ -1,6 +1,5 @@
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -113,10 +112,6 @@ halt().
 escript_archive = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
         "out": attr.string(),
         "headers": attr.string_list(
             default = DEFAULT_HEADERS,
@@ -125,5 +120,6 @@ escript_archive = rule(
         "beam": attr.label_list(allow_files = [".beam"]),
         "app": attr.label(providers = [ErlangAppInfo]),
     },
+    toolchains = ["//tools:toolchain_type"],
     executable = True,
 )

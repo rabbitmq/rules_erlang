@@ -1,1 +1,23 @@
-exports_files(["src/compile_first.erl"])
+load(
+    "//private:erlang_bytecode.bzl",
+    "erlang_bytecode",
+)
+load(
+    "//private:escript_flat.bzl",
+    "escript_flat",
+)
+load(
+    "//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
+)
+
+erlang_bytecode(
+    name = "compile_first_beam",
+    srcs = glob(["src/*.erl"]),
+    erlc_opts = DEFAULT_ERLC_OPTS,
+)
+
+escript_flat(
+    name = "compile_first",
+    beam = ":compile_first_beam",
+)

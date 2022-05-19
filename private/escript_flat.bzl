@@ -57,10 +57,6 @@ halt().
 escript_flat = rule(
     implementation = _impl,
     attrs = {
-        # "erlang_installation": attr.label(
-        #     mandatory = True,
-        #     providers = [ErlangInstallationInfo],
-        # ),
         "src": attr.label(
             allow_single_file = [".erl"],
         ),

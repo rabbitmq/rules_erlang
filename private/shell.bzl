@@ -6,8 +6,7 @@ load(
 )
 load(":util.bzl", "erl_libs_contents")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -70,13 +69,10 @@ echo on
 shell = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
         "is_windows": attr.bool(mandatory = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "extra_erl_args": attr.string_list(),
     },
+    toolchains = ["//tools:toolchain_type"],
     executable = True,
 )

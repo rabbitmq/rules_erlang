@@ -80,10 +80,10 @@ EXIT /B 1
 dialyze_test = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
+        # "erlang_installation": attr.label(
+        #     mandatory = True,
+        #     providers = [ErlangInstallationInfo],
+        # ),
         "is_windows": attr.bool(mandatory = True),
         "plt": attr.label(
             allow_single_file = [".plt"],

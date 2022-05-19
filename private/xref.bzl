@@ -6,8 +6,7 @@ load(
 )
 load(":ct.bzl", "code_paths")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -48,7 +47,7 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    xrefr = ctx.attr.erlang_installation[ErlangInstallationInfo].xrefr
+    xrefr = ctx.attr.xrefr
     xrefr_path = xrefr[DefaultInfo].files_to_run.executable.short_path
 
     if not ctx.attr.is_windows:
@@ -107,9 +106,10 @@ echo on
 xref_test = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
+        "xrefr": attr.label(
             mandatory = True,
-            providers = [ErlangInstallationInfo],
+            executable = True,
+            cfg = "target",
         ),
         "is_windows": attr.bool(mandatory = True),
         "target": attr.label(
@@ -127,5 +127,6 @@ xref_test = rule(
             providers = [ErlangAppInfo],
         ),
     },
+    toolchains = ["//tools:toolchain_type"],
     test = True,
 )

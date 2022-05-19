@@ -128,10 +128,10 @@ fi
 erlang_bytecode = rule(
     implementation = _impl,
     attrs = {
-        # "erlang_installation": attr.label(
-        #     mandatory = True,
-        #     providers = [ErlangInstallationInfo],
-        # ),
+        "compile_first": attr.label(
+            executable = True,
+            cfg = "exec",
+        ),
         "hdrs": attr.label_list(
             allow_files = [".hrl"],
         ),

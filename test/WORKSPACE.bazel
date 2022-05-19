@@ -47,3 +47,8 @@ local_repository(
 load("@rules_erlang//:rules_erlang.bzl", "rules_erlang_dependencies")
 
 rules_erlang_dependencies()
+
+register_toolchains(
+    "@rules_erlang//tools:erlang_external_toolchain",
+    # "@otp_default//:erlang_linux_toolchain",
+)

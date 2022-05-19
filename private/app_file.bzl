@@ -1,8 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -45,8 +44,7 @@ def _impl(ctx):
 
     (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
 
-    app_file_tool = ctx.attr.erlang_installation[ErlangInstallationInfo].app_file_tool
-    app_file_tool_path = app_file_tool[DefaultInfo].files_to_run.executable.path
+    app_file_tool_path = ctx.attr.app_file_tool[DefaultInfo].files_to_run.executable.path
 
     script = """set -euo pipefail
 
@@ -142,7 +140,7 @@ fi
     )
 
     runfiles = runfiles.merge(
-        app_file_tool[DefaultInfo].default_runfiles,
+        ctx.attr.app_file_tool[DefaultInfo].default_runfiles,
     )
 
     inputs = depset(
@@ -164,9 +162,10 @@ fi
 app_file = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
+        "app_file_tool": attr.label(
             mandatory = True,
-            providers = [ErlangInstallationInfo],
+            executable = True,
+            cfg = "exec",
         ),
         "app_name": attr.string(mandatory = True),
         "app_version": attr.string(),
@@ -192,4 +191,5 @@ stable-status.txt as the app version if the build is stamped""",
         # TODO(https://github.com/bazelbuild/rules_pkg/issues/340): Remove this.
         "private_stamp_detect": attr.bool(default = False),
     },
+    toolchains = ["//tools:toolchain_type"],
 )

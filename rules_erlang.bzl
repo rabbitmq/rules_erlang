@@ -5,8 +5,6 @@ load(
 load(
     "//bzlmod:otp.bzl",
     "OTP_BUILD_FILE_CONTENT",
-    "OTP_PATCH_GETOPT_DIR",
-    "OTP_PATCH_XREF_RUNNER_DIR",
 )
 load(
     "//tools:erlang.bzl",
@@ -20,7 +18,7 @@ load(
 )
 
 def rules_erlang_dependencies(rules_erlang_workspace = "@rules_erlang"):
-    xref_runner()
+    xref_runner_sources()
     otp_github_release(
         name = "otp_default",
         version = DEFAULT_ERLANG_VERSION,
@@ -29,7 +27,7 @@ def rules_erlang_dependencies(rules_erlang_workspace = "@rules_erlang"):
         rules_erlang_workspace = rules_erlang_workspace,
     )
 
-def xref_runner():
+def xref_runner_sources():
     hex_archive(
         name = "getopt_src",
         package_name = "getopt",
@@ -77,10 +75,6 @@ def otp_github_release(
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,
         build_file_content = OTP_BUILD_FILE_CONTENT.format(major_version = major_version),
-        patch_cmds = [
-            OTP_PATCH_GETOPT_DIR,
-            OTP_PATCH_XREF_RUNNER_DIR,
-        ],
         repo_mapping = {
             "@rules_erlang": rules_erlang_workspace,
         },
