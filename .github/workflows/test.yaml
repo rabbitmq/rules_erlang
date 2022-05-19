@@ -21,7 +21,6 @@ jobs:
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         cat << EOF >> user.bazelrc
-          build --@rules_erlang//:use_external_erlang
           build --@rules_erlang//:erlang_version=${{ matrix.otp }}
           build --@rules_erlang//:erlang_home=${ERLANG_HOME}
         EOF
@@ -30,7 +29,7 @@ jobs:
       run: |
         bazelisk test //... \
           --noexperimental_enable_bzlmod \
-          --platforms @rules_erlang//:erlang_external_platform
+          --config=local
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
@@ -65,7 +64,6 @@ jobs:
           startup --windows_enable_symlinks
           build --enable_runfiles
 
-          build --@rules_erlang//:use_external_erlang
           build --@rules_erlang//:erlang_version=${{ matrix.otp }}
           build --@rules_erlang//:erlang_home="${ERL_PATH/\/bin\/erl/}"
         EOF
@@ -73,7 +71,7 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //... --noexperimental_enable_bzlmod --platforms @rules_erlang//:erlang_external_platform
+        bazelisk test //... --noexperimental_enable_bzlmod --config=local
     #! https://github.com/actions/upload-artifact/issues/240
     #! - name: RESOVLE TEST LOGS PATH
     #!   run: |
@@ -105,14 +103,14 @@ jobs:
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         cat << EOF >> user.bazelrc
-          build --@rules_erlang//:use_external_erlang
           build --@rules_erlang//:erlang_version=${{ matrix.otp }}
           build --@rules_erlang//:erlang_home=${ERLANG_HOME}
         EOF
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //...
+        bazelisk test //... \
+          --config=local
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
@@ -139,8 +137,7 @@ jobs:
       working-directory: test
       run: |
         bazelisk test //... \
-          --config=rbe \
-          --platforms @rules_erlang//:erlang_24_platform
+          --config=rbe-24
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
