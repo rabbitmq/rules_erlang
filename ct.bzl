@@ -39,7 +39,6 @@ def ct_suite(
         suite_name = name
 
     erlang_bytecode(
-        compile_first = "@rules_erlang//tools/compile_first:compile_first",
         name = "{}_beam_files".format(suite_name),
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
