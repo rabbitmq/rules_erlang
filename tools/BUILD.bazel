@@ -23,12 +23,6 @@ erlang_toolchain(
 
 toolchain(
     name = "erlang_external_toolchain",
-    # exec_compatible_with = [
-    #     "//:erlang_external",
-    # ],
-    target_compatible_with = [
-        "//:erlang_external",
-    ],
     toolchain = ":erlang_external",
     toolchain_type = ":toolchain_type",
     visibility = ["//visibility:public"],

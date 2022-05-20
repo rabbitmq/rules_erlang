@@ -22,7 +22,6 @@ build:rbe-24 --config=rbe
 build:rbe-24 --extra_execution_platforms=//:erlang_24_platform
 build:rbe-24 --platforms=//:erlang_24_platform
 
-build:local --extra_execution_platforms=//:erlang_external_platform
-build:local --platforms=//:erlang_external_platform
+build:local --extra_toolchains=@rules_erlang//tools:erlang_external_toolchain
 
 try-import %workspace%/user.bazelrc

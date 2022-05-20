@@ -14,8 +14,6 @@ OtpInfo = provider(
     fields = ["release_dir", "erlang_home"],
 )
 
-ErlangInstallationInfo = OtpInfo
-
 INSTALL_PREFIX = "/tmp/bazel/erlang"
 
 def _find_root(sources):
@@ -112,6 +110,7 @@ erlang_build = rule(
     implementation = _erlang_build_impl,
     attrs = {
         "install_prefix": attr.string(default = INSTALL_PREFIX),
+        # maybe the url should be here, not the sources. rabbitmq-downloads them even for local
         "sources": attr.label_list(allow_files = True, mandatory = True),
         "extra_env": attr.string_dict(),
         "extra_configure_opts": attr.string_list(),
@@ -165,39 +164,3 @@ erlang_external = rule(
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
     },
 )
-
-def _build_info(ctx):
-    return ctx.attr.otp[OtpInfo]
-
-def erlang_dirs(ctx):
-    info = _build_info(ctx)
-    if info.release_dir != None:
-        runfiles = ctx.runfiles([info.release_dir])
-    else:
-        runfiles = ctx.runfiles()
-    return (info.erlang_home, info.release_dir, runfiles)
-
-def maybe_symlink_erlang(ctx, short_path = False):
-    info = _build_info(ctx)
-    release_dir = info.release_dir
-    if release_dir == None:
-        return ""
-    else:
-        return """mkdir -p $(dirname "{erlang_home}")
-ln -sf $PWD/{erlang_release_dir} "{erlang_home}"
-mkdir -p "{erlang_home}"/bin
-ln -sf ../lib/erlang/bin/ct_run "{erlang_home}"/bin/ct_run
-ln -sf ../lib/erlang/bin/dialyzer "{erlang_home}"/bin/dialyzer
-ln -sf ../lib/erlang/bin/epmd "{erlang_home}"/bin/epmd
-ln -sf ../lib/erlang/bin/erl "{erlang_home}"/bin/erl
-ln -sf ../lib/erlang/bin/erlc "{erlang_home}"/bin/erlc
-ln -sf ../lib/erlang/bin/escript "{erlang_home}"/bin/escript
-ln -sf ../lib/erlang/bin/run_erl "{erlang_home}"/bin/run_erl
-ln -sf ../lib/erlang/bin/to_erl "{erlang_home}"/bin/to_erl
-ln -sf ../lib/erlang/bin/typer "{erlang_home}"/bin/typer
-ERTS_DIRNAME="$(basename "$(echo "{erlang_home}"/lib/erlang/erts-*)")"
-ln -sf ../$ERTS_DIRNAME/bin/epmd "{erlang_home}"/lib/erlang/bin/epmd
-""".format(
-            erlang_release_dir = release_dir.short_path if short_path else release_dir.path,
-            erlang_home = info.erlang_home,
-        )

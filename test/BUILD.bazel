@@ -37,13 +37,6 @@ platform(
     },
 )
 
-platform(
-    name = "erlang_external_platform",
-    constraint_values = [
-        "@rules_erlang//:erlang_external",
-    ],
-)
-
 shell(
     name = "repl",
 )

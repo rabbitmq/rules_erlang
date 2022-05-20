@@ -59,10 +59,3 @@ platform(
         ":erlang_25",
     ],
 )
-
-platform(
-    name = "erlang_external_platform",
-    constraint_values = [
-        ":erlang_external",
-    ],
-)

@@ -139,20 +139,6 @@ def _erlang_package(ctx):
             }
             otp_archives = merge_archive(props, otp_archives)
 
-    # name_index_map = {props["name"]: props["index"] for props in otp_archives}
-    # indexes = [props["index"] for props in otp_archives]
-    # for i in range(len(indexes)):
-    #     if indexes[i] != i:
-    #         fail("otp versions specified are not indexed properly: {}".format(name_index_map))
-    # toolchains = [
-    #     "@{}//:erlang_linux_toolchain".format(props["name"])
-    #     for props in otp_archives
-    # ]
-    # native.register_toolchains(
-    #     "@rules_erlang//tools:erlang_external_toolchain",
-    #     *toolchains
-    # )
-
     if len(otp_archives) > 0:
         log(ctx, "Final OTP list:")
     for props in otp_archives:
