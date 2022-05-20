@@ -6,8 +6,7 @@ load(
 )
 load(":util.bzl", "erl_libs_contents")
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -107,10 +106,6 @@ echo on
 eunit_test = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
         "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
@@ -122,5 +117,6 @@ eunit_test = rule(
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
     },
+    toolchains = ["//tools:toolchain_type"],
     test = True,
 )

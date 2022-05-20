@@ -64,6 +64,7 @@ def ct_suite_variant(
         additional_beam = [],
         data = [],
         deps = [],
+        runtime_deps = [],
         **kwargs):
     if suite_name == "":
         suite_name = name
@@ -80,7 +81,7 @@ def ct_suite_variant(
         }),
         compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
         data = data_dir_files + data,
-        deps = [":test_erlang_app"] + deps,
+        deps = [":test_erlang_app"] + deps + runtime_deps,
         **kwargs
     )
 
