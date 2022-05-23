@@ -18,9 +18,17 @@ build:rbe --spawn_strategy=remote
 build:rbe --test_strategy=""
 build:rbe --jobs=100
 
-build:rbe-24 --config=rbe
-build:rbe-24 --extra_execution_platforms=//:erlang_24_platform
-build:rbe-24 --platforms=//:erlang_24_platform
+build:rbe --crosstool_top=@rbe//cc:toolchain
+build:rbe --extra_toolchains=@rbe//config:cc-toolchain
+
+build:rbe --host_platform=@rbe//config:platform
+build:rbe --platforms=@rbe//config:platform
+build:rbe --extra_execution_platforms=@rbe//config:platform
+
+build:rbe --extra_toolchains=@otp_default//:erlang_toolchain
+
+build:rbe --host_cpu=k8
+build:rbe --cpu=k8
 
 build:local --extra_toolchains=@rules_erlang//tools:erlang_external_toolchain
 

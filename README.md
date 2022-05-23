@@ -25,7 +25,7 @@ rules_erlang_dependencies()
 load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
 load("@rules_erlang//:xref.bzl", "xref")
 load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
-load("@rules_erlang//:ct_sharded.bzl", "ct_suite", "assert_suites")
+load("@rules_erlang//:ct.bzl", "ct_suite", "assert_suites")
 
 APP_NAME = "my_cool_app"
 APP_VERSION = "0.1.0

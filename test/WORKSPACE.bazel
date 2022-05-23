@@ -31,6 +31,14 @@ buildbuddy(
     llvm = True,
 )
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
+    name = "rbe",
+    commit = "6a2899b87ee4f4dc0ef6f0012be6c3f94e6c9c2f",  # linux-rbe branch
+    remote = "https://github.com/rabbitmq/rbe-erlang-platform.git",
+)
+
 local_repository(
     name = "rules_erlang",
     path = "..",
@@ -45,7 +53,3 @@ load(
 rules_erlang_dependencies()
 
 otp_default()
-
-register_toolchains(
-    "@otp_default//:erlang_linux_toolchain",
-)
