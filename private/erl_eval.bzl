@@ -1,6 +1,5 @@
 load(
-    "//tools:erlang_installation.bzl",
-    "ErlangInstallationInfo",
+    "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
@@ -49,14 +48,11 @@ export OUTS="{outs}"
 erl_eval = rule(
     implementation = _impl,
     attrs = {
-        "erlang_installation": attr.label(
-            mandatory = True,
-            providers = [ErlangInstallationInfo],
-        ),
         "srcs": attr.label_list(allow_files = True),
         "outs": attr.string_list(),
         "expression": attr.string(
             mandatory = True,
         ),
     },
+    toolchains = ["//tools:toolchain_type"],
 )
