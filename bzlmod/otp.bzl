@@ -3,7 +3,7 @@ OTP_BUILD_FILE_CONTENT = """load(
     "standard_erlang_tools",
 )
 
-standard_erlang_tools(major_version = {major_version})
+standard_erlang_tools()
 """
 
 def merge_archive(an_archive, archives):

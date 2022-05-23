@@ -8,7 +8,6 @@ load(
 )
 load(
     "//tools:erlang.bzl",
-    "DEFAULT_ERLANG_MAJOR",
     "DEFAULT_ERLANG_SHA256",
     "DEFAULT_ERLANG_VERSION",
 )
@@ -61,7 +60,6 @@ def otp_default(rules_erlang_workspace = "@rules_erlang"):
         name = "otp_default",
         version = DEFAULT_ERLANG_VERSION,
         sha256 = DEFAULT_ERLANG_SHA256,
-        major_version = DEFAULT_ERLANG_MAJOR,
         rules_erlang_workspace = rules_erlang_workspace,
     )
 
@@ -69,14 +67,13 @@ def otp_github_release(
         name = None,
         version = None,
         sha256 = None,
-        major_version = -1,
         rules_erlang_workspace = "@rules_erlang"):
     http_archive(
         name = name,
         url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = version),
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,
-        build_file_content = OTP_BUILD_FILE_CONTENT.format(major_version = major_version),
+        build_file_content = OTP_BUILD_FILE_CONTENT,
         repo_mapping = {
             "@rules_erlang": rules_erlang_workspace,
         },

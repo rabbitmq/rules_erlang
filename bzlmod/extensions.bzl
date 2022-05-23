@@ -27,7 +27,6 @@ load(
 )
 load(
     "//tools:erlang.bzl",
-    "DEFAULT_ERLANG_MAJOR",
     "DEFAULT_ERLANG_SHA256",
     "DEFAULT_ERLANG_VERSION",
 )
@@ -115,27 +114,28 @@ def _erlang_package(ctx):
                 "url": archive.url,
                 "strip_prefix": archive.strip_prefix,
                 "sha256": archive.sha256,
-                "major_version": archive.major_version,
             }
             otp_archives = merge_archive(props, otp_archives)
         for archive in mod.tags.otp_default:
-            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = DEFAULT_ERLANG_VERSION)
+            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
+                v = DEFAULT_ERLANG_VERSION,
+            )
             props = {
                 "name": "otp_default",
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(DEFAULT_ERLANG_VERSION),
                 "sha256": DEFAULT_ERLANG_SHA256,
-                "major_version": DEFAULT_ERLANG_MAJOR,
             }
             otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
-            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = release.version)
+            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
+                v = release.version,
+            )
             props = {
                 "name": "otp_{}".format(release.version),
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
-                "major_version": release.major_version,
             }
             otp_archives = merge_archive(props, otp_archives)
 
@@ -145,9 +145,8 @@ def _erlang_package(ctx):
         log(ctx, "    {} -> {}".format(props["name"], props["url"]))
 
     for props in otp_archives:
-        major_version = props.pop("major_version")
         http_archive(
-            build_file_content = OTP_BUILD_FILE_CONTENT.format(major_version = major_version),
+            build_file_content = OTP_BUILD_FILE_CONTENT,
             **props
         )
 
@@ -203,13 +202,11 @@ otp_http_archive_tag = tag_class(attrs = {
     "url": attr.string(),
     "strip_prefix": attr.string(),
     "sha256": attr.string(),
-    "major_version": attr.int(),
 })
 
 otp_github_release_tag = tag_class(attrs = {
     "version": attr.string(),
     "sha256": attr.string(),
-    "major_version": attr.int(),
 })
 
 hex_package_tree_tag = tag_class(attrs = {

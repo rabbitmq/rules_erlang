@@ -25,10 +25,10 @@ build:rbe --host_platform=@rbe//config:platform
 build:rbe --platforms=@rbe//config:platform
 build:rbe --extra_execution_platforms=@rbe//config:platform
 
-build:rbe --extra_toolchains=@otp_default//:erlang_toolchain
-
 build:rbe --host_cpu=k8
 build:rbe --cpu=k8
+
+build:rbe --extra_toolchains=@otp_default//:erlang_toolchain
 
 build:local --extra_toolchains=@rules_erlang//tools:erlang_external_toolchain
 

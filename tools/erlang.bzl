@@ -8,9 +8,7 @@ load(
 )
 
 DEFAULT_ERLANG_VERSION = "24.3.3"
-DEFAULT_ERLANG_MAJOR = 24
 DEFAULT_ERLANG_SHA256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d"
-DEFAULT_ERLANG_INSTALLATION = "@otp_default//:erlang_installation"
 
 ERLC_OPTS = [
     "-Werror",
@@ -20,7 +18,7 @@ ERLC_OPTS = [
     "+warn_obsolete_guard",
 ]
 
-def standard_erlang_tools(major_version = -1):
+def standard_erlang_tools():
     erlang_build(
         name = "otp",
         sources = native.glob(
