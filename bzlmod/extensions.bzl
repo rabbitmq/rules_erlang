@@ -128,11 +128,16 @@ def _erlang_package(ctx):
             }
             otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
+            if release.name != "":
+                name = release.name
+            else:
+                (major, _, _) = release.version.partition(".")
+                name = "otp_{}".format(major)
             url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
                 v = release.version,
             )
             props = {
-                "name": "otp_{}".format(release.version),
+                "name": name,
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
@@ -205,6 +210,7 @@ otp_http_archive_tag = tag_class(attrs = {
 })
 
 otp_github_release_tag = tag_class(attrs = {
+    "name": attr.string(),
     "version": attr.string(),
     "sha256": attr.string(),
 })
