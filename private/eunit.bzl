@@ -91,7 +91,7 @@ echo on
     runfiles = runfiles.merge_all(
         [ctx.runfiles(
             files = ctx.files.compiled_suites + ctx.files.data,
-            transitive_files = [erl_libs_files],
+            transitive_files = depset(erl_libs_files),
         )] + [
             tool[DefaultInfo].default_runfiles
             for tool in ctx.attr.tools
