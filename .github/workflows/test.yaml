@@ -137,7 +137,7 @@ jobs:
       working-directory: test
       run: |
         bazelisk test //... \
-          --config=rbe-24
+          --config=rbe
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
       run: |
