@@ -41,6 +41,7 @@ def _erlang_build_impl(ctx):
     symlinks_log = ctx.actions.declare_file(ctx.label.name + "_symlinks.log")
 
     extra_configure_opts = " ".join(ctx.attr.extra_configure_opts)
+    extra_make_opts = " ".join(ctx.attr.extra_make_opts)
 
     if not ctx.attr.install_prefix.startswith("/"):
         fail("install_prefix must be absolute")
@@ -64,7 +65,7 @@ echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 cd $ABS_BUILD_DIR
 ./configure --prefix={install_path} {extra_configure_opts} >> $ABS_LOG 2>&1
 mkdir -p lib/jinterface/ebin
-make  >> $ABS_LOG 2>&1
+make {extra_make_opts} >> $ABS_LOG 2>&1
 make DESTDIR=$ABS_RELEASE_DIR install >> $ABS_LOG 2>&1
 
 mv $ABS_RELEASE_DIR{install_path}/* $ABS_RELEASE_DIR
@@ -84,6 +85,7 @@ find ${{ABS_RELEASE_DIR}} -type l -delete
             build_log = build_log.path,
             symlinks_log = symlinks_log.path,
             extra_configure_opts = extra_configure_opts,
+            extra_make_opts = extra_make_opts,
         ),
         mnemonic = "OTP",
         progress_message = "Compiling otp from source",
@@ -106,6 +108,9 @@ erlang_build = rule(
         # maybe the url should be here, not the sources. rabbitmq-downloads them even for local
         "sources": attr.label_list(allow_files = True, mandatory = True),
         "extra_configure_opts": attr.string_list(),
+        "extra_make_opts": attr.string_list(
+            default = ["-j 8"],
+        ),
     },
 )
 
