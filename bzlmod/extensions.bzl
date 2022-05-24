@@ -114,6 +114,7 @@ def _erlang_package(ctx):
                 "url": archive.url,
                 "strip_prefix": archive.strip_prefix,
                 "sha256": archive.sha256,
+                "extra_configure_opts": archive.extra_configure_opts,
             }
             otp_archives = merge_archive(props, otp_archives)
         for archive in mod.tags.otp_default:
@@ -125,6 +126,7 @@ def _erlang_package(ctx):
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(DEFAULT_ERLANG_VERSION),
                 "sha256": DEFAULT_ERLANG_SHA256,
+                "extra_configure_opts": [],
             }
             otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
@@ -141,6 +143,7 @@ def _erlang_package(ctx):
                 "url": url,
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
+                "extra_configure_opts": release.extra_configure_opts,
             }
             otp_archives = merge_archive(props, otp_archives)
 
@@ -150,8 +153,11 @@ def _erlang_package(ctx):
         log(ctx, "    {} -> {}".format(props["name"], props["url"]))
 
     for props in otp_archives:
+        extra_configure_opts = props.pop("extra_configure_opts")
         http_archive(
-            build_file_content = OTP_BUILD_FILE_CONTENT,
+            build_file_content = OTP_BUILD_FILE_CONTENT.format(
+                extra_configure_opts = extra_configure_opts,
+            ),
             **props
         )
 
@@ -207,12 +213,14 @@ otp_http_archive_tag = tag_class(attrs = {
     "url": attr.string(),
     "strip_prefix": attr.string(),
     "sha256": attr.string(),
+    "extra_configure_opts": attr.string_list(),
 })
 
 otp_github_release_tag = tag_class(attrs = {
     "name": attr.string(),
     "version": attr.string(),
     "sha256": attr.string(),
+    "extra_configure_opts": attr.string_list(),
 })
 
 hex_package_tree_tag = tag_class(attrs = {

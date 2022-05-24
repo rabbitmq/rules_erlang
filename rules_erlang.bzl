@@ -67,13 +67,16 @@ def otp_github_release(
         name = None,
         version = None,
         sha256 = None,
+        extra_configure_opts = [],
         rules_erlang_workspace = "@rules_erlang"):
     http_archive(
         name = name,
         url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = version),
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,
-        build_file_content = OTP_BUILD_FILE_CONTENT,
+        build_file_content = OTP_BUILD_FILE_CONTENT.format(
+            extra_configure_opts = extra_configure_opts,
+        ),
         repo_mapping = {
             "@rules_erlang": rules_erlang_workspace,
         },
