@@ -9,6 +9,8 @@ load(
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
 def _impl(ctx):
+    logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
+
     apps_args = ""
     if len(ctx.attr.apps) > 0:
         apps_args = "--apps " + " ".join(ctx.attr.apps)
@@ -36,7 +38,7 @@ export HOME=$PWD
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
     {source_plt_arg} \\{dirs}
-    --output_plt {output}
+    --output_plt {output} > {logfile}
 """.format(
         maybe_symlink_erlang = maybe_symlink_erlang(ctx),
         erlang_home = erlang_home,
@@ -44,6 +46,7 @@ set -x
         source_plt_arg = source_plt_arg,
         dirs = "".join(["\n    {} \\".format(d) for d in dirs]),
         output = ctx.outputs.plt.path,
+        logfile = logfile.path,
     )
 
     inputs = depset(
@@ -53,7 +56,7 @@ set -x
 
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = [ctx.outputs.plt],
+        outputs = [ctx.outputs.plt, logfile],
         command = script,
         mnemonic = "DIALYZER",
     )
