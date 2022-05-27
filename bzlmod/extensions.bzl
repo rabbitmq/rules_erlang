@@ -115,6 +115,7 @@ def _erlang_package(ctx):
                 "strip_prefix": archive.strip_prefix,
                 "sha256": archive.sha256,
                 "extra_configure_opts": archive.extra_configure_opts,
+                "post_configure_cmds": archive.post_configure_cmds,
             }
             otp_archives = merge_archive(props, otp_archives)
         for archive in mod.tags.otp_default:
@@ -127,6 +128,9 @@ def _erlang_package(ctx):
                 "strip_prefix": "otp_src_{}".format(DEFAULT_ERLANG_VERSION),
                 "sha256": DEFAULT_ERLANG_SHA256,
                 "extra_configure_opts": [],
+                "post_configure_cmds": [
+                    "mkdir -p lib/jinterface/ebin",
+                ],
             }
             otp_archives = merge_archive(props, otp_archives)
         for release in mod.tags.otp_github_release:
@@ -144,6 +148,7 @@ def _erlang_package(ctx):
                 "strip_prefix": "otp_src_{}".format(release.version),
                 "sha256": release.sha256,
                 "extra_configure_opts": release.extra_configure_opts,
+                "post_configure_cmds": release.post_configure_cmds,
             }
             otp_archives = merge_archive(props, otp_archives)
 
@@ -154,9 +159,11 @@ def _erlang_package(ctx):
 
     for props in otp_archives:
         extra_configure_opts = props.pop("extra_configure_opts")
+        post_configure_cmds = props.pop("post_configure_cmds")
         http_archive(
             build_file_content = OTP_BUILD_FILE_CONTENT.format(
                 extra_configure_opts = extra_configure_opts,
+                post_configure_cmds = post_configure_cmds,
             ),
             **props
         )

@@ -60,6 +60,9 @@ def otp_default(rules_erlang_workspace = "@rules_erlang"):
         name = "otp_default",
         version = DEFAULT_ERLANG_VERSION,
         sha256 = DEFAULT_ERLANG_SHA256,
+        post_configure_cmds = [
+            "mkdir -p lib/jinterface/ebin",
+        ],
         rules_erlang_workspace = rules_erlang_workspace,
     )
 
@@ -68,6 +71,7 @@ def otp_github_release(
         version = None,
         sha256 = None,
         extra_configure_opts = [],
+        post_configure_cmds = [],
         rules_erlang_workspace = "@rules_erlang"):
     http_archive(
         name = name,
@@ -76,6 +80,7 @@ def otp_github_release(
         sha256 = sha256,
         build_file_content = OTP_BUILD_FILE_CONTENT.format(
             extra_configure_opts = extra_configure_opts,
+            post_configure_cmds = post_configure_cmds,
         ),
         repo_mapping = {
             "@rules_erlang": rules_erlang_workspace,

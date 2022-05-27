@@ -18,7 +18,9 @@ ERLC_OPTS = [
     "+warn_obsolete_guard",
 ]
 
-def standard_erlang_tools(extra_configure_opts):
+def standard_erlang_tools(
+        extra_configure_opts = [],
+        post_configure_cmds = []):
     erlang_build(
         name = "otp",
         sources = native.glob(
@@ -26,6 +28,7 @@ def standard_erlang_tools(extra_configure_opts):
             exclude = ["BUILD.bazel", "WORKSPACE.bazel"],
         ),
         extra_configure_opts = extra_configure_opts,
+        post_configure_cmds = post_configure_cmds,
     )
 
     erlang_toolchain(
