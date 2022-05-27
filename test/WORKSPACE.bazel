@@ -46,10 +46,15 @@ local_repository(
 
 load(
     "@rules_erlang//:rules_erlang.bzl",
-    "otp_default",
+    # "otp_default",
     "rules_erlang_dependencies",
 )
 
 rules_erlang_dependencies()
 
-otp_default()
+# otp_default()
+
+register_toolchains(
+    "@rules_erlang//tools:erlang_external_toolchain",
+    "//:erlang_toolchain_default",
+)

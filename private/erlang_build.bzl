@@ -16,25 +16,14 @@ OtpInfo = provider(
 
 INSTALL_PREFIX = "/tmp/bazel/erlang"
 
-def _find_root(sources):
-    dirs = [s.dirname for s in sources]
-    root = dirs[0]
-    for d in dirs:
-        if d == "":
-            fail("unexpectedly empty dirname")
-        if root.startswith(d):
-            root = d
-        elif d.startswith(root):
-            pass
-        else:
-            fail("{} and {} do not share a common root".format(d, root))
-    return root
-
 def _install_root(install_prefix):
     (root_dir, _, _) = install_prefix.removeprefix("/").partition("/")
     return "/" + root_dir
 
 def _erlang_build_impl(ctx):
+    (_, _, filename) = ctx.attr.url.rpartition("/")
+    downloaded_archive = ctx.actions.declare_file(filename)
+
     release_dir = ctx.actions.declare_directory(ctx.label.name + "_release")
     build_dir = ctx.actions.declare_directory(ctx.label.name + "_build")
     build_log = ctx.actions.declare_file(ctx.label.name + "_build.log")
@@ -45,13 +34,53 @@ def _erlang_build_impl(ctx):
     extra_make_opts = " ".join(ctx.attr.extra_make_opts)
 
     if not ctx.attr.install_prefix.startswith("/"):
+        # otp installations are not relocatable, so the install_prefix
+        # must be absolute to build a predictable location
         fail("install_prefix must be absolute")
     install_path = path_join(ctx.attr.install_prefix, ctx.label.name)
     install_root = _install_root(ctx.attr.install_prefix)
 
+    # At one point this rule recevied the erlang sources as a
+    # label_list attribute, which had been fetched with a repository
+    # rule. This had the unfortunate side effect of stripping out
+    # empty directories which are expected to be present by the
+    # otp makefiles. Instead this rule fetches the sources directly,
+    # which also avoids unnecessarily fetching sources when they are
+    # unused (such as when "external" erlang is used).
     ctx.actions.run_shell(
-        inputs = ctx.files.sources,
-        outputs = [release_dir, build_dir, build_log, symlinks_log],
+        inputs = [],
+        outputs = [downloaded_archive],
+        command = """set -euo pipefail
+
+curl -L "{archive_url}" -o {archive_path}
+
+if [ -n "{sha256}" ]; then
+    echo "{sha256} {archive_path}" | sha256sum --check --strict -
+fi
+""".format(
+            archive_url = ctx.attr.url,
+            archive_path = downloaded_archive.path,
+            sha256 = ctx.attr.sha256,
+        ),
+        mnemonic = "CURL",
+        progress_message = "Downloading {}".format(ctx.attr.url),
+    )
+
+    # zipper = ctx.executable._zipper
+
+    strip_prefix = ctx.attr.strip_prefix
+    if strip_prefix != "":
+        strip_prefix += "\\/"
+
+    ctx.actions.run_shell(
+        inputs = [downloaded_archive],
+        outputs = [
+            release_dir,
+            build_dir,
+            build_log,
+            symlinks_log,
+        ],
+        # tools = [zipper],
         command = """set -euo pipefail
 
 ABS_BUILD_DIR=$PWD/{build_path}
@@ -59,7 +88,11 @@ ABS_RELEASE_DIR=$PWD/{release_path}
 ABS_LOG=$PWD/{build_log}
 ABS_SYMLINKS=$PWD/{symlinks_log}
 
-cp -rp {source_path}/* $ABS_BUILD_DIR
+# {zipper} x {archive_path} -d $ABS_BUILD_DIR
+tar --extract \\
+    --transform 's/{strip_prefix}//' \\
+    --file {archive_path} \\
+    --directory $ABS_BUILD_DIR
 
 echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 
@@ -77,8 +110,13 @@ rm -rf $ABS_RELEASE_DIR{install_root}
 # --remote_download_minimal, so we remove them
 find ${{ABS_RELEASE_DIR}} -type l | xargs ls -ld > $ABS_SYMLINKS
 find ${{ABS_RELEASE_DIR}} -type l -delete
+
+find ${{ABS_BUILD_DIR}} -type l
+find ${{ABS_BUILD_DIR}} -type l -delete
 """.format(
-            source_path = _find_root(ctx.files.sources),
+            archive_path = downloaded_archive.path,
+            strip_prefix = strip_prefix,
+            zipper = "",  # zipper.path,
             build_path = build_dir.path,
             release_path = release_dir.path,
             install_path = install_path,
@@ -106,10 +144,17 @@ find ${{ABS_RELEASE_DIR}} -type l -delete
 erlang_build = rule(
     implementation = _erlang_build_impl,
     attrs = {
+        # "_zipper": attr.label(
+        #     default = Label("@bazel_tools//tools/zip:zipper"),
+        #     executable = True,
+        #     cfg = "exec",
+        # ),
+        "url": attr.string(mandatory = True),
+        "strip_prefix": attr.string(),
+        "sha256": attr.string(),
         "install_prefix": attr.string(default = INSTALL_PREFIX),
-        "sources": attr.label_list(allow_files = True, mandatory = True),
         "extra_configure_opts": attr.string_list(),
-        "post_configure_cmds": attr.string_list(),
+        "post_configure_cmds": attr.string_list(),  # <- hopefully don't need this
         "extra_make_opts": attr.string_list(
             default = ["-j 8"],
         ),
