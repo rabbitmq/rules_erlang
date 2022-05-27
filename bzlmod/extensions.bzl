@@ -221,6 +221,7 @@ otp_http_archive_tag = tag_class(attrs = {
     "strip_prefix": attr.string(),
     "sha256": attr.string(),
     "extra_configure_opts": attr.string_list(),
+    "post_configure_cmds": attr.string_list(),
 })
 
 otp_github_release_tag = tag_class(attrs = {
@@ -228,6 +229,7 @@ otp_github_release_tag = tag_class(attrs = {
     "version": attr.string(),
     "sha256": attr.string(),
     "extra_configure_opts": attr.string_list(),
+    "post_configure_cmds": attr.string_list(),
 })
 
 hex_package_tree_tag = tag_class(attrs = {
