@@ -1,17 +1,4 @@
 load(
-    "@bazel_tools//tools/build_defs/repo:http.bzl",
-    "http_archive",
-)
-load(
-    "//bzlmod:otp.bzl",
-    "OTP_BUILD_FILE_CONTENT",
-)
-load(
-    "//tools:erlang.bzl",
-    "DEFAULT_ERLANG_SHA256",
-    "DEFAULT_ERLANG_VERSION",
-)
-load(
     ":hex_archive.bzl",
     "hex_archive",
 )
@@ -53,36 +40,4 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 """,
-    )
-
-def otp_default(rules_erlang_workspace = "@rules_erlang"):
-    otp_github_release(
-        name = "otp_default",
-        version = DEFAULT_ERLANG_VERSION,
-        sha256 = DEFAULT_ERLANG_SHA256,
-        post_configure_cmds = [
-            "mkdir -p lib/jinterface/ebin",
-        ],
-        rules_erlang_workspace = rules_erlang_workspace,
-    )
-
-def otp_github_release(
-        name = None,
-        version = None,
-        sha256 = None,
-        extra_configure_opts = [],
-        post_configure_cmds = [],
-        rules_erlang_workspace = "@rules_erlang"):
-    http_archive(
-        name = name,
-        url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(v = version),
-        strip_prefix = "otp_src_{}".format(version),
-        sha256 = sha256,
-        build_file_content = OTP_BUILD_FILE_CONTENT.format(
-            extra_configure_opts = extra_configure_opts,
-            post_configure_cmds = post_configure_cmds,
-        ),
-        repo_mapping = {
-            "@rules_erlang": rules_erlang_workspace,
-        },
     )
