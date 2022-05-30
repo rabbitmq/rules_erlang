@@ -26,9 +26,14 @@ def _build_info(ctx):
 def erlang_dirs(ctx):
     info = _build_info(ctx)
     if info.release_dir != None:
-        runfiles = ctx.runfiles([info.release_dir])
+        runfiles = ctx.runfiles([
+            info.release_dir,
+            info.version_file,
+        ])
     else:
-        runfiles = ctx.runfiles()
+        runfiles = ctx.runfiles([
+            info.version_file,
+        ])
     return (info.erlang_home, info.release_dir, runfiles)
 
 def maybe_symlink_erlang(ctx, short_path = False):

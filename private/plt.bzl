@@ -10,6 +10,7 @@ DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
 def _impl(ctx):
     logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
+    home_dir = ctx.actions.declare_directory(ctx.label.name + "_home")
 
     apps_args = ""
     if len(ctx.attr.apps) > 0:
@@ -37,6 +38,9 @@ def _impl(ctx):
 
 {maybe_symlink_erlang}
 
+# without HOME being set, dialyzer will error regarding a default plt
+export HOME={home}
+
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
     {source_plt_arg} \\{dirs_args}
@@ -44,6 +48,7 @@ set -x
 """.format(
         maybe_symlink_erlang = maybe_symlink_erlang(ctx),
         erlang_home = erlang_home,
+        home = home_dir.path,
         apps_args = apps_args,
         source_plt_arg = source_plt_arg,
         dirs_args = dirs_args,
@@ -58,7 +63,7 @@ set -x
 
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = [ctx.outputs.plt, logfile],
+        outputs = [ctx.outputs.plt, logfile, home_dir],
         command = script,
         mnemonic = "DIALYZER",
     )

@@ -11,7 +11,17 @@ load(
 
 OtpInfo = provider(
     doc = "A Home directory of a built Erlang/OTP",
-    fields = ["release_dir", "erlang_home"],
+    fields = {
+        "release_dir": """Directory containing a built erlang.
+If this value is not None, it must be symlinked into
+erlang_home and used from there, as erlang installations
+are not relocatable.""",
+        "erlang_home": """Absolute path to the erlang
+installation""",
+        "version_file": """A file containing the version of this
+erlang, used to correctly invalidate the cache when an
+external erlang is used""",
+    },
 )
 
 INSTALL_PREFIX = "/tmp/bazel/erlang"
@@ -28,6 +38,8 @@ def _erlang_build_impl(ctx):
     build_dir = ctx.actions.declare_directory(ctx.label.name + "_build")
     build_log = ctx.actions.declare_file(ctx.label.name + "_build.log")
     symlinks_log = ctx.actions.declare_file(ctx.label.name + "_symlinks.log")
+
+    version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
     extra_configure_opts = " ".join(ctx.attr.extra_configure_opts)
     post_configure_cmds = "\n".join(ctx.attr.post_configure_cmds)
@@ -111,7 +123,7 @@ rm -rf $ABS_RELEASE_DIR{install_root}
 find ${{ABS_RELEASE_DIR}} -type l | xargs ls -ld > $ABS_SYMLINKS
 find ${{ABS_RELEASE_DIR}} -type l -delete
 
-find ${{ABS_BUILD_DIR}} -type l
+# find ${{ABS_BUILD_DIR}} -type l
 find ${{ABS_BUILD_DIR}} -type l -delete
 """.format(
             archive_path = downloaded_archive.path,
@@ -131,13 +143,38 @@ find ${{ABS_BUILD_DIR}} -type l -delete
         progress_message = "Compiling otp from source",
     )
 
+    ctx.actions.run_shell(
+        inputs = [release_dir],
+        outputs = [version_file],
+        command = """set -euo pipefail
+
+mkdir -p $(dirname "{erlang_home}")
+ln -sf $PWD/{erlang_release_dir} "{erlang_home}"
+mkdir -p "{erlang_home}"/bin
+ln -sf ../lib/erlang/bin/erl "{erlang_home}"/bin/erl
+
+V=$("{erlang_home}"/bin/{query_erlang_version})
+
+echo "$V" >> {version_file}
+""".format(
+            query_erlang_version = QUERY_ERL_VERSION,
+            erlang_home = install_path,
+            erlang_release_dir = release_dir.path,
+            version_file = version_file.path,
+        ),
+    )
+
     return [
         DefaultInfo(
-            files = depset([release_dir]),
+            files = depset([
+                release_dir,
+                version_file,
+            ]),
         ),
         OtpInfo(
             release_dir = release_dir,
             erlang_home = install_path,
+            version_file = version_file,
         ),
     ]
 
@@ -165,11 +202,11 @@ def _erlang_external_impl(ctx):
     erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
     erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
 
-    status_file = ctx.actions.declare_file(ctx.label.name + "_status")
+    version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
     ctx.actions.run_shell(
         inputs = [],
-        outputs = [status_file],
+        outputs = [version_file],
         command = """set -euo pipefail
 
 {begins_with_fun}
@@ -179,13 +216,13 @@ echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
 exit 1
 fi
 
-echo "$V" >> {status_path}
+echo "$V" >> {version_file}
 """.format(
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
             erlang_version = erlang_version,
             erlang_home = erlang_home,
-            status_path = status_file.path,
+            version_file = version_file.path,
         ),
         mnemonic = "OTP",
         progress_message = "Validating otp at {}".format(erlang_home),
@@ -193,11 +230,12 @@ echo "$V" >> {status_path}
 
     return [
         DefaultInfo(
-            files = depset([status_file]),
+            files = depset([version_file]),
         ),
         OtpInfo(
             release_dir = None,
             erlang_home = erlang_home,
+            version_file = version_file,
         ),
     ]
 
