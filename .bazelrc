@@ -1,4 +1,7 @@
 build --experimental_enable_bzlmod
 build --incompatible_strict_action_env
 
+build --platforms=//platforms:erlang_external_platform
+build --extra_execution_platforms=//platforms:erlang_external_platform
+
 try-import %workspace%/user.bazelrc

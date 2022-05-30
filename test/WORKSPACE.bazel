@@ -52,6 +52,6 @@ load(
 rules_erlang_dependencies()
 
 register_toolchains(
-    "@rules_erlang//tools:erlang_external_toolchain",
+    "//:erlang_toolchain_external",
     "//:erlang_toolchain_default",
 )

@@ -1,23 +1,27 @@
 load(
     "@rules_erlang//tools:erlang.bzl",
+    "erlang_toolchain_external",
     "erlang_toolchain_from_github_release",
 )
 load("@rules_erlang//:shell.bzl", "shell")
 
+erlang_external_constraint = erlang_toolchain_external()
+
 platform(
     name = "erlang_external_platform",
     constraint_values = [
-        "@rules_erlang//platforms:erlang_external",
+        erlang_external_constraint,
     ],
     parents = ["@rbe//config:platform"],
+    # parents = ["@local_config_platform//:host"],
 )
 
-erlang_constraint = erlang_toolchain_from_github_release()
+erlang_24_constraint = erlang_toolchain_from_github_release()
 
 platform(
     name = "erlang_24_platform",
     constraint_values = [
-        erlang_constraint,
+        erlang_24_constraint,
     ],
     parents = ["@rbe//config:platform"],
 )

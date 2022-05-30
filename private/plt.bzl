@@ -26,25 +26,27 @@ def _impl(ctx):
         files.extend(lib_info.beam)
 
     dirs = unique_dirnames(files)
+    dirs_args = "".join([
+        "\n    {} \\".format(d)
+        for d in dirs
+    ])
 
-    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     script = """set -euo pipefail
 
 {maybe_symlink_erlang}
 
-export HOME=$PWD
-
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
-    {source_plt_arg} \\{dirs}
+    {source_plt_arg} \\{dirs_args}
     --output_plt {output} > {logfile}
 """.format(
         maybe_symlink_erlang = maybe_symlink_erlang(ctx),
         erlang_home = erlang_home,
         apps_args = apps_args,
         source_plt_arg = source_plt_arg,
-        dirs = "".join(["\n    {} \\".format(d) for d in dirs]),
+        dirs_args = dirs_args,
         output = ctx.outputs.plt.path,
         logfile = logfile.path,
     )

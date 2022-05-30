@@ -1,6 +1,7 @@
 load(
     "//private:erlang_build.bzl",
     "erlang_build",
+    "erlang_external",
 )
 load(
     ":erlang_toolchain.bzl",
@@ -9,6 +10,36 @@ load(
 
 DEFAULT_ERLANG_VERSION = "24.3.3"
 DEFAULT_ERLANG_SHA256 = "cc3177f765c6a2b018e9a80c30bd3eac9a1f1d4c2690bb10557b384a9a63ae8d"
+
+def erlang_toolchain_external():
+    erlang_constraint = Label("@rules_erlang//platforms:erlang_external")
+
+    erlang_external(
+        name = "otp_external",
+        target_compatible_with = [
+            erlang_constraint,
+        ],
+    )
+
+    erlang_toolchain(
+        name = "erlang_external",
+        otp = ":otp_external",
+    )
+
+    native.toolchain(
+        name = "erlang_toolchain_external",
+        exec_compatible_with = [
+            erlang_constraint,
+        ],
+        target_compatible_with = [
+            erlang_constraint,
+        ],
+        toolchain = ":erlang_external",
+        toolchain_type = Label("@rules_erlang//tools:toolchain_type"),
+        visibility = ["//visibility:public"],
+    )
+
+    return erlang_constraint
 
 def erlang_toolchain_from_http_archive(
         name_suffix = "",
@@ -35,6 +66,9 @@ def erlang_toolchain_from_http_archive(
 
     native.toolchain(
         name = "erlang_toolchain{}".format(name_suffix),
+        exec_compatible_with = [
+            erlang_constraint,
+        ],
         target_compatible_with = [
             erlang_constraint,
         ],

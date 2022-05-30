@@ -14,3 +14,10 @@ string_flag(
     build_setting_default = "",
     visibility = ["//visibility:public"],
 )
+
+load(
+    "//tools:erlang.bzl",
+    "erlang_toolchain_external",
+)
+
+erlang_toolchain_external()
