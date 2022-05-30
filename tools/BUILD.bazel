@@ -14,6 +14,9 @@ toolchain_type(
 
 erlang_external(
     name = "otp_external",
+    target_compatible_with = [
+        "//platforms:erlang_external",
+    ],
 )
 
 erlang_toolchain(
@@ -23,11 +26,11 @@ erlang_toolchain(
 
 toolchain(
     name = "erlang_external_toolchain",
-    exec_compatible_with = [
-        "//:erlang_external",
-    ],
+    # exec_compatible_with = [
+    #     "//:erlang_external",
+    # ],
     target_compatible_with = [
-        "//:erlang_external",
+        "//platforms:erlang_external",
     ],
     toolchain = ":erlang_external",
     toolchain_type = ":toolchain_type",

@@ -7,7 +7,7 @@ load("@rules_erlang//:shell.bzl", "shell")
 platform(
     name = "erlang_external_platform",
     constraint_values = [
-        ":erlang_external",
+        "@rules_erlang//platforms:erlang_external",
     ],
     parents = ["@rbe//config:platform"],
 )

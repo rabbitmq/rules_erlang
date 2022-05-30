@@ -49,7 +49,7 @@ def erlang_toolchain_from_github_release(
         sha256 = DEFAULT_ERLANG_SHA256,
         extra_configure_opts = []):
     (major, _, _) = version.partition(".")
-    erlang_constraint = Label("@rules_erlang//:erlang_{}".format(major))
+    erlang_constraint = Label("@rules_erlang//platforms:erlang_{}".format(major))
     url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
         v = version,
     )

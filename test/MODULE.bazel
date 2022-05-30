@@ -12,15 +12,3 @@ local_path_override(
     module_name = "rules_erlang",
     path = "..",
 )
-
-# erlang_package = use_extension(
-#     "@rules_erlang//bzlmod:extensions.bzl",
-#     "erlang_package",
-# )
-
-# erlang_package.otp_default()
-
-# use_repo(
-#     erlang_package,
-#     "otp_default",
-# )
