@@ -7,6 +7,21 @@ Bazel rules for Erlang sources
 ### `WORKSPACE` file
 
 ```starlark
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "af87959afe497dc8dfd4c6cb66e1279cb98ccc84284619ebfec27d9c09a903de",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
 http_archive(
     name = "rules_erlang",
     sha256 = "ce4b3b028c8d77e2175767c19d69636d78fa13fdb11279d70f3c2ab01bc32953",
@@ -17,6 +32,10 @@ http_archive(
 load("@rules_erlang//:rules_erlang.bzl", "rules_erlang_dependencies")
 
 rules_erlang_dependencies()
+
+register_toolchains(
+    "@rules_erlang//:erlang_toolchain_external",
+)
 ```
 
 ### `BUILD` file
@@ -51,34 +70,38 @@ assert_suites([
 ])
 ```
 
+### `.bazelrc` file
+
+```shell
+build --@rules_erlang//:erlang_home=/path/to/erlang
+build --@rules_erlang//:erlang_version=23.2
+
+build --platforms=@rules_erlang//:erlang_external_platform
+build --extra_execution_platforms=@rules_erlang//:erlang_external_platform
+```
+
 ### Compile and run all tests
 
 ```shell
-bazel test //... \
-    --@rules_erlang//:erlang_home=/path/to/erlang \
-    --@rules_erlang//:erlang_version=23.2
+bazel test //...
 ```
 
 ### Run the unit suite only
 
 ```shell
-bazel test //:unit_SUITE \
-    --@rules_erlang//:erlang_home=/path/to/erlang \
-    --@rules_erlang//:erlang_version=23.2
+bazel test //:unit_SUITE
 ```
 
 ### Run a single test case
 
 ```shell
 bazel test //:unit_SUITE \
-    --@rules_erlang//:erlang_home=/path/to/erlang \
-    --@rules_erlang//:erlang_version=23.2 \
     --test_env FOCUS="-group my_group -case my_case"
 ```
 
 ## Assumptions
 
-`erlang_app` and `ct_suite` macros require the standard otp layout, relative to the bazel package (to some degree abitrary layout can be handled with with the `erlc`, `app_file`, `erlang_app_info` & `ct_test` rules which those macros utilize). For an erlang application named `my_erlang_app` this means:
+`erlang_app` and `ct_suite` macros require the standard otp layout, relative to the bazel package (to some degree abitrary layout can be handled with with the `erlang_bytecode`, `app_file`, `erlang_app_info` & `ct_test` rules which those macros utilize). For an erlang application named `my_erlang_app` this means:
 
 ```
 my_erlang_app
