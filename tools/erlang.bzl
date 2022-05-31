@@ -2,6 +2,9 @@ load(
     "//private:erlang_build.bzl",
     "erlang_build",
     "erlang_external",
+)
+load(
+    ":erlang_headers.bzl",
     "erlang_headers",
 )
 load(
@@ -58,12 +61,6 @@ def erlang_toolchain_from_http_archive(
         target_compatible_with = [
             erlang_constraint,
         ],
-    )
-
-    erlang_headers(
-        name = "otp_headers{}".format(name_suffix),
-        otp = ":otp{}".format(name_suffix),
-        visibility = ["//visibility:public"],
     )
 
     erlang_toolchain(
