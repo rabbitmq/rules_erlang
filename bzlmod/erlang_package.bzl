@@ -224,25 +224,26 @@ if [ ! -f BUILD.bazel ]; then
                 echo "\tAttempting auto-configure from erlang.mk files..."
 
                 cat << 'MK' > bazel-autobuild.mk
+comma:= ,
+project:= $(lastword $(subst ., ,$(PROJECT)))
+ifnappsrc:= $(if $(wildcard src/$(project).app.src),,$1)
+
 define BUILD_FILE_CONTENT
 load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
 erlang_app(
-    app_name = "$(PROJECT)",
-    app_description = \"""$(PROJECT_DESCRIPTION)\""",
-    app_version = "$(PROJECT_VERSION)",
-    app_env = \"""$(PROJECT_ENV)\""",
-    app_extra_keys = \"""$(PROJECT_APP_EXTRA_KEYS)\""",
-    extra_apps = [
-$(foreach dep,$(LOCAL_DEPS),        "$(dep)",\n)    ],
+    app_name = "$(project)",
+    $(call ifnappsrc,$(if $(PROJECT_DESCRIPTION),app_description = \"""$(PROJECT_DESCRIPTION)\"""$(comma)))
+    $(call ifnappsrc,app_version = "$(PROJECT_VERSION)"$(comma))
+    $(call ifnappsrc,app_env = \"""$(PROJECT_ENV)\"""$(comma))
+    $(call ifnappsrc,$(if $(PROJECT_APP_EXTRA_KEYS),app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\"""$(comma)))
+    $(call ifnappsrc,$(if $(LOCAL_DEPS),extra_apps = [$(foreach dep,$(LOCAL_DEPS),\n        "$(dep)",)\n    ]$(comma)))
+    $(call ifnappsrc,$(if $(BUILD_DEPS),build_deps = [$(foreach dep,$(BUILD_DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma)))
+    $(call ifnappsrc,$(if $(DEPS),deps = [$(foreach dep,$(DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma)))
     erlc_opts = [
         "+deterministic",
         "+debug_info",
     ],
-    build_deps = [
-$(foreach dep,$(BUILD_DEPS),        "@$(dep)//:erlang_app",\n)    ],
-    deps = [
-$(foreach dep,$(DEPS),        "@$(dep)//:erlang_app",\n)    ],
     stamp = 0,
 )
 endef
