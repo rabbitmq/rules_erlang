@@ -1,0 +1,11 @@
+load("//tools:erlang_headers.bzl", "erlang_headers")
+
+toolchain_type(
+    name = "toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+erlang_headers(
+    name = "erlang_headers",
+    visibility = ["//visibility:public"],
+)

@@ -17,18 +17,21 @@ jobs:
       with:
         otp-version: ${{ matrix.otp }}
     - name: CONFIGURE BAZEL
+      working-directory: test
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        cat << EOF >> .bazelrc
-          build --//:erlang_version=${{ matrix.otp }}
-          build --//:erlang_home=${ERLANG_HOME}
-
-          build --incompatible_strict_action_env
+        cat << EOF >> user.bazelrc
+          build --@rules_erlang//:erlang_version=${{ matrix.otp }}
+          build --@rules_erlang//:erlang_home=${ERLANG_HOME}
         EOF
     - name: TEST
+      working-directory: test
       run: |
-        bazelisk test //...
+        bazelisk test //... \
+          --noexperimental_enable_bzlmod \
+          --config=local
     - name: RESOVLE TEST LOGS PATH
+      working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
@@ -53,22 +56,22 @@ jobs:
       with:
         otp-version: ${{ matrix.otp }}
     - name: CONFIGURE BAZEL
+      working-directory: test
       shell: bash
       run: |
         ERL_PATH="$(which erl)"
-        cat << EOF >> .bazelrc
+        cat << EOF >> user.bazelrc
           startup --windows_enable_symlinks
           build --enable_runfiles
 
-          build --//:erlang_version=${{ matrix.otp }}
-          build --//:erlang_home="${ERL_PATH/\/bin\/erl/}"
-
-          build --incompatible_strict_action_env
+          build --@rules_erlang//:erlang_version=${{ matrix.otp }}
+          build --@rules_erlang//:erlang_home="${ERL_PATH/\/bin\/erl/}"
         EOF
         cat .bazelrc
     - name: TEST
+      working-directory: test
       run: |
-        bazelisk test //...
+        bazelisk test //... --noexperimental_enable_bzlmod --config=local
     #! https://github.com/actions/upload-artifact/issues/240
     #! - name: RESOVLE TEST LOGS PATH
     #!   run: |
@@ -96,18 +99,47 @@ jobs:
       with:
         otp-version: ${{ matrix.otp }}
     - name: CONFIGURE BAZEL
+      working-directory: test
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        cat << EOF >> .bazelrc
-          build --//:erlang_version=${{ matrix.otp }}
-          build --//:erlang_home=${ERLANG_HOME}
-
-          build --incompatible_strict_action_env
+        cat << EOF >> user.bazelrc
+          build --@rules_erlang//:erlang_version=${{ matrix.otp }}
+          build --@rules_erlang//:erlang_home=${ERLANG_HOME}
         EOF
     - name: TEST
+      working-directory: test
       run: |
-        bazelisk test //... --experimental_enable_bzlmod
+        bazelisk test //... \
+          --config=local
     - name: RESOVLE TEST LOGS PATH
+      working-directory: test
+      run: |
+        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      uses: actions/upload-artifact@v2
+      with:
+        name: bazel-testlogs-bzlmod-${{matrix.otp}}
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  test-bzlmod-internal-erlang:
+    runs-on: ubuntu-latest
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    #! - name: CONFIGURE BAZEL
+    #!   working-directory: test
+    #!   run: |
+    #!     cat << EOF >> user.bazelrc
+    #!     build:rbe --host_cpu=k8
+    #!     build:rbe --cpu=k8
+    #!     EOF
+    - name: TEST
+      working-directory: test
+      run: |
+        bazelisk test //... \
+          --config=rbe
+    - name: RESOVLE TEST LOGS PATH
+      working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path

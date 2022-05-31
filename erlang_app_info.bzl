@@ -1,10 +1,7 @@
-load(":erlang_home.bzl", "ErlangVersionProvider")
-
 ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",
     fields = {
         "app_name": "Name of the erlang application",
-        "erlang_version": "The erlang version used to produce the beam files",
         "include": "Public header files",
         "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
@@ -42,7 +39,6 @@ def _impl(ctx):
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
-            erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
             include = ctx.files.hdrs,
             beam = compiled_files,
             priv = ctx.files.priv,
@@ -58,7 +54,6 @@ def _impl(ctx):
 erlang_app_info = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_version": attr.label(default = ":erlang_version"),
         "app_name": attr.string(mandatory = True),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "app": attr.label(allow_files = [".app"]),

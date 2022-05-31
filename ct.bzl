@@ -1,14 +1,17 @@
 load(
+    "//private:util.bzl",
+    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
+)
+load(
     "//private:ct.bzl",
     "ct_test",
     _code_paths = "code_paths",
     _sanitize_sname = "sanitize_sname",
 )
 load(
-    "//private:util.bzl",
-    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
+    ":erlang_bytecode.bzl",
+    "erlang_bytecode",
 )
-load(":erlc.bzl", "erlc")
 load(
     ":erlang_app.bzl",
     "DEFAULT_TEST_ERLC_OPTS",
@@ -30,11 +33,12 @@ def ct_suite(
         additional_srcs = [],
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
         deps = [],
+        runtime_deps = [],
         **kwargs):
     if suite_name == "":
         suite_name = name
 
-    erlc(
+    erlang_bytecode(
         name = "{}_beam_files".format(suite_name),
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"] + additional_hdrs),
         srcs = ["test/{}.erl".format(suite_name)] + additional_srcs,
@@ -47,7 +51,7 @@ def ct_suite(
     ct_suite_variant(
         name = name,
         suite_name = suite_name,
-        deps = deps,
+        deps = deps + runtime_deps,
         **kwargs
     )
 
@@ -60,8 +64,6 @@ def ct_suite_variant(
         data = [],
         deps = [],
         runtime_deps = [],
-        tools = [],
-        test_env = {},
         **kwargs):
     if suite_name == "":
         suite_name = name
@@ -69,7 +71,9 @@ def ct_suite_variant(
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     ct_test(
+        shard_suite = "@rules_erlang//tools/shard_suite:shard_suite",
         name = name,
+        suite_name = suite_name,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
@@ -77,9 +81,6 @@ def ct_suite_variant(
         compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
         data = data_dir_files + data,
         deps = [":test_erlang_app"] + deps + runtime_deps,
-        tools = tools,
-        test_env = test_env,
-        suites = [suite_name],
         **kwargs
     )
 

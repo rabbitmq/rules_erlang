@@ -1,6 +1,6 @@
 load("//private:eunit.bzl", "eunit_test")
 load(":erlang_app.bzl", "DEFAULT_TEST_ERLC_OPTS")
-load(":erlc.bzl", "erlc")
+load(":erlang_bytecode.bzl", "erlang_bytecode")
 
 def _module_name(p):
     return p.rpartition("/")[-1].replace(".erl", "")
@@ -10,11 +10,9 @@ def eunit(
         data = [],
         deps = [],
         runtime_deps = [],
-        tools = [],
-        test_env = {},
         **kwargs):
     srcs = native.glob(["test/**/*.erl"])
-    erlc(
+    erlang_bytecode(
         name = "test_case_beam_files",
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
         srcs = srcs,
@@ -43,7 +41,5 @@ def eunit(
         eunit_mods = eunit_mods,
         data = native.glob(["test/**/*"], exclude = srcs) + data,
         deps = [":test_erlang_app"] + deps + runtime_deps,
-        tools = tools,
-        test_env = test_env,
         **kwargs
     )

@@ -31,8 +31,7 @@ def github_erlang_app(
         **kwargs
     )
 
-_BUILD_FILE_TEMPLATE = """
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+_BUILD_FILE_TEMPLATE = """load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
 erlang_app(
     app_name = "{app_name}",

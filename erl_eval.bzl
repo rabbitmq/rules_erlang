@@ -1,4 +1,7 @@
-load("//private:erl_eval.bzl", "erl_eval_private")
+load(
+    "//private:erl_eval.bzl",
+    _erl_eval = "erl_eval",
+)
 
 def erl_eval(**kwargs):
-    erl_eval_private(**kwargs)
+    _erl_eval(**kwargs)

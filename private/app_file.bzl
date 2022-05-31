@@ -1,13 +1,17 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
+load(
+    "//tools:erlang_toolchain.bzl",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def _module_name(f):
     return "'{}'".format(f.basename.replace(".beam", "", 1))
 
 def _impl(ctx):
     app_file = ctx.actions.declare_file(
-        path_join("ebin", "{}.app".format(ctx.attr.app_name)),
+        path_join(ctx.attr.dest, "{}.app".format(ctx.attr.app_name)),
     )
 
     if len(ctx.files.app_src) > 1:
@@ -38,7 +42,13 @@ def _impl(ctx):
     stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                     ctx.attr.private_stamp_detect)
 
+    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+
+    app_file_tool_path = ctx.attr.app_file_tool[DefaultInfo].files_to_run.executable.path
+
     script = """set -euo pipefail
+
+{maybe_symlink_erlang}
 
 if [ -n "{src}" ]; then
     cp {src} {out}
@@ -111,8 +121,9 @@ if [ -n '{extra_keys}' ]; then
 EOF
 fi
 """.format(
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        app_file_tool = ctx.file._app_file_tool_escript.path,
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
+        app_file_tool = app_file_tool_path,
         info_file = ctx.info_file.path,
         name = ctx.attr.app_name,
         description = ctx.attr.app_description,
@@ -128,9 +139,14 @@ fi
         out = app_file.path,
     )
 
-    inputs = [ctx.file._app_file_tool_escript] + ctx.files.app_src
-    if stamp:
-        inputs.append(ctx.info_file)
+    runfiles = runfiles.merge(
+        ctx.attr.app_file_tool[DefaultInfo].default_runfiles,
+    )
+
+    inputs = depset(
+        direct = ctx.files.app_src + ([ctx.info_file] if stamp else []),
+        transitive = [runfiles.files],
+    )
 
     ctx.actions.run_shell(
         inputs = inputs,
@@ -143,14 +159,13 @@ fi
         DefaultInfo(files = depset([app_file])),
     ]
 
-app_file_private = rule(
+app_file = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
-        "_app_file_tool_escript": attr.label(
-            default = Label("//app_file_tool:escript"),
-            allow_single_file = True,
+        "app_file_tool": attr.label(
+            mandatory = True,
+            executable = True,
+            cfg = "exec",
         ),
         "app_name": attr.string(mandatory = True),
         "app_version": attr.string(),
@@ -163,6 +178,9 @@ app_file_private = rule(
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "dest": attr.string(
+            default = "ebin",
+        ),
         "stamp": attr.int(default = -1),
         "stamp_version_key": attr.string(
             default = "GIT_COMMIT",
@@ -173,4 +191,5 @@ stable-status.txt as the app version if the build is stamped""",
         # TODO(https://github.com/bazelbuild/rules_pkg/issues/340): Remove this.
         "private_stamp_detect": attr.bool(default = False),
     },
+    toolchains = ["//tools:toolchain_type"],
 )

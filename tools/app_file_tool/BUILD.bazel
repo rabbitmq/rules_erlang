@@ -1,0 +1,24 @@
+load(
+    "//private:erlang_bytecode.bzl",
+    "erlang_bytecode",
+)
+load(
+    "//private:escript_flat.bzl",
+    "escript_flat",
+)
+load(
+    "//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
+)
+
+erlang_bytecode(
+    name = "beam_files",
+    srcs = glob(["src/*.erl"]),
+    erlc_opts = DEFAULT_ERLC_OPTS,
+)
+
+escript_flat(
+    name = "app_file_tool",
+    beam = ":beam_files",
+    visibility = ["//visibility:public"],
+)

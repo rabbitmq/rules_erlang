@@ -1,15 +1,21 @@
 module(
     name = "rules_erlang",
-    version = "2.5.2",
-    compatibility_level = 2,
+    version = "3.0.0",
+    compatibility_level = 3,
 )
 
-download_xrefr = use_extension(
+bazel_dep(
+    name = "bazel_skylib",
+    version = "1.2.0",
+)
+
+erlang_package = use_extension(
     "//bzlmod:extensions.bzl",
-    "download_xrefr",
+    "erlang_package",
 )
 
 use_repo(
-    download_xrefr,
-    "xrefr",
+    erlang_package,
+    "getopt_src",
+    "xref_runner_src",
 )

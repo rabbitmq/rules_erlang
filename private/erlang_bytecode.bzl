@@ -1,12 +1,11 @@
-load("//:erlang_home.bzl", "ErlangHomeProvider", "ErlangVersionProvider")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
-load(
-    "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "path_join",
-)
+load("//:util.bzl", "path_join")
 load(":util.bzl", "erl_libs_contents")
+load(
+    "//tools:erlang_toolchain.bzl",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def beam_file(ctx, src, dir):
     name = src.basename.replace(".erl", ".beam")
@@ -24,8 +23,6 @@ def _dirname(path):
     return path.rpartition("/")[0]
 
 def _impl(ctx):
-    erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version
-
     erl_libs_dir = ctx.label.name + "_deps"
 
     erl_libs_files = erl_libs_contents(
@@ -62,63 +59,59 @@ def _impl(ctx):
     srcs = ctx.actions.args()
     srcs.add_all(ctx.files.srcs)
 
-    script = """
-        set -euo pipefail
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-        mkdir -p {dest_dir}
-        export HOME=$PWD
+    compile_first_path = ""
+    compile_first = ctx.attr.compile_first
+    if compile_first != None:
+        compile_first_path = compile_first[DefaultInfo].files_to_run.executable.path
+        runfiles = runfiles.merge(compile_first[DefaultInfo].default_runfiles)
 
-        {begins_with_fun}
-        V=$("{erlang_home}"/bin/{query_erlang_version})
-        if ! beginswith "{erlang_version}" "$V"; then
-            echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-            exit 1
-        fi
+    script = """set -euo pipefail
 
-        if [ -n "{erl_libs_path}" ]; then
-            export ERL_LIBS={erl_libs_path}
-        fi
+{maybe_symlink_erlang}
 
-        # use the compile_first escript to determine the first pass, if present
-        if [ -n "{compile_first}" ]; then
-            FIRST=$("{erlang_home}"/bin/escript {compile_first} $@)
-        else
-            FIRST=
-        fi
+mkdir -p {dest_dir}
 
-        if [ -n "$FIRST" ]; then
-            "{erlang_home}"/bin/erlc \\
-                -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
-                $FIRST
-            "{erlang_home}"/bin/erlc \\
-                -v {include_args} {pa_args} -pa {out_dir} -o {out_dir} {erlc_opts} \\
-                $@
-        else
-            "{erlang_home}"/bin/erlc \\
-                -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
-                $@
-        fi
+if [ -n "{erl_libs_path}" ]; then
+    export ERL_LIBS={erl_libs_path}
+fi
+
+# use the compile_first escript to determine the first pass, if present
+if [ -n "{compile_first}" ]; then
+    FIRST=$("{erlang_home}"/bin/escript {compile_first} $@)
+else
+    FIRST=
+fi
+
+if [ -n "$FIRST" ]; then
+    "{erlang_home}"/bin/erlc \\
+        -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
+        $FIRST
+    "{erlang_home}"/bin/erlc \\
+        -v {include_args} {pa_args} -pa {out_dir} -o {out_dir} {erlc_opts} \\
+        $@
+else
+    "{erlang_home}"/bin/erlc \\
+        -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
+        $@
+fi
     """.format(
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
         dest_dir = dest_dir,
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_version = erlang_version,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
         erl_libs_path = erl_libs_path,
-        compile_first = ctx.file.compile_first.path if ctx.file.compile_first != None else "",
+        compile_first = compile_first_path,
         include_args = " ".join(include_args),
         pa_args = " ".join(pa_args),
         out_dir = dest_dir,
         erlc_opts = " ".join(["'{}'".format(opt) for opt in ctx.attr.erlc_opts]),
     )
 
-    inputs = []
-    inputs.extend(ctx.files.hdrs)
-    inputs.extend(ctx.files.srcs)
-    inputs.extend(ctx.files.beam)
-    inputs.extend(erl_libs_files)
-    if ctx.file.compile_first != None:
-        inputs.append(ctx.file.compile_first)
+    inputs = depset(
+        direct = ctx.files.hdrs + ctx.files.srcs + ctx.files.beam + erl_libs_files,
+        transitive = [runfiles.files],
+    )
 
     ctx.actions.run_shell(
         inputs = inputs,
@@ -132,24 +125,30 @@ def _impl(ctx):
         DefaultInfo(files = depset(beam_files)),
     ]
 
-erlc_private = rule(
+erlang_bytecode = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(default = Label("//:erlang_home")),
-        "_erlang_version": attr.label(default = Label("//:erlang_version")),
         "compile_first": attr.label(
-            allow_single_file = True,
+            executable = True,
+            cfg = "exec",
         ),
-        "hdrs": attr.label_list(allow_files = [".hrl"]),
+        "hdrs": attr.label_list(
+            allow_files = [".hrl"],
+        ),
         "srcs": attr.label_list(
             mandatory = True,
             allow_files = [".erl"],
         ),
-        "beam": attr.label_list(allow_files = [".beam"]),
-        "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "beam": attr.label_list(
+            allow_files = [".beam"],
+        ),
+        "deps": attr.label_list(
+            providers = [ErlangAppInfo],
+        ),
         "erlc_opts": attr.string_list(),
         "dest": attr.string(
             default = "ebin",
         ),
     },
+    toolchains = ["//tools:toolchain_type"],
 )

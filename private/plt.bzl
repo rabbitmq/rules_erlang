@@ -1,21 +1,17 @@
-load(
-    "//:erlang_home.bzl",
-    "ErlangHomeProvider",
-    "ErlangVersionProvider",
-)
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load(":erlang_bytecode.bzl", "unique_dirnames")
 load(
-    "//:util.bzl",
-    "BEGINS_WITH_FUN",
-    "QUERY_ERL_VERSION",
-    "windows_path",
+    "//tools:erlang_toolchain.bzl",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
 )
-load(":erlc.bzl", "unique_dirnames")
-load(":ct.bzl", "code_paths")
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
 def _impl(ctx):
+    logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
+    home_dir = ctx.actions.declare_directory(ctx.label.name + "_home")
+
     apps_args = ""
     if len(ctx.attr.apps) > 0:
         apps_args = "--apps " + " ".join(ctx.attr.apps)
@@ -31,41 +27,43 @@ def _impl(ctx):
         files.extend(lib_info.beam)
 
     dirs = unique_dirnames(files)
+    dirs_args = "".join([
+        "\n    {} \\".format(d)
+        for d in dirs
+    ])
+
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     script = """set -euo pipefail
 
-export HOME=$PWD
+{maybe_symlink_erlang}
 
-{begins_with_fun}
-V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-    echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-    exit 1
-fi
+# without HOME being set, dialyzer will error regarding a default plt
+export HOME={home}
 
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
-    {source_plt_arg} \\{dirs}
-    --output_plt {output}
+    {source_plt_arg} \\{dirs_args}
+    --output_plt {output} > {logfile}
 """.format(
-        begins_with_fun = BEGINS_WITH_FUN,
-        query_erlang_version = QUERY_ERL_VERSION,
-        erlang_home = ctx.attr._erlang_home[ErlangHomeProvider].path,
-        erlang_version = ctx.attr._erlang_version[ErlangVersionProvider].version,
+        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        erlang_home = erlang_home,
+        home = home_dir.path,
         apps_args = apps_args,
         source_plt_arg = source_plt_arg,
-        dirs = "".join(["\n    {} \\".format(d) for d in dirs]),
+        dirs_args = dirs_args,
         output = ctx.outputs.plt.path,
+        logfile = logfile.path,
     )
 
-    inputs = []
-    if ctx.file.plt != None:
-        inputs.append(ctx.file.plt)
-    inputs.extend(files)
+    inputs = depset(
+        direct = ctx.files.plt + files,
+        transitive = [runfiles.files],
+    )
 
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = [ctx.outputs.plt],
+        outputs = [ctx.outputs.plt, logfile, home_dir],
         command = script,
         mnemonic = "DIALYZER",
     )
@@ -73,12 +71,6 @@ set -x
 plt = rule(
     implementation = _impl,
     attrs = {
-        "_erlang_home": attr.label(
-            default = Label("//:erlang_home"),
-        ),
-        "_erlang_version": attr.label(
-            default = Label("//:erlang_version"),
-        ),
         "plt": attr.label(
             allow_single_file = [".plt"],
         ),
@@ -92,4 +84,5 @@ plt = rule(
     outputs = {
         "plt": ".%{name}.plt",
     },
+    toolchains = ["//tools:toolchain_type"],
 )

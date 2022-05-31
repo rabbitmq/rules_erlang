@@ -1,0 +1,57 @@
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "af87959afe497dc8dfd4c6cb66e1279cb98ccc84284619ebfec27d9c09a903de",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+http_archive(
+    name = "io_buildbuddy_buildbuddy_toolchain",
+    sha256 = "a2a5cccec251211e2221b1587af2ce43c36d32a42f5d881737db3b546a536510",
+    strip_prefix = "buildbuddy-toolchain-829c8a574f706de5c96c54ca310f139f4acda7dd",
+    urls = ["https://github.com/buildbuddy-io/buildbuddy-toolchain/archive/829c8a574f706de5c96c54ca310f139f4acda7dd.tar.gz"],
+)
+
+load("@io_buildbuddy_buildbuddy_toolchain//:deps.bzl", "buildbuddy_deps")
+
+buildbuddy_deps()
+
+load("@io_buildbuddy_buildbuddy_toolchain//:rules.bzl", "buildbuddy")
+
+buildbuddy(
+    name = "buildbuddy_toolchain",
+    llvm = True,
+)
+
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
+    name = "rbe",
+    commit = "6a2899b87ee4f4dc0ef6f0012be6c3f94e6c9c2f",  # linux-rbe branch
+    remote = "https://github.com/rabbitmq/rbe-erlang-platform.git",
+)
+
+local_repository(
+    name = "rules_erlang",
+    path = "..",
+)
+
+load(
+    "@rules_erlang//:rules_erlang.bzl",
+    "rules_erlang_dependencies",
+)
+
+rules_erlang_dependencies()
+
+register_toolchains(
+    "//:erlang_toolchain_external",
+    "//:erlang_toolchain_default",
+)

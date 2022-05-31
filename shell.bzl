@@ -1,7 +1,10 @@
-load("//private:shell.bzl", "shell_private")
+load(
+    "//private:shell.bzl",
+    _shell = "shell",
+)
 
 def shell(**kwargs):
-    shell_private(
+    _shell(
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
