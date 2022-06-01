@@ -237,9 +237,9 @@ erlang_app(
     $(call ifnappsrc,app_version = "$(PROJECT_VERSION)"$(comma))
     $(call ifnappsrc,app_env = \"""$(PROJECT_ENV)\"""$(comma))
     $(call ifnappsrc,$(if $(PROJECT_APP_EXTRA_KEYS),app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\"""$(comma)))
-    $(call ifnappsrc,$(if $(LOCAL_DEPS),extra_apps = [$(foreach dep,$(LOCAL_DEPS),\n        "$(dep)",)\n    ]$(comma)))
-    $(call ifnappsrc,$(if $(BUILD_DEPS),build_deps = [$(foreach dep,$(BUILD_DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma)))
-    $(call ifnappsrc,$(if $(DEPS),deps = [$(foreach dep,$(DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma)))
+    $(if $(LOCAL_DEPS),extra_apps = [$(foreach dep,$(LOCAL_DEPS),\n        "$(dep)",)\n    ]$(comma))
+    $(if $(BUILD_DEPS),build_deps = [$(foreach dep,$(BUILD_DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
+    $(if $(DEPS),deps = [$(foreach dep,$(DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
     erlc_opts = [
         "+deterministic",
         "+debug_info",
