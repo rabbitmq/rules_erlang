@@ -8,7 +8,7 @@ def xref(
         tags = [],
         **kwargs):
     xref_test(
-        xrefr = "@rules_erlang//tools/xref_runner:xrefr",
+        xrefr = Label("@rules_erlang//tools/xref_runner:xrefr"),
         name = name,
         target = target,
         is_windows = select({

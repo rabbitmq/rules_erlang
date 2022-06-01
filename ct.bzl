@@ -71,7 +71,7 @@ def ct_suite_variant(
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
     ct_test(
-        shard_suite = "@rules_erlang//tools/shard_suite:shard_suite",
+        shard_suite = Label("@rules_erlang//tools/shard_suite:shard_suite"),
         name = name,
         suite_name = suite_name,
         is_windows = select({
