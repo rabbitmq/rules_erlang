@@ -34,9 +34,10 @@ def _erlang_build_impl(ctx):
     (_, _, filename) = ctx.attr.url.rpartition("/")
     downloaded_archive = ctx.actions.declare_file(filename)
 
-    release_dir = ctx.actions.declare_directory(ctx.label.name + "_release")
     build_dir = ctx.actions.declare_directory(ctx.label.name + "_build")
     build_log = ctx.actions.declare_file(ctx.label.name + "_build.log")
+    dest_dir = ctx.actions.declare_directory(ctx.label.name + "_dest")
+    release_dir = ctx.actions.declare_directory(ctx.label.name + "_release")
     symlinks_log = ctx.actions.declare_file(ctx.label.name + "_symlinks.log")
 
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
@@ -74,7 +75,7 @@ fi
             archive_path = downloaded_archive.path,
             sha256 = ctx.attr.sha256,
         ),
-        mnemonic = "CURL",
+        mnemonic = "OTP",
         progress_message = "Downloading {}".format(ctx.attr.url),
     )
 
@@ -87,15 +88,17 @@ fi
     ctx.actions.run_shell(
         inputs = [downloaded_archive],
         outputs = [
-            release_dir,
             build_dir,
             build_log,
+            release_dir,
+            dest_dir,
             symlinks_log,
         ],
         # tools = [zipper],
         command = """set -euo pipefail
 
 ABS_BUILD_DIR=$PWD/{build_path}
+ABS_DEST_DIR=$PWD/{dest_dir}
 ABS_RELEASE_DIR=$PWD/{release_path}
 ABS_LOG=$PWD/{build_log}
 ABS_SYMLINKS=$PWD/{symlinks_log}
@@ -112,16 +115,17 @@ cd $ABS_BUILD_DIR
 ./configure --prefix={install_path} {extra_configure_opts} >> $ABS_LOG 2>&1
 {post_configure_cmds}
 make {extra_make_opts} >> $ABS_LOG 2>&1
-make DESTDIR=$ABS_RELEASE_DIR install >> $ABS_LOG 2>&1
+make DESTDIR=$ABS_DEST_DIR install >> $ABS_LOG 2>&1
 
-mv $ABS_RELEASE_DIR{install_path}/* $ABS_RELEASE_DIR
-rm -d $ABS_RELEASE_DIR{install_path}
-rm -rf $ABS_RELEASE_DIR{install_root}
+cp -r $ABS_DEST_DIR{install_path}/lib/erlang/* $ABS_RELEASE_DIR
 
 # bazel will not allow a symlink in the output directory with
 # --remote_download_minimal, so we remove them
 find ${{ABS_RELEASE_DIR}} -type l | xargs ls -ld > $ABS_SYMLINKS
 find ${{ABS_RELEASE_DIR}} -type l -delete
+
+# find ${{ABS_DEST_DIR}} -type l
+find ${{ABS_DEST_DIR}} -type l -delete
 
 # find ${{ABS_BUILD_DIR}} -type l
 find ${{ABS_BUILD_DIR}} -type l -delete
@@ -130,6 +134,7 @@ find ${{ABS_BUILD_DIR}} -type l -delete
             strip_prefix = strip_prefix,
             zipper = "",  # zipper.path,
             build_path = build_dir.path,
+            dest_dir = dest_dir.path,
             release_path = release_dir.path,
             install_path = install_path,
             install_root = install_root,
@@ -143,6 +148,8 @@ find ${{ABS_BUILD_DIR}} -type l -delete
         progress_message = "Compiling otp from source",
     )
 
+    erlang_home = path_join(install_path, "lib", "erlang")
+
     ctx.actions.run_shell(
         inputs = [release_dir],
         outputs = [version_file],
@@ -150,18 +157,18 @@ find ${{ABS_BUILD_DIR}} -type l -delete
 
 mkdir -p $(dirname "{erlang_home}")
 ln -sf $PWD/{erlang_release_dir} "{erlang_home}"
-mkdir -p "{erlang_home}"/bin
-ln -sf ../lib/erlang/bin/erl "{erlang_home}"/bin/erl
 
 V=$("{erlang_home}"/bin/{query_erlang_version})
 
 echo "$V" >> {version_file}
 """.format(
             query_erlang_version = QUERY_ERL_VERSION,
-            erlang_home = install_path,
+            erlang_home = erlang_home,
             erlang_release_dir = release_dir.path,
             version_file = version_file.path,
         ),
+        mnemonic = "OTP",
+        progress_message = "Validating otp at {}".format(erlang_home),
     )
 
     return [
@@ -173,7 +180,7 @@ echo "$V" >> {version_file}
         ),
         OtpInfo(
             release_dir = release_dir,
-            erlang_home = install_path,
+            erlang_home = erlang_home,
             version_file = version_file,
         ),
     ]

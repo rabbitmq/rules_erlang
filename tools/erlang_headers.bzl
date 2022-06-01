@@ -1,30 +1,32 @@
 load("//:util.bzl", "path_join")
+load(
+    ":erlang_toolchain.bzl",
+    "erlang_dirs",
+    "maybe_symlink_erlang",
+)
 
 def _erlang_headers_impl(ctx):
-    commands = ["set -euo pipefail", ""]
+    commands = [
+        "set -euo pipefail",
+        "",
+        maybe_symlink_erlang(ctx),
+        "",
+    ]
 
-    otpinfo = ctx.toolchains["//tools:toolchain_type"].otpinfo
-
-    if otpinfo.release_dir != None:
-        otp_root = otpinfo.release_dir.path
-        inputs = [otpinfo.release_dir]
-    else:
-        otp_root = otpinfo.erlang_home
-        inputs = []
-    inputs.append(otpinfo.version_file)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     outs = []
     for f in ctx.attr.filenames:
         dest = ctx.actions.declare_file(path_join(ctx.label.name, f))
-        commands.append("cp {otp}/lib/erlang/usr/include/{f} {dest}".format(
-            otp = otp_root,
+        commands.append("cp '{erlang_home}'/usr/include/{f} {dest}".format(
+            erlang_home = erlang_home,
             f = f,
             dest = dest.path,
         ))
         outs.append(dest)
 
     ctx.actions.run_shell(
-        inputs = inputs,
+        inputs = runfiles.files,
         outputs = outs,
         command = "\n".join(commands),
     )
