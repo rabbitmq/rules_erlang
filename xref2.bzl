@@ -13,6 +13,7 @@ XREF_TAG = _XREF_TAG
 def xref(
         name = "xref",
         target = ":erlang_app",
+        size = "medium",
         tags = [],
         **kwargs):
     xref_test(
@@ -22,6 +23,7 @@ def xref(
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
         }),
+        size = size,
         tags = tags + [XREF_TAG],
         **kwargs
     )
