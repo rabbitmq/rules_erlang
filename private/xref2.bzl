@@ -1,4 +1,8 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
 load(
     "//:util.bzl",
     "path_join",
@@ -31,7 +35,7 @@ def _expand_xref_erl(ctx, method = None, arg = None):
     erl_libs_dir = ctx.label.name + "_deps"
     erl_libs_files = erl_libs_contents2(
         ctx,
-        deps = target_info.deps + ctx.attr.extra_apps,
+        deps = flat_deps(target_info.deps) + ctx.attr.extra_apps,
         dir = erl_libs_dir,
     )
     erl_libs_path = path_join(ctx.label.package, erl_libs_dir)
@@ -88,11 +92,12 @@ def _expand_xref_erl(ctx, method = None, arg = None):
 
     return (
         xref_erl,
+        erl_libs_path,
         erl_libs_files,
     )
 
 def _impl(ctx):
-    (xref_erl, erl_libs_files) = _expand_xref_erl(
+    (xref_erl, erl_libs_path, erl_libs_files) = _expand_xref_erl(
         ctx,
         method = "check",
         arg = to_erlang_atom_list(ctx.attr.checks),
@@ -107,6 +112,7 @@ def _impl(ctx):
 {maybe_symlink_erlang}
 
 export HOME=${{TEST_TMPDIR}}
+export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
 
 if [ -n "{package}" ]; then
     cd {package}
@@ -119,12 +125,16 @@ fi
 """.format(
             maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
+            erl_libs_path = erl_libs_path,
             package = ctx.label.package,
             xref_erl = xref_erl,
         )
     else:
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
+
+set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
+set ERL_LIBS=%ERL_LIBS:/=\\%
 
 if NOT [{package}] == [] cd {package}
 
@@ -134,6 +144,7 @@ if NOT [{package}] == [] cd {package}
     -pa ebin/
 """.format(
             erlang_home = windows_path(erlang_home),
+            erl_libs_path = erl_libs_path,
             xref_erl = xref_erl,
             package = ctx.label.package,
         )
@@ -184,7 +195,7 @@ xref_test = rule(
 )
 
 def _query_impl(ctx):
-    (xref_erl, erl_libs_files) = _expand_xref_erl(
+    (xref_erl, erl_libs_path, erl_libs_files) = _expand_xref_erl(
         ctx,
         method = "query",
         arg = "\"$QUERY\"",
@@ -197,6 +208,8 @@ def _query_impl(ctx):
         script = """set -euo pipefail
 
 {maybe_symlink_erlang}
+
+export ERL_LIBS=$PWD/{erl_libs_path}
 
 if [ -n "{package}" ]; then
     cd {package}
@@ -211,12 +224,15 @@ export QUERY="$1"
 """.format(
             maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
+            erl_libs_path = erl_libs_path,
             package = ctx.label.package,
             xref_erl = xref_erl,
         )
     else:
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
+
+set ERL_LIBS=%cd%/{erl_libs_path}
 
 if NOT [{package}] == [] cd {package}
 
@@ -228,8 +244,9 @@ set QUERY=%1%
     -pa ebin/
 """.format(
             erlang_home = windows_path(erlang_home),
-            xref_erl = xref_erl,
+            erl_libs_path = windows_path(erl_libs_path),
             package = ctx.label.package,
+            xref_erl = xref_erl,
         )
 
     ctx.actions.write(
