@@ -13,7 +13,7 @@ XREF_TAG = _XREF_TAG
 def xref(
         name = "xref",
         target = ":erlang_app",
-        size = "medium",
+        size = "small",
         tags = [],
         **kwargs):
     xref_test(
