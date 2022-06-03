@@ -35,13 +35,13 @@ def _expand_xref_erl(ctx, method = None, arg = None):
     erl_libs_dir = ctx.label.name + "_deps"
     erl_libs_files = erl_libs_contents2(
         ctx,
-        deps = flat_deps(target_info.deps) + ctx.attr.extra_apps,
+        deps = flat_deps(target_info.deps) + ctx.attr.additional_libs + ctx.attr.extra_apps,
         dir = erl_libs_dir,
     )
     erl_libs_path = path_join(ctx.label.package, erl_libs_dir)
 
     extra_app_dirs = [
-        path_join(erl_libs_path, dep[ErlangAppInfo].app_name)
+        path_join(erl_libs_dir, dep[ErlangAppInfo].app_name)
         for dep in ctx.attr.extra_apps
     ]
 
@@ -185,6 +185,9 @@ _XREF_ATTRS = {
     ),
     "ignore": attr.string_list(),
     "ignore_callbacks": attr.string(),
+    "additional_libs": attr.label_list(
+        providers = [ErlangAppInfo],
+    ),
 }
 
 xref_test = rule(
