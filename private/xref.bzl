@@ -6,16 +6,15 @@ load(
 )
 load(":ct.bzl", "code_paths")
 load(
+    ":util.bzl",
+    "to_erlang_atom_list",
+    "to_erlang_string_list",
+)
+load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_symlink_erlang",
 )
-
-def _to_erlang_string_list(strings):
-    return "[" + ",".join(["\"{}\"".format(s) for s in strings]) + "]"
-
-def _to_erlang_atom_list(strings):
-    return "[" + ",".join(strings) + "]"
 
 def _impl(ctx):
     lib_info = ctx.attr.target[ErlangAppInfo]
@@ -30,12 +29,12 @@ def _impl(ctx):
 
     xref_config = "[{xref, ["
     xref_config = xref_config + "{config, #{"
-    xref_config = xref_config + "extra_paths => " + _to_erlang_string_list(extra_paths)
+    xref_config = xref_config + "extra_paths => " + to_erlang_string_list(extra_paths)
     xref_config = xref_config + ", "
-    xref_config = xref_config + "dirs => " + _to_erlang_string_list(dirs)
+    xref_config = xref_config + "dirs => " + to_erlang_string_list(dirs)
     xref_config = xref_config + "}}"
     xref_config = xref_config + ", "
-    xref_config = xref_config + "{checks, " + _to_erlang_atom_list(ctx.attr.checks) + "}"
+    xref_config = xref_config + "{checks, " + to_erlang_atom_list(ctx.attr.checks) + "}"
     xref_config = xref_config + "]}]."
     xref_config = xref_config + "\n"
 
