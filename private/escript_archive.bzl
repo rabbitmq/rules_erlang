@@ -1,7 +1,7 @@
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 load(
     "//:erlang_app_info.bzl",
@@ -67,7 +67,7 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 "{erlang_home}"/bin/erl \\
     -noshell \\
@@ -83,7 +83,7 @@ io:format("done.~n", []),
 halt().
 '
 """.format(
-        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         name = name,
         headers = "".join(["{}, ".format(h) for h in ctx.attr.headers]),

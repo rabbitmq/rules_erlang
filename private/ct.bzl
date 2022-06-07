@@ -8,7 +8,7 @@ load(
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def sanitize_sname(s):
@@ -66,7 +66,7 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -eo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 if [ -n "{shard_suite}" ]; then
     if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
@@ -120,7 +120,7 @@ set -x
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
-            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             package = package,
             erl_libs_path = erl_libs_path,

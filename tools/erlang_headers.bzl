@@ -2,14 +2,14 @@ load("//:util.bzl", "path_join")
 load(
     ":erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _erlang_headers_impl(ctx):
     commands = [
         "set -euo pipefail",
         "",
-        maybe_symlink_erlang(ctx),
+        maybe_install_erlang(ctx),
         "",
     ]
 
