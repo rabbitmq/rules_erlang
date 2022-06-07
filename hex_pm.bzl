@@ -5,7 +5,6 @@ def hex_pm_erlang_app(
         name = None,
         version = None,
         erlc_opts = DEFAULT_ERLC_OPTS,
-        first_srcs = [],
         deps = [],
         runtime_deps = [],
         **kwargs):
@@ -16,7 +15,6 @@ def hex_pm_erlang_app(
             app_name = name,
             version = version,
             erlc_opts = erlc_opts,
-            first_srcs = first_srcs,
             deps = deps,
             runtime_deps = runtime_deps,
         ),
@@ -29,7 +27,6 @@ erlang_app(
     app_name = "{app_name}",
     app_version = "{version}",
     erlc_opts = {erlc_opts},
-    first_srcs = {first_srcs},
     deps = {deps},
     runtime_deps = {runtime_deps},
     stamp = 0,

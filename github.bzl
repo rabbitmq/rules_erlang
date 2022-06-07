@@ -7,7 +7,6 @@ def github_erlang_app(
         version = "master",
         ref = "refs/heads/master",
         extra_apps = [],
-        first_srcs = [],
         deps = [],
         runtime_deps = [],
         **kwargs):
@@ -37,7 +36,6 @@ erlang_app(
     app_name = "{app_name}",
     app_version = "{version}",
     extra_apps = {extra_apps},
-    first_srcs = {first_srcs},
     deps = {deps},
     runtime_deps = {runtime_deps},
 )
