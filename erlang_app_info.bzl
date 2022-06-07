@@ -6,6 +6,7 @@ ErlangAppInfo = provider(
         "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
         "license_files": "License files",
+        "srcs": "Source files",
         "deps": "Runtime dependencies of the compiled sources",
     },
 )
@@ -43,6 +44,7 @@ def _impl(ctx):
             beam = compiled_files,
             priv = ctx.files.priv,
             license_files = ctx.files.license_files,
+            srcs = ctx.files.srcs,
             deps = deps,
         ),
         DefaultInfo(
@@ -60,6 +62,7 @@ erlang_app_info = rule(
         "beam": attr.label_list(allow_files = [".beam", ".appup"]),
         "priv": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
+        "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
     },
 )

@@ -1,19 +1,38 @@
-load("@rules_erlang//:app_file.bzl", "app_file")
-load("@rules_erlang//:erlang_bytecode.bzl", "erlang_bytecode")
-load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
+load(
+    "@rules_erlang//:app_file.bzl",
+    "app_file",
+)
+load(
+    "@rules_erlang//:erlang_bytecode.bzl",
+    "erlang_bytecode",
+)
+load(
+    "@rules_erlang//:erlang_app_info.bzl",
+    "erlang_app_info",
+)
 load(
     "@rules_erlang//:erlang_app.bzl",
     "DEFAULT_ERLC_OPTS",
     "DEFAULT_TEST_ERLC_OPTS",
 )
-load("@rules_erlang//:xref2.bzl", "xref")
+load(
+    "@rules_erlang//:xref2.bzl",
+    "xref",
+)
 load(
     "@rules_erlang//:dialyze.bzl",
     "DEFAULT_PLT_APPS",
     "dialyze",
     "plt",
 )
-load("@rules_erlang//:ct.bzl", "ct_suite")
+load(
+    "@rules_erlang//:ct.bzl",
+    "ct_suite",
+)
+load(
+    "@rules_erlang//:source_archive.bzl",
+    "source_archive",
+)
 
 APP_NAME = "shard_suite"
 
@@ -44,6 +63,7 @@ app_file(
 
 erlang_app_info(
     name = "erlang_app",
+    srcs = ["@rules_erlang//tools/shard_suite:src/shard_suite.erl"],
     app = ":app_file",
     app_name = APP_NAME,
     beam = [":beam_files"],
@@ -52,6 +72,7 @@ erlang_app_info(
 erlang_app_info(
     name = "test_erlang_app",
     testonly = True,
+    srcs = ["@rules_erlang//tools/shard_suite:src/shard_suite.erl"],
     app = ":app_file",
     app_name = APP_NAME,
     beam = [":test_beam_files"],
@@ -77,3 +98,5 @@ ct_suite(
         "test/example_suite.erl",
     ],
 )
+
+source_archive()
