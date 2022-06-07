@@ -21,12 +21,7 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def erl_libs_contents(ctx, transitive = True, headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
-    if transitive:
-        deps = flat_deps(ctx.attr.deps)
-    else:
-        deps = ctx.attr.deps
-
+def erl_libs_contents2(ctx, deps = [], headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
@@ -57,3 +52,21 @@ def erl_libs_contents(ctx, transitive = True, headers = False, dir = _DEFAULT_ER
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
     return erl_libs_files
+
+def erl_libs_contents(ctx, transitive = True, **kwargs):
+    if transitive:
+        deps = flat_deps(ctx.attr.deps)
+    else:
+        deps = ctx.attr.deps
+
+    return erl_libs_contents2(
+        ctx,
+        deps = deps,
+        **kwargs
+    )
+
+def to_erlang_string_list(strings):
+    return "[" + ",".join(["\"{}\"".format(s) for s in strings]) + "]"
+
+def to_erlang_atom_list(strings):
+    return "[" + ",".join(strings) + "]"
