@@ -76,8 +76,8 @@ assert_suites([
 build --@rules_erlang//:erlang_home=/path/to/erlang
 build --@rules_erlang//:erlang_version=23.2
 
-build --platforms=@rules_erlang//:erlang_external_platform
-build --extra_execution_platforms=@rules_erlang//:erlang_external_platform
+build --platforms=@rules_erlang//platforms:erlang_external_platform
+build --extra_execution_platforms=@rules_erlang//platforms:erlang_external_platform
 ```
 
 ### Compile and run all tests
