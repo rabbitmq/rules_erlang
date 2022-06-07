@@ -41,10 +41,18 @@ def _impl(ctx):
 # without HOME being set, dialyzer will error regarding a default plt
 export HOME={home}
 
+set +e
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
     {source_plt_arg} \\{dirs_args}
     --output_plt {output} > {logfile}
+R=$?
+set +x
+set -e
+if [ ! $R -eq 0 ]; then
+    cat {logfile}
+fi
+exit $R
 """.format(
         maybe_symlink_erlang = maybe_symlink_erlang(ctx),
         erlang_home = erlang_home,
