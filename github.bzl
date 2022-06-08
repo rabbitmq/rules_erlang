@@ -15,7 +15,6 @@ def github_erlang_app(
             app_name = name,
             version = version,
             extra_apps = extra_apps,
-            first_srcs = first_srcs,
             deps = deps,
             runtime_deps = runtime_deps,
             stamp = 0,
