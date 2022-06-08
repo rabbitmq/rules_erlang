@@ -1,5 +1,10 @@
 name: Test
-on: push
+on:
+  push:
+    branches:
+      - main
+      - bump-rbe
+  pull_request:
 jobs:
   test:
     runs-on: ubuntu-latest
