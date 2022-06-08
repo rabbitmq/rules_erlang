@@ -17,7 +17,7 @@ load(
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _replace_all(s, substitutions):
@@ -109,7 +109,7 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 export HOME=${{TEST_TMPDIR}}
 export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
@@ -123,7 +123,7 @@ fi
     -eval "{xref_erl}" \\
     -pa ebin/
 """.format(
-            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             erl_libs_path = erl_libs_path,
             package = ctx.label.package,
@@ -210,7 +210,7 @@ def _query_impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 export ERL_LIBS=$PWD/{erl_libs_path}
 
@@ -225,7 +225,7 @@ export QUERY="$1"
     -eval "{xref_erl}" \\
     -pa ebin/
 """.format(
-            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             erl_libs_path = erl_libs_path,
             package = ctx.label.package,

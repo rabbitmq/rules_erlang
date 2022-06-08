@@ -3,7 +3,7 @@ load(":erlang_bytecode.bzl", "unique_dirnames")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
@@ -36,7 +36,7 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 # without HOME being set, dialyzer will error regarding a default plt
 export HOME={home}
@@ -54,7 +54,7 @@ if [ ! $R -eq 0 ]; then
 fi
 exit $R
 """.format(
-        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         home = home_dir.path,
         apps_args = apps_args,

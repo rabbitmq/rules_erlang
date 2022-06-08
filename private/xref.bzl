@@ -13,7 +13,7 @@ load(
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _impl(ctx):
@@ -53,7 +53,7 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 export HOME=${{TEST_TMPDIR}}
 
@@ -65,7 +65,7 @@ set -x
 "{erlang_home}"/bin/escript {xrefr} \\
     --config {config_path}
 """.format(
-            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             xrefr = xrefr_path,
             config_path = config_file.short_path,

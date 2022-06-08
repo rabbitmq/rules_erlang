@@ -1,7 +1,7 @@
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _impl(ctx):
@@ -21,13 +21,13 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 export PATH="{erlang_home}"/bin:${{PATH}}
 
 {cmd}
 """.format(
-        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         cmd = cmd,
     )

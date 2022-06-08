@@ -8,7 +8,7 @@ load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _to_atom_list(l):
@@ -33,7 +33,7 @@ def _impl(ctx):
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 export HOME=${{TEST_TMPDIR}}
 export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
@@ -49,7 +49,7 @@ set -x
     -pa test \\
     -eval "case eunit:test({eunit_mods_term},[]) of ok -> ok; error -> halt(2) end, halt()"
 """.format(
-            maybe_symlink_erlang = maybe_symlink_erlang(ctx, short_path = True),
+            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             erl_libs_path = erl_libs_path,
             package = package,

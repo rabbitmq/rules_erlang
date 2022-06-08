@@ -4,7 +4,7 @@ load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def beam_file(ctx, src, dir):
@@ -69,7 +69,7 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 mkdir -p {dest_dir}
 
@@ -97,7 +97,7 @@ else
         $@
 fi
     """.format(
-        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         dest_dir = dest_dir,
         erl_libs_path = erl_libs_path,

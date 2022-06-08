@@ -3,7 +3,7 @@ load("//:util.bzl", "path_join")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
-    "maybe_symlink_erlang",
+    "maybe_install_erlang",
 )
 
 def _module_name(f):
@@ -48,7 +48,7 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-{maybe_symlink_erlang}
+{maybe_install_erlang}
 
 if [ -n "{src}" ]; then
     cp {src} {out}
@@ -121,7 +121,7 @@ if [ -n '{extra_keys}' ]; then
 EOF
 fi
 """.format(
-        maybe_symlink_erlang = maybe_symlink_erlang(ctx),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         app_file_tool = app_file_tool_path,
         info_file = ctx.info_file.path,

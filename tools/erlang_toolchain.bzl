@@ -36,14 +36,14 @@ def erlang_dirs(ctx):
         ])
     return (info.erlang_home, info.release_dir, runfiles)
 
-def maybe_symlink_erlang(ctx, short_path = False):
+def maybe_install_erlang(ctx, short_path = False):
     info = _build_info(ctx)
     release_dir = info.release_dir
     if release_dir == None:
         return ""
     else:
         return """mkdir -p $(dirname "{erlang_home}")
-ln -sf $PWD/{erlang_release_dir} "{erlang_home}"
+cp -r {erlang_release_dir} "{erlang_home}"
 ERTS_DIRNAME="$(basename "$(echo "{erlang_home}"/erts-*)")"
 ln -sf ../$ERTS_DIRNAME/bin/epmd "{erlang_home}"/bin/epmd
 """.format(
