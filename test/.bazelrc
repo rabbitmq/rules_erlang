@@ -23,8 +23,8 @@ build:rbe --crosstool_top=@rbe//cc:toolchain
 build:rbe --extra_toolchains=@rbe//config:cc-toolchain
 
 build:rbe --host_platform=@rbe//config:platform
-build:rbe --platforms=//:erlang_24_platform
-build:rbe --extra_execution_platforms=//:erlang_24_platform
+build:rbe --platforms=//:erlang_25_platform
+build:rbe --extra_execution_platforms=//:erlang_25_platform
 
 build:rbe --host_cpu=k8
 build:rbe --cpu=k8
