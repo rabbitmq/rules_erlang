@@ -13,7 +13,8 @@ jobs:
       matrix:
         otp:
         - "23.3"
-        - "24.2"
+        - "24.3"
+        - "25.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -52,7 +53,8 @@ jobs:
       matrix:
         otp:
         - "23.3"
-        - "24.2"
+        - "24.3"
+        - "25.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -95,7 +97,8 @@ jobs:
       matrix:
         otp:
         - "23.3"
-        - "24.2"
+        - "24.3"
+        - "25.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
