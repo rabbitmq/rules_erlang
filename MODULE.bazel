@@ -5,6 +5,11 @@ module(
 )
 
 bazel_dep(
+    name = "rules_pkg",
+    version = "0.5.1",
+)
+
+bazel_dep(
     name = "bazel_skylib",
     version = "1.2.0",
 )

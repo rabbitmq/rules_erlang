@@ -44,10 +44,12 @@ def erlang_app(
         deps = [],
         runtime_deps = [],
         stamp = -1):
+    srcs = native.glob(["src/**/*.erl"]) + extra_srcs
+
     erlang_bytecode(
         name = "beam_files",
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]) + extra_hdrs,
-        srcs = native.glob(["src/**/*.erl"]) + extra_srcs,
+        srcs = srcs,
         erlc_opts = erlc_opts,
         dest = "ebin",
         deps = build_deps + deps,
@@ -82,6 +84,7 @@ def erlang_app(
         beam = [":beam_files"],
         priv = native.glob(["priv/**/*"]) + extra_priv,
         license_files = native.glob(["LICENSE*"]) + extra_license_files,
+        srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
     )
@@ -103,10 +106,12 @@ def test_erlang_app(
         build_deps = [],
         deps = [],
         runtime_deps = []):
+    srcs = native.glob(["src/**/*.erl"]) + extra_srcs
+
     erlang_bytecode(
         name = "test_beam_files",
         hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]) + extra_hdrs,
-        srcs = native.glob(["src/**/*.erl"]) + extra_srcs,
+        srcs = srcs,
         erlc_opts = erlc_opts,
         dest = "test",
         deps = build_deps + deps,
@@ -126,6 +131,7 @@ def test_erlang_app(
         beam = [":test_beam_files"],
         priv = native.glob(["priv/**/*"]) + extra_priv,
         license_files = native.glob(["LICENSE*"]) + extra_license_files,
+        srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
         testonly = True,
