@@ -69,14 +69,12 @@ def _expand_xref_erl(ctx, method = None, arg = None):
 
     extra_dirs = [f.short_path for f in ctx.files.extra_dirs]
 
-    target_dir = "../{}".format(target_info.app_name)
-
     xref_erl = _replace_all(XREF_ERL, {
         SCOPE_PATTERN: to_erlang_atom_list(ctx.attr.scopes),
         EXTRA_APP_DIRS_PATTERN: to_erlang_string_list(extra_app_dirs),
         DEPS_DIRS_PATTERN: to_erlang_string_list(deps_dirs),
         APPS_DIRS_PATTERN: to_erlang_string_list(apps_dirs),
-        TARGET_DIR_PATTERN: target_dir,
+        TARGET_DIR_PATTERN: ".",
         EXTRA_DIRS_PATTERN: to_erlang_string_list(extra_dirs),
         IGNORE_CALLBACKS_PATTERN: ctx.attr.ignore_callbacks,
         IGNORE_PATTERN: to_erlang_atom_list(ctx.attr.ignore),
