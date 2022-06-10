@@ -300,15 +300,12 @@ end,
 [{ok, _} = xref:add_application(Xref, AppDir, [{builtins, true}]) || AppDir <- AppDirs],
 ExtraDirs = [$(call comma_list,$(foreach d,$(XREF_EXTRA_DIRS),"$d"))],
 [{ok, _} = xref:add_directory(Xref, ExtraDir, [{builtins, true}]) || ExtraDir <- ExtraDirs],
-io:format("DBG: Added applications from dirs: ~p~n", [AppDirs]),
-io:format("DBG: Added extra dirs: ~p~n", [ExtraDirs]),
 ok = xref:set_library_path(Xref, code:get_path() -- (["ebin", "."] ++ AppDirs ++ ExtraDirs)),
 Checks = case {$1, is_list($2)} of
     {check, true} -> $2;
     {check, false} -> [$2];
     {query, _} -> [$2]
 end,
-io:format("DBG: Checks: ~p~n", [Checks]),
 FinalRes = [begin
     IsInformational = case $1 of
         query -> true;
