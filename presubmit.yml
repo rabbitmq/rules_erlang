@@ -17,8 +17,8 @@ tasks:
     - |
         ERLANG_HOME="$(realpath ~/kerl/${ERLANG_VERSION})"
         cat << EOF >> user.bazelrc
-          build --//:erlang_version=${ERLANG_VERSION}
-          build --//:erlang_home=${ERLANG_HOME}
+          build --@rules_erlang//:erlang_version=${ERLANG_VERSION}
+          build --@rules_erlang//:erlang_home=${ERLANG_HOME}
         EOF
     build_targets:
-    - '//...'
+    - '@rules_erlang//...'
