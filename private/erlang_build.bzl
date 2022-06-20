@@ -85,8 +85,13 @@ fi
     if strip_prefix != "":
         strip_prefix += "\\/"
 
+    patch_cmds = "".join([
+        "patch -p1 < $OLDPWD/{}\n".format(p.path)
+        for p in ctx.files.patches
+    ])
+
     ctx.actions.run_shell(
-        inputs = [downloaded_archive],
+        inputs = [downloaded_archive] + ctx.files.patches,
         outputs = [
             build_dir,
             build_log,
@@ -112,6 +117,7 @@ tar --extract \\
 echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 
 cd $ABS_BUILD_DIR
+{patch_cmds}
 ./configure --prefix={install_path} {extra_configure_opts} >> $ABS_LOG 2>&1
 {post_configure_cmds}
 make {extra_make_opts} >> $ABS_LOG 2>&1
@@ -140,6 +146,7 @@ find ${{ABS_BUILD_DIR}} -type l -delete
             install_root = install_root,
             build_log = build_log.path,
             symlinks_log = symlinks_log.path,
+            patch_cmds = patch_cmds,
             extra_configure_opts = extra_configure_opts,
             post_configure_cmds = post_configure_cmds,
             extra_make_opts = extra_make_opts,
@@ -201,6 +208,9 @@ erlang_build = rule(
         "post_configure_cmds": attr.string_list(),  # <- hopefully don't need this
         "extra_make_opts": attr.string_list(
             default = ["-j 8"],
+        ),
+        "patches": attr.label_list(
+            allow_files = [".patch"],
         ),
     },
 )

@@ -50,6 +50,7 @@ def erlang_toolchain_from_http_archive(
         url = None,
         strip_prefix = None,
         sha256 = None,
+        patches = [],
         extra_configure_opts = [],
         erlang_constraint = None):
     erlang_build(
@@ -57,6 +58,7 @@ def erlang_toolchain_from_http_archive(
         url = url,
         strip_prefix = strip_prefix,
         sha256 = sha256,
+        patches = patches,
         extra_configure_opts = extra_configure_opts,
         target_compatible_with = [
             erlang_constraint,
@@ -85,6 +87,7 @@ def erlang_toolchain_from_github_release(
         name_suffix = "_default",
         version = DEFAULT_ERLANG_VERSION,
         sha256 = DEFAULT_ERLANG_SHA256,
+        patches = [],
         extra_configure_opts = []):
     (major, _, _) = version.partition(".")
     erlang_constraint = Label("@rules_erlang//platforms:erlang_{}".format(major))
@@ -96,6 +99,7 @@ def erlang_toolchain_from_github_release(
         url = url,
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,
+        patches = patches,
         extra_configure_opts = extra_configure_opts,
         erlang_constraint = erlang_constraint,
     )
