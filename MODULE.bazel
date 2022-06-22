@@ -2,6 +2,12 @@ module(
     name = "rules_erlang",
     version = "3.2.0",
     compatibility_level = 3,
+    execution_platforms_to_register = [
+        "//platforms:erlang_external_platform",
+    ],
+    toolchains_to_register = [
+        "//:erlang_toolchain_external",
+    ],
 )
 
 bazel_dep(
