@@ -58,6 +58,7 @@ echo on
     )
 
     runfiles = ctx.runfiles(
+        files = ctx.files.data,
         transitive_files = depset(erl_libs_files),
     )
 
@@ -72,6 +73,7 @@ shell = rule(
         "is_windows": attr.bool(mandatory = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "extra_erl_args": attr.string_list(),
+        "data": attr.label_list(allow_files = True),
     },
     toolchains = ["//tools:toolchain_type"],
     executable = True,
