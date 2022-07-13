@@ -119,12 +119,17 @@ my_erlang_app
     └── unit_SUITE.erl
 ```
 
-And that the convention is followed where, using the `dest` attribute of the `erlc` rule:
+And that the convention is followed where, using the `dest` attribute of the `erlang_bytecode` rule:
 1. Compiled production bytecode is placed in `ebin`
 2. Compiled test bytecode is placed in `src`
 3. Compiled test suite and test helper bytecode is placed in `test`
 
 The example above follows these conventions.
+
+## Additional examples
+
+- https://github.com/rabbitmq/lz4-erlang uses rules_erlang with bzlmod and compiles native extensions
+- https://github.com/rabbitmq/rabbitmq-server provides a complex example of usage
 
 ## Copyright and License
 
