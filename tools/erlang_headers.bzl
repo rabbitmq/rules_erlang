@@ -5,6 +5,20 @@ load(
     "maybe_install_erlang",
 )
 
+DEFAULT_FILENAMES = [
+    "driver_int.h",
+    "ei.h",
+    "ei_connect.h",
+    "eicode.h",
+    "erl_driver.h",
+    "erl_drv_nif.h",
+    "erl_fixed_size_int_types.h",
+    "erl_int_sizes_config.h",
+    "erl_memory_trace_parser.h",
+    "erl_nif.h",
+    "erl_nif_api_funcs.h",
+]
+
 def _erlang_headers_impl(ctx):
     commands = [
         "set -euo pipefail",
@@ -37,19 +51,7 @@ erlang_headers = rule(
     implementation = _erlang_headers_impl,
     attrs = {
         "filenames": attr.string_list(
-            default = [
-                "driver_int.h",
-                "ei.h",
-                "ei_connect.h",
-                "eicode.h",
-                "erl_driver.h",
-                "erl_drv_nif.h",
-                "erl_fixed_size_int_types.h",
-                "erl_int_sizes_config.h",
-                "erl_memory_trace_parser.h",
-                "erl_nif.h",
-                "erl_nif_api_funcs.h",
-            ],
+            default = DEFAULT_FILENAMES,
         ),
     },
     toolchains = [":toolchain_type"],
