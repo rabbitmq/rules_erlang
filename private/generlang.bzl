@@ -3,6 +3,16 @@ load(
     "erlang_dirs",
     "maybe_install_erlang",
 )
+load(
+    "//:util.bzl",
+    "path_join",
+)
+
+def _with_subs(s, substitutions):
+    r = s
+    for (k, v) in substitutions.items():
+        r = r.replace(k, v)
+    return r
 
 def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
@@ -17,7 +27,21 @@ def _impl(ctx):
         transitive = [runfiles.files],
     )
 
-    cmd = ctx.attr.cmd.replace("$@", outs[0].path)
+    substitutions = {
+        "$(SRCS)": " ".join([src.path for src in ctx.files.srcs]),
+        "$(OUTS)": " ".join([out.path for out in outs]),
+        "$(RULEDIR)": path_join(ctx.bin_dir.path, ctx.label.workspace_root, ctx.label.package),
+    }
+    for src in ctx.attr.srcs:
+        files = src[DefaultInfo].files.to_list()
+        if len(files) == 1:
+            substitutions["$(location {})".format(src.label.name)] = files[0].path
+    if len(ctx.files.srcs) == 1:
+        substitutions["$<"] = ctx.files.srcs[0].path
+    if len(outs) == 1:
+        substitutions["$@"] = outs[0].path
+
+    cmd = _with_subs(ctx.attr.cmd, substitutions)
 
     script = """set -euo pipefail
 
