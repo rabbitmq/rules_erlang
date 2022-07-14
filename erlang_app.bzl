@@ -5,6 +5,10 @@ load(
     "erlang_app_info",
     _ErlangAppInfo = "ErlangAppInfo",
 )
+load(
+    "//bzlmod:erlang_package.bzl",
+    "ERLANG_PACKAGE_SOURCE_FILENAME",
+)
 
 DEFAULT_ERLC_OPTS = [
     "-Werror",
@@ -83,7 +87,10 @@ def erlang_app(
         app = app,
         beam = [":beam_files"],
         priv = native.glob(["priv/**/*"]) + extra_priv,
-        license_files = native.glob(["LICENSE*"]) + extra_license_files,
+        license_files = native.glob([
+            "LICENSE*",
+            ERLANG_PACKAGE_SOURCE_FILENAME,
+        ]) + extra_license_files,
         srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
@@ -130,7 +137,10 @@ def test_erlang_app(
         app = app,
         beam = [":test_beam_files"],
         priv = native.glob(["priv/**/*"]) + extra_priv,
-        license_files = native.glob(["LICENSE*"]) + extra_license_files,
+        license_files = native.glob([
+            "LICENSE*",
+            ERLANG_PACKAGE_SOURCE_FILENAME,
+        ]) + extra_license_files,
         srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],

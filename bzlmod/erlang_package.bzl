@@ -12,6 +12,8 @@ load(
     "hex_release_info",
 )
 
+ERLANG_PACKAGE_SOURCE_FILENAME = "rules_erlang.erlang_package.source"
+
 HexPackage = provider(fields = [
     "name",
     "version",
@@ -156,6 +158,12 @@ def without_requirement(name, package):
         )
 
 def _hex_package_repo(ctx, hex_package):
+    patch_inject_source = PATCH_INJECT_SOURCE.format(
+        filename = ERLANG_PACKAGE_SOURCE_FILENAME,
+        source = "hex",
+        version = hex_package.version,
+    )
+
     if hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
@@ -163,7 +171,9 @@ def _hex_package_repo(ctx, hex_package):
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = hex_package.build_file_content,
-            patch_cmds = hex_package.patch_cmds,
+            patch_cmds = hex_package.patch_cmds + [
+                patch_inject_source,
+            ],
         )
     else:
         if hex_package.deps != None:
@@ -176,15 +186,24 @@ def _hex_package_repo(ctx, hex_package):
             package_name = hex_package.name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
-            patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = hex_package.name,
-                version = hex_package.version,
-                deps = deps,
-                make = ctx.which("make"),
-            )],
+            patch_cmds = hex_package.patch_cmds + [
+                patch_inject_source,
+                PATCH_AUTO_BUILD_BAZEL.format(
+                    name = hex_package.name,
+                    version = hex_package.version,
+                    deps = deps,
+                    make = ctx.which("make"),
+                ),
+            ],
         )
 
 def _git_package_repo(ctx, git_package):
+    patch_inject_source = PATCH_INJECT_SOURCE.format(
+        filename = ERLANG_PACKAGE_SOURCE_FILENAME,
+        source = git_package.remote,
+        version = git_package.commit + git_package.tag + git_package.branch,
+    )
+
     if git_package.build_file_content != "":
         new_git_repository(
             name = git_package.name,
@@ -193,7 +212,9 @@ def _git_package_repo(ctx, git_package):
             tag = git_package.tag,
             commit = git_package.commit,
             build_file_content = git_package.build_file_content,
-            patch_cmds = git_package.patch_cmds,
+            patch_cmds = git_package.patch_cmds + [
+                patch_inject_source,
+            ],
         )
     else:
         git_repository(
@@ -202,13 +223,25 @@ def _git_package_repo(ctx, git_package):
             branch = git_package.branch,
             tag = git_package.tag,
             commit = git_package.commit,
-            patch_cmds = git_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = git_package.name,
-                version = "",
-                deps = [],
-                make = ctx.which("make"),
-            )],
+            patch_cmds = git_package.patch_cmds + [
+                patch_inject_source,
+                PATCH_AUTO_BUILD_BAZEL.format(
+                    name = git_package.name,
+                    version = "",
+                    deps = [],
+                    make = ctx.which("make"),
+                ),
+            ],
         )
+
+PATCH_INJECT_SOURCE = """set -euo pipefail
+
+if [ ! -f {filename} ]; then
+cat << 'EOF' > {filename}
+{source} {version}
+EOF
+fi
+"""
 
 PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail
 
