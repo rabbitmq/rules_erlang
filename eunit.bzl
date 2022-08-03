@@ -24,7 +24,7 @@ def eunit(
     )
 
     # eunit_mods is the list of source modules, plus any test module which is
-    # not amoung the eunit_mods with a "_tests" suffix appended
+    # not among the eunit_mods with a "_tests" suffix appended
     eunit_ebin_mods = [_module_name(f) for f in native.glob(["src/**/*.erl"])]
     eunit_test_mods = [_module_name(f) for f in srcs]
     eunit_mods = eunit_ebin_mods
