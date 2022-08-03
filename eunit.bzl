@@ -11,6 +11,7 @@ def eunit(
         data = [],
         deps = [],
         runtime_deps = [],
+        additional_beam = [],
         **kwargs):
     srcs = native.glob(["test/**/*.erl"], exclude = native.glob(["test/*_SUITE.erl"])) if srcs == None else srcs
     erlang_bytecode(
@@ -38,7 +39,7 @@ def eunit(
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
         }),
-        compiled_suites = [":test_case_beam_files"],
+        compiled_suites = [":test_case_beam_files"] + additional_beam,
         eunit_mods = eunit_mods,
         data = native.glob(["test/**/*"], exclude = srcs) + data,
         deps = [":test_erlang_app"] + deps + runtime_deps,
