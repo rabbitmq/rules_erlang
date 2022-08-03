@@ -12,7 +12,7 @@ def eunit(
         deps = [],
         runtime_deps = [],
         **kwargs):
-    srcs = native.glob(["test/**/*.erl"]) if srcs == None else srcs
+    srcs = native.glob(["test/**/*.erl"], exclude = native.glob(["test/*_SUITE.erl"])) if srcs == None else srcs
     erlang_bytecode(
         name = "test_case_beam_files",
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
