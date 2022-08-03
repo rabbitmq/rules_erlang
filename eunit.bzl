@@ -7,11 +7,12 @@ def _module_name(p):
 
 def eunit(
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
+        srcs = None,
         data = [],
         deps = [],
         runtime_deps = [],
         **kwargs):
-    srcs = native.glob(["test/**/*.erl"])
+    srcs = native.glob(["test/**/*.erl"]) if srcs == None else srcs
     erlang_bytecode(
         name = "test_case_beam_files",
         hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
