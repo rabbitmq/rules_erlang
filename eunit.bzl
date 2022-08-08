@@ -7,14 +7,16 @@ def _module_name(p):
 
 def eunit(
         erlc_opts = DEFAULT_TEST_ERLC_OPTS,
+        srcs = None,
         data = [],
         deps = [],
         runtime_deps = [],
+        additional_beam = [],
         **kwargs):
-    srcs = native.glob(["test/**/*.erl"])
+    srcs = native.glob(["test/**/*.erl"], exclude = native.glob(["test/*_SUITE.erl"])) if srcs == None else srcs
     erlang_bytecode(
         name = "test_case_beam_files",
-        hdrs = native.glob(["include/*.hrl", "src/*.hrl"]),
+        hdrs = native.glob(["include/*.hrl", "src/*.hrl", "test/*.hrl"]),
         srcs = srcs,
         erlc_opts = erlc_opts,
         dest = "test",
@@ -23,7 +25,7 @@ def eunit(
     )
 
     # eunit_mods is the list of source modules, plus any test module which is
-    # not amoung the eunit_mods with a "_tests" suffix appended
+    # not among the eunit_mods with a "_tests" suffix appended
     eunit_ebin_mods = [_module_name(f) for f in native.glob(["src/**/*.erl"])]
     eunit_test_mods = [_module_name(f) for f in srcs]
     eunit_mods = eunit_ebin_mods
@@ -37,7 +39,7 @@ def eunit(
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
         }),
-        compiled_suites = [":test_case_beam_files"],
+        compiled_suites = [":test_case_beam_files"] + additional_beam,
         eunit_mods = eunit_mods,
         data = native.glob(["test/**/*"], exclude = srcs) + data,
         deps = [":test_erlang_app"] + deps + runtime_deps,
