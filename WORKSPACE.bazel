@@ -31,5 +31,5 @@ load(":rules_erlang.bzl", "rules_erlang_dependencies")
 rules_erlang_dependencies()
 
 register_toolchains(
-    ":erlang_toolchain_external",
+    "//:erlang_toolchain_external",
 )
