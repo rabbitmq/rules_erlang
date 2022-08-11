@@ -1,7 +1,6 @@
 load(
     ":hex_pm.bzl",
     "hex_package_info",
-    "newest",
     "satisfies",
 )
 load(
@@ -11,6 +10,11 @@ load(
     "hex_tree",
     "log",
     "without_requirement",
+)
+load(
+    ":semver.bzl",
+    "lt",
+    "version_from_string",
 )
 load(
     "//:rules_erlang.bzl",
@@ -76,6 +80,23 @@ def _resolve_hex_pm(ctx, packages):
             return resolved
     fail("Dependencies were not resolved after {} passes.".format(_RESOLVE_MAX_PASSES))
 
+def _newest(a, b):
+    if a.version == b.version:
+        return a
+
+    a_version = version_from_string(a.version)
+    b_version = version_from_string(b.version)
+    if a_version == None or b_version == None:
+        fail("A version of {} & {} for {} cannot be resolved".format(
+            a.version,
+            b.version,
+            a.name,
+        ))
+    elif lt(a_version, b_version):
+        return b
+    else:
+        return a
+
 def _resolve_local(packages):
     deduped = []
     packages_by_name = {}
@@ -87,7 +108,7 @@ def _resolve_local(packages):
     for (_, dupes) in packages_by_name.items():
         p = dupes[0]
         for dupe in dupes[1:]:
-            p = newest(p, dupe)
+            p = _newest(p, dupe)
         deduped.append(p)
     return deduped
 
