@@ -13,6 +13,7 @@ load(
 )
 
 HexPackage = provider(fields = [
+    "module",
     "name",
     "version",
     "sha256",
@@ -24,6 +25,7 @@ HexPackage = provider(fields = [
 ])
 
 GitPackage = provider(fields = [
+    "module",
     "name",
     "version",
     "remote",
@@ -41,7 +43,7 @@ def log(ctx, msg):
 
 def hex_tree(
         ctx,
-        otp_installation_names = None,
+        module = None,
         name = None,
         version = None):
     log(ctx, "Fetching release info for {}@{} from hex.pm".format(name, version))
@@ -57,6 +59,7 @@ def hex_tree(
             requirements.append(props)
 
     return HexPackage(
+        module = module,
         name = name,
         version = version,
         sha256 = sha256,
@@ -69,13 +72,14 @@ def hex_tree(
 
 def hex_package(
         ctx,
-        otp_installation_names = None,
+        module = None,
         name = None,
         version = None,
         sha256 = None,
         build_file_content = None,
         patch_cmds = None):
     return HexPackage(
+        module = module,
         name = name,
         version = version,
         sha256 = sha256,
@@ -96,7 +100,7 @@ def _infer_app_name(remote):
 
 def git_package(
         ctx,
-        otp_installation_names = None,
+        module = None,
         dep = None):
     if dep.remote != "" and dep.repository != "":
         fail("'remote' and 'repository' are mutually exclusive options")
@@ -121,6 +125,7 @@ def git_package(
         version = dep.branch
 
     return GitPackage(
+        module = module,
         name = name,
         version = version,
         remote = remote,
@@ -145,6 +150,7 @@ def without_requirement(name, package):
                 new_requirements.append(r)
 
         return HexPackage(
+            module = package.module,
             name = package.name,
             version = package.version,
             sha256 = package.sha256,
