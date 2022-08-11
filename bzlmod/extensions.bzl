@@ -87,10 +87,12 @@ def _newest(a, b):
     a_version = version_from_string(a.version)
     b_version = version_from_string(b.version)
     if a_version == None or b_version == None:
-        fail("A version of {} & {} for {} cannot be resolved".format(
-            a.version,
-            b.version,
-            a.name,
+        fail("Version {dep_name}@{a_version} (required by {a_module}) & {dep_name}@{b_version} (required by {b_module}) cannot be resolved".format(
+            dep_name = a.name,
+            a_version = a.version,
+            a_module = a.module.name,
+            b_version = b.version,
+            b_module = b.module.name,
         ))
     elif lt(a_version, b_version):
         return b
@@ -120,12 +122,14 @@ def _erlang_package(ctx):
         for dep in mod.tags.hex_package_tree:
             packages.append(hex_tree(
                 ctx,
+                module = mod,
                 name = dep.name,
                 version = dep.version,
             ))
         for dep in mod.tags.hex_package:
             packages.append(hex_package(
                 ctx,
+                module = mod,
                 name = dep.name,
                 version = dep.version,
                 sha256 = dep.sha256,
@@ -135,6 +139,7 @@ def _erlang_package(ctx):
         for dep in mod.tags.git_package:
             packages.append(git_package(
                 ctx,
+                module = mod,
                 dep = dep,
             ))
 
