@@ -15,8 +15,9 @@ def _impl(ctx):
         body = "{{beam,\"{}\"}}".format(ctx.file.beam.path)
 
     args = ctx.actions.args()
-    args.add("""io:format("Assembiling {out} escript...~n", []),
-ok = escript:create("{out}",
+    args.add("""EscriptPath = "{out}",
+io:format("Assembiling ~s escript...~n", [EscriptPath]),
+ok = escript:create(EscriptPath,
                     [shebang, comment,
                     {body}]),
 io:format("done.~n", []),
