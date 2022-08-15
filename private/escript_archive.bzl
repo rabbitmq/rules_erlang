@@ -71,7 +71,7 @@ def _impl(ctx):
 
 "{erlang_home}"/bin/erl \\
     -noshell \\
-    -eval 'io:format("Assembling {name} escript...~n", []),
+    -eval 'io:format("Assembling ~s escript...~n", ["{name}"]),
 ArchiveEntries = [begin
     {{ok, Bin}} = file:read_file(Path),
     {{Name, Bin}}
