@@ -141,6 +141,11 @@ jobs:
     #!     build:rbe --host_cpu=k8
     #!     build:rbe --cpu=k8
     #!     EOF
+    - name: BUILD
+      working-directory: test
+      run: |
+        bazelisk build @rules_erlang//tools:erlang_headers \
+          --config=rbe
     - name: TEST
       working-directory: test
       run: |

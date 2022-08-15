@@ -14,7 +14,6 @@ DEFAULT_FILENAMES = [
     "erl_drv_nif.h",
     "erl_fixed_size_int_types.h",
     "erl_int_sizes_config.h",
-    "erl_memory_trace_parser.h",
     "erl_nif.h",
     "erl_nif_api_funcs.h",
 ]
