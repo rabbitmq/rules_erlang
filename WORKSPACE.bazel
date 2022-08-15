@@ -33,3 +33,7 @@ rules_erlang_dependencies()
 register_toolchains(
     "//:erlang_toolchain_external",
 )
+
+register_execution_platforms(
+    "//platforms:erlang_external_platform",
+)
