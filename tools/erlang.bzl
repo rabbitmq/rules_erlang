@@ -4,10 +4,6 @@ load(
     "erlang_external",
 )
 load(
-    ":erlang_headers.bzl",
-    "erlang_headers",
-)
-load(
     ":erlang_toolchain.bzl",
     "erlang_toolchain",
 )
@@ -47,6 +43,7 @@ def erlang_toolchain_external():
 
 def erlang_toolchain_from_http_archive(
         name_suffix = "",
+        version = None,
         url = None,
         strip_prefix = None,
         sha256 = None,
@@ -54,6 +51,7 @@ def erlang_toolchain_from_http_archive(
         erlang_constraint = None):
     erlang_build(
         name = "otp{}".format(name_suffix),
+        version = version,
         url = url,
         strip_prefix = strip_prefix,
         sha256 = sha256,
@@ -93,6 +91,7 @@ def erlang_toolchain_from_github_release(
     )
     erlang_toolchain_from_http_archive(
         name_suffix = name_suffix,
+        version = version,
         url = url,
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,

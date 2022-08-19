@@ -4,10 +4,18 @@ load(
 )
 
 def _impl(ctx):
-    toolchain_info = platform_common.ToolchainInfo(
-        otpinfo = ctx.attr.otp[OtpInfo],
-    )
-    return [toolchain_info]
+    otpinfo = ctx.attr.otp[OtpInfo]
+    vars = {
+        "OTP_VERSION": otpinfo.version,
+        "ERLANG_HOME": otpinfo.erlang_home,
+    }
+    if otpinfo.release_dir != None:
+        vars["ERLANG_RELEASE_DIR_PATH"] = otpinfo.release_dir.path
+        vars["ERLANG_RELEASE_DIR_SHORT_PATH"] = otpinfo.release_dir.short_path
+    return [
+        platform_common.ToolchainInfo(otpinfo = otpinfo),
+        platform_common.TemplateVariableInfo(vars),
+    ]
 
 erlang_toolchain = rule(
     implementation = _impl,
@@ -17,7 +25,10 @@ erlang_toolchain = rule(
             providers = [OtpInfo],
         ),
     },
-    provides = [platform_common.ToolchainInfo],
+    provides = [
+        platform_common.ToolchainInfo,
+        platform_common.TemplateVariableInfo,
+    ],
 )
 
 def _build_info(ctx):
