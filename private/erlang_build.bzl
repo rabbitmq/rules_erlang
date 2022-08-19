@@ -12,6 +12,8 @@ load(
 OtpInfo = provider(
     doc = "A Home directory of a built Erlang/OTP",
     fields = {
+        "version": """The version that this build contains.
+May be a prefix of the exact version found in the version_file.""",
         "release_dir": """Directory containing a built erlang.
 If this value is not None, it must be symlinked into
 erlang_home and used from there, as erlang installations
@@ -158,11 +160,18 @@ find ${{ABS_BUILD_DIR}} -type l -delete
 mkdir -p $(dirname "{erlang_home}")
 ln -sf $PWD/{erlang_release_dir} "{erlang_home}"
 
+{begins_with_fun}
 V=$("{erlang_home}"/bin/{query_erlang_version})
+if ! beginswith "{erlang_version}" "$V"; then
+echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
+exit 1
+fi
 
 echo "$V" >> {version_file}
 """.format(
+            begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
+            erlang_version = ctx.attr.version,
             erlang_home = erlang_home,
             erlang_release_dir = release_dir.path,
             version_file = version_file.path,
@@ -179,6 +188,7 @@ echo "$V" >> {version_file}
             ]),
         ),
         OtpInfo(
+            version = ctx.attr.version,
             release_dir = release_dir,
             erlang_home = erlang_home,
             version_file = version_file,
@@ -193,6 +203,7 @@ erlang_build = rule(
         #     executable = True,
         #     cfg = "exec",
         # ),
+        "version": attr.string(mandatory = True),
         "url": attr.string(mandatory = True),
         "strip_prefix": attr.string(),
         "sha256": attr.string(),
@@ -240,6 +251,7 @@ echo "$V" >> {version_file}
             files = depset([version_file]),
         ),
         OtpInfo(
+            version = erlang_version,
             release_dir = None,
             erlang_home = erlang_home,
             version_file = version_file,
