@@ -24,6 +24,7 @@ def erlang_toolchain_external():
     erlang_toolchain(
         name = "erlang_external",
         otp = ":otp_external",
+        visibility = ["//visibility:public"],
     )
 
     native.toolchain(
@@ -64,6 +65,7 @@ def erlang_toolchain_from_http_archive(
     erlang_toolchain(
         name = "erlang{}".format(name_suffix),
         otp = ":otp{}".format(name_suffix),
+        visibility = ["//visibility:public"],
     )
 
     native.toolchain(

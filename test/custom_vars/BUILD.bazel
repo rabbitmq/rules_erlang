@@ -1,0 +1,18 @@
+genrule(
+    name = "show_custom_var",
+    srcs = [],
+    outs = ["custom_var"],
+    cmd = 'echo "OTP_VERSION: $(OTP_VERSION)" > $@',
+    # genrule toolchains are not resolved in the same manner of
+    # custom rules, so we simulate it with select in this case
+    toolchains = select({
+        "@rules_erlang//platforms:erlang_25": ["//:erlang_25"],
+        "@rules_erlang//platforms:erlang_external": ["//:erlang_external"],
+    }),
+)
+
+sh_test(
+    name = "custom_var_test",
+    srcs = ["custom_var_test.sh"],
+    data = [":show_custom_var"],
+)
