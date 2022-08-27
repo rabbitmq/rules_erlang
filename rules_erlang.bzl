@@ -2,6 +2,15 @@ load(
     ":hex_archive.bzl",
     "hex_archive",
 )
+load(
+    "//repositories:erlang_config.bzl",
+    _erlang_config = "erlang_config",
+)
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_SHA256",
+    "DEFAULT_ERLANG_VERSION",
+)
 
 def rules_erlang_dependencies():
     xref_runner_sources()
@@ -40,4 +49,55 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 """,
+    )
+
+# Generates the @erlang_config repository, which contains erlang
+# toolchains and platform defintions
+def erlang_config(
+        rules_erlang_workspace = "@rules_erlang",
+        internal_erlang_configs = [],
+        internal_erlang_parent_platform = None):
+    versions = {c.name: c.version for c in internal_erlang_configs}
+    urls = {c.name: c.url for c in internal_erlang_configs}
+    strip_prefixs = {c.name: c.strip_prefix for c in internal_erlang_configs if c.strip_prefix}
+    sha256s = {c.name: c.sha256 for c in internal_erlang_configs if c.sha256}
+
+    _erlang_config(
+        name = "erlang_config",
+        rules_erlang_workspace = rules_erlang_workspace,
+        versions = versions,
+        urls = urls,
+        strip_prefixs = strip_prefixs,
+        sha256s = sha256s,
+        parent_platform = internal_erlang_parent_platform,
+    )
+
+def internal_erlang_from_http_archive(
+        name = None,
+        version = None,
+        url = None,
+        strip_prefix = None,
+        sha256 = None):
+    return struct(
+        name = name,
+        version = version,
+        url = url,
+        strip_prefix = strip_prefix,
+        sha256 = sha256,
+    )
+
+def internal_erlang_from_github_release(
+        name = "internal",
+        version = DEFAULT_ERLANG_VERSION,
+        sha256 = DEFAULT_ERLANG_SHA256):
+    url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
+        v = version,
+    )
+
+    return internal_erlang_from_http_archive(
+        name = name,
+        version = version,
+        url = url,
+        strip_prefix = "otp_src_{}".format(version),
+        sha256 = sha256,
     )

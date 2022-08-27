@@ -1,10 +1,6 @@
 module(
     name = "rules_erlang_test",
     version = "0.1.0",
-    toolchains_to_register = [
-        "//:erlang_toolchain_external",
-        "//:erlang_toolchain_25",
-    ],
 )
 
 bazel_dep(

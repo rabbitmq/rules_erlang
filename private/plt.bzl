@@ -16,7 +16,7 @@ def _impl(ctx):
     if len(ctx.attr.apps) > 0:
         apps_args = "--apps " + " ".join(ctx.attr.apps)
 
-    if ctx.attr.plt == None:
+    if ctx.file.plt == None:
         source_plt_arg = "--build_plt"
     else:
         source_plt_arg = "--plt " + ctx.file.plt.path + " --no_check_plt --add_to_plt"

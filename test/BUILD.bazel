@@ -1,33 +1,4 @@
-load(
-    "@rules_erlang//tools:erlang.bzl",
-    "erlang_toolchain_external",
-    "erlang_toolchain_from_github_release",
-)
 load("@rules_erlang//:shell.bzl", "shell")
-
-erlang_external_constraint = erlang_toolchain_external()
-
-platform(
-    name = "erlang_external_platform",
-    constraint_values = [
-        erlang_external_constraint,
-    ],
-    parents = ["@local_config_platform//:host"],
-)
-
-erlang_25_constraint = erlang_toolchain_from_github_release(
-    name_suffix = "_25",
-    sha256 = "2d7678c9bc6fcf3a1242c4d1c3864855d85e73ade792cd80adb8a9f379996711",
-    version = "25.0",
-)
-
-platform(
-    name = "erlang_25_platform",
-    constraint_values = [
-        erlang_25_constraint,
-    ],
-    parents = ["@rbe//config:platform"],
-)
 
 shell(
     name = "repl",

@@ -1,6 +1,7 @@
 build --experimental_enable_bzlmod
 build --incompatible_strict_action_env
 
-build --platforms=//platforms:erlang_external_platform
+build --flag_alias=erlang_home=//:erlang_home
+build --flag_alias=erlang_version=//:erlang_version
 
 try-import %workspace%/user.bazelrc

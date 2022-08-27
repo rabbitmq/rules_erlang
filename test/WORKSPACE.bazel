@@ -59,12 +59,20 @@ local_repository(
 
 load(
     "@rules_erlang//:rules_erlang.bzl",
+    "erlang_config",
+    "internal_erlang_from_github_release",
     "rules_erlang_dependencies",
+)
+
+erlang_config(
+    internal_erlang_configs = [
+        internal_erlang_from_github_release(),
+    ],
+    internal_erlang_parent_platform = "@rbe//config:platform",
 )
 
 rules_erlang_dependencies()
 
-register_toolchains(
-    "//:erlang_toolchain_external",
-    "//:erlang_toolchain_25",
-)
+load("@erlang_config//:defaults.bzl", "register_defaults")
+
+register_defaults()

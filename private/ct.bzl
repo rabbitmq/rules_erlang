@@ -247,7 +247,7 @@ ct_test = rule(
         "ct_hooks": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
-        "tools": attr.label_list(),
+        "tools": attr.label_list(cfg = "target"),
         "test_env": attr.string_dict(),
         "sharding_method": attr.string(
             default = "group",

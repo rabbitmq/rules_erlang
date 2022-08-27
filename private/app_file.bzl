@@ -165,7 +165,7 @@ app_file = rule(
         "app_file_tool": attr.label(
             mandatory = True,
             executable = True,
-            cfg = "exec",
+            cfg = "target",
         ),
         "app_name": attr.string(mandatory = True),
         "app_version": attr.string(),
