@@ -2,10 +2,6 @@ load(
     "@bazel_skylib//rules:common_settings.bzl",
     "string_flag",
 )
-load(
-    "//tools:erlang.bzl",
-    "erlang_toolchain_external",
-)
 
 config_setting(
     name = "debug_build",
@@ -25,5 +21,3 @@ string_flag(
     build_setting_default = "",
     visibility = ["//visibility:public"],
 )
-
-erlang_toolchain_external()

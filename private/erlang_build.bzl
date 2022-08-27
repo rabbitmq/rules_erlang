@@ -28,6 +28,10 @@ external erlang is used""",
 
 INSTALL_PREFIX = "/tmp/bazel/erlang"
 
+DEFAULT_ERL_PATH = "/usr/bin/erl"
+
+ERLANG_VERSION_UNKNOWN = "UNKNOWN"
+
 def _install_root(install_prefix):
     (root_dir, _, _) = install_prefix.removeprefix("/").partition("/")
     return "/" + root_dir
@@ -220,6 +224,19 @@ def _erlang_external_impl(ctx):
     erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
     erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
 
+    if erlang_home == "":
+        attr_erl_path = ctx.attr.erl_path.replace(
+            "C:/",
+            "/c/",
+        ).replace(
+            "erl.exe",
+            "erl",
+        )
+        erlang_home = attr_erl_path.removesuffix("/bin/erl")
+
+    if erlang_version == "":
+        erlang_version = ctx.attr.version
+
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
     ctx.actions.run_shell(
@@ -229,9 +246,11 @@ def _erlang_external_impl(ctx):
 
 {begins_with_fun}
 V=$("{erlang_home}"/bin/{query_erlang_version})
+if [ "{erlang_version}" != "{erlang_version_unknown}" ]; then
 if ! beginswith "{erlang_version}" "$V"; then
 echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
 exit 1
+fi
 fi
 
 echo "$V" >> {version_file}
@@ -239,6 +258,7 @@ echo "$V" >> {version_file}
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
             erlang_version = erlang_version,
+            erlang_version_unknown = ERLANG_VERSION_UNKNOWN,
             erlang_home = erlang_home,
             version_file = version_file.path,
         ),
@@ -263,5 +283,7 @@ erlang_external = rule(
     attrs = {
         "_erlang_home": attr.label(default = Label("//:erlang_home")),
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "erl_path": attr.string(default = DEFAULT_ERL_PATH),
+        "version": attr.string(default = ERLANG_VERSION_UNKNOWN),
     },
 )
