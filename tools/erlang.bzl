@@ -44,7 +44,7 @@ def erlang_toolchain_external():
 
 def erlang_toolchain_from_http_archive(
         name_suffix = "",
-        version = None,
+        version = "UNKNOWN",
         url = None,
         strip_prefix = None,
         sha256 = None,
