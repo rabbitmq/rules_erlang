@@ -87,6 +87,14 @@ platform(
     parents = [{parent_string}],
 )
 
+# platform with no constraints, used to represent
+# the ability of erlang bytecode to be run on any
+# host with erlang available
+platform(
+    name = "beam",
+    constraint_values = [],
+)
+
 """.format(
             major = major,
             parent_string = parent_string,

@@ -12,6 +12,9 @@ load(
 erlang_external(
     name = "otp",
     erl_path = %{ERL_PATH_VALUE},
+    # target_compatible_with = [
+    #     "//:erlang_external",
+    # ],
 )
 
 erlang_toolchain(

@@ -12,6 +12,8 @@ load(
     "//:util.bzl",
     "path_join",
 )
+load(":transitions.bzl",
+"beam_transition")
 load(
     ":util.bzl",
     "additional_file_dest_relative_path",
@@ -117,8 +119,17 @@ escript_archive = rule(
             default = DEFAULT_HEADERS,
         ),
         "srcs": attr.label_list(allow_files = [".erl"]),
-        "beam": attr.label_list(allow_files = [".beam"]),
+        "beam": attr.label_list(
+            allow_files = [".beam"],
+            cfg = beam_transition,
+        ),
         "app": attr.label(providers = [ErlangAppInfo]),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
     executable = True,

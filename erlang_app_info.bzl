@@ -1,3 +1,5 @@
+load("//private:transitions.bzl", "beam_transition")
+
 ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",
     fields = {
@@ -53,16 +55,62 @@ def _impl(ctx):
         ),
     ]
 
+_CLI_PLATFORMS = "//command_line_option:platforms"
+
+def _conditional_beam_transition(settings, attr):
+    _ignore = (settings, attr)
+    print(_ignore)
+    if attr.platform_independent:
+        platforms = ["@erlang_config//:beam"]
+    else:
+        platforms = settings[_CLI_PLATFORMS]
+    return {
+        _CLI_PLATFORMS: platforms,
+    }
+
+conditional_beam_transition = transition(
+    implementation = _conditional_beam_transition,
+    inputs = [_CLI_PLATFORMS],
+    outputs = [_CLI_PLATFORMS],
+)
+
+
+# so, the transitions haven't worked out as I originally expected.
+# have to think about this as a graph. By putting the beam_transition
+# on the beam attr, we are saying beam from any platform will do, but
+# that basically removes the constraints on toolchain resolution for
+# those beam files, and they try to build with the external. Or, if
+# we disable the external toolchain, it fails because it can't find a
+# toolchain for @erlang_config//:beam, which which happens whether or
+# not there is a default for the erlang_major_version constraint.
+# So it means beam files actually do need to have a config on them
+# matching the host platform (anything with a toolchain does). Things
+# in-between maybe don't, but on the other side of them, we would
+# need an inversion transition to put the platform back.
+
+# https://github.com/fmeum/rules_jni/blob/42f4f91c364ce545bc57023992baa0a2110483b2/jni/internal/transitions.bzl
+
 erlang_app_info = rule(
     implementation = _impl,
+    cfg = conditional_beam_transition,
     attrs = {
         "app_name": attr.string(mandatory = True),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "app": attr.label(allow_files = [".app"]),
-        "beam": attr.label_list(allow_files = [".beam", ".appup"]),
+        "beam": attr.label_list(
+            allow_files = [".beam", ".appup"],
+            # cfg = beam_transition,
+        ),
         "priv": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "platform_independent": attr.bool(default = True),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
 )

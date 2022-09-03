@@ -1,6 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(":util.bzl", "erl_libs_contents")
+load(":transitions.bzl", "beam_transition")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -127,6 +128,11 @@ fi
 
 erlang_bytecode = rule(
     implementation = _impl,
+    # applying the beam_transition here allows any availabe
+    # toolchain to be selected, which is not what we want
+    # in rbe, since we always register the external erlang
+    # toolchain
+    # cfg = beam_transition,
     attrs = {
         "compile_first": attr.label(
             executable = True,
@@ -141,6 +147,7 @@ erlang_bytecode = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
+            # cfg = beam_transition,  # this (I think) means any beams files will do, not just ones from our same architecture
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
@@ -149,6 +156,12 @@ erlang_bytecode = rule(
         "dest": attr.string(
             default = "ebin",
         ),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
 )

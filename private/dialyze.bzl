@@ -5,6 +5,7 @@ load(
 )
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "windows_path")
+load(":transitions.bzl", "beam_transition")
 load(":ct.bzl", "code_paths")
 
 def _impl(ctx):
@@ -82,6 +83,7 @@ dialyze_test = rule(
         "is_windows": attr.bool(mandatory = True),
         "plt": attr.label(
             allow_single_file = [".plt"],
+            cfg = beam_transition,
         ),
         "target": attr.label(
             providers = [ErlangAppInfo],
@@ -95,6 +97,12 @@ dialyze_test = rule(
             ],
         ),
         "warnings_as_errors": attr.bool(default = True),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
     test = True,

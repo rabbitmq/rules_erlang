@@ -25,6 +25,7 @@ build:rbe --extra_toolchains=@rbe//config:cc-toolchain
 
 build:rbe --host_platform=@rbe//config:platform
 build:rbe --platforms=@erlang_config//:erlang_24_internal
+# build:rbe --platforms=@rbe//config:platform
 build:rbe --extra_execution_platforms=@erlang_config//:erlang_24_internal
 
 build:rbe --host_cpu=k8

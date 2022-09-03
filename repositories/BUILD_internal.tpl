@@ -15,6 +15,9 @@ erlang_build(
     url = "%{URL}",
     strip_prefix = "%{STRIP_PREFIX}",
     sha256 = "%{SHA_256}",
+    # target_compatible_with = [
+    #     "//:erlang_%{ERLANG_MAJOR}",
+    # ],
 )
 
 erlang_toolchain(

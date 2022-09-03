@@ -1,5 +1,6 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(":util.bzl", "erl_libs_contents")
+load(":transitions.bzl", "beam_transition")
 load(
     "//:util.bzl",
     "path_join",
@@ -236,6 +237,7 @@ ct_test = rule(
     attrs = {
         "shard_suite": attr.label(
             executable = True,
+            # because tests run on the target rather than exec platform
             cfg = "target",
         ),
         "is_windows": attr.bool(mandatory = True),
@@ -243,15 +245,22 @@ ct_test = rule(
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
             mandatory = True,
+            cfg = beam_transition,
         ),
         "ct_hooks": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
-        "tools": attr.label_list(),
+        "tools": attr.label_list(cfg = "target"),
         "test_env": attr.string_dict(),
         "sharding_method": attr.string(
             default = "group",
             values = ["group", "case"],
+        ),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     toolchains = ["//tools:toolchain_type"],

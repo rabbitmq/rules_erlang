@@ -1,5 +1,6 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(":erlang_bytecode.bzl", "unique_dirnames")
+load(":transitions.bzl", "beam_transition")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -16,7 +17,7 @@ def _impl(ctx):
     if len(ctx.attr.apps) > 0:
         apps_args = "--apps " + " ".join(ctx.attr.apps)
 
-    if ctx.attr.plt == None:
+    if ctx.file.plt == None:
         source_plt_arg = "--build_plt"
     else:
         source_plt_arg = "--plt " + ctx.file.plt.path + " --no_check_plt --add_to_plt"
@@ -81,12 +82,19 @@ plt = rule(
     attrs = {
         "plt": attr.label(
             allow_single_file = [".plt"],
+            cfg = beam_transition,
         ),
         "apps": attr.string_list(
             default = DEFAULT_PLT_APPS,
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
+        ),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     outputs = {
