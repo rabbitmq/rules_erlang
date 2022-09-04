@@ -3,14 +3,14 @@ genrule(
     srcs = [],
     outs = ["custom_var"],
     cmd = 'echo "OTP_VERSION: $(OTP_VERSION)" > $@',
-    target_compatible_with = [
-        "@erlang_config//:erlang_24",
-    ],
+    # target_compatible_with = [
+    #     "@erlang_config//:erlang_24",
+    # ],
     # genrule toolchains are not resolved in the same manner of
     # custom rules, so we simulate it with select in this case
     toolchains = select({
-        "@erlang_config//:erlang_24": ["@erlang_config//internal:erlang"],
-        "//conditions:default": [],
+        "@erlang_config//:erlang_external": ["@erlang_config//external:erlang"],
+        "@erlang_config//:erlang_internal": ["@erlang_config//internal:erlang"],
     }),
 )
 

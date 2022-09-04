@@ -172,18 +172,18 @@ erlang_app_info = rule(
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(
             allow_files = [".beam", ".appup"],
-            cfg = restore_platforms_transition,
+            # cfg = restore_platforms_transition,
         ),
         "priv": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
-        "platform_independent": attr.bool(default = True),
+        # "platform_independent": attr.bool(default = True),
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
 )

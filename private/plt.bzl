@@ -82,7 +82,7 @@ plt = rule(
     attrs = {
         "plt": attr.label(
             allow_single_file = [".plt"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "apps": attr.string_list(
             default = DEFAULT_PLT_APPS,
@@ -93,9 +93,9 @@ plt = rule(
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     outputs = {
         "plt": ".%{name}.plt",

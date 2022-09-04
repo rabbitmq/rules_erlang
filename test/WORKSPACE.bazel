@@ -64,6 +64,10 @@ load(
     "rules_erlang_dependencies",
 )
 
+# also this should be tried without the rbe repo, just
+# using a "docker_image_platform". It would be nice not to need
+# rbe_configs_gen
+
 erlang_config(
     internal_erlang_configs = [
         internal_erlang_from_github_release(),

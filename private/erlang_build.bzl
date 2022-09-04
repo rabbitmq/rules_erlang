@@ -28,9 +28,9 @@ external erlang is used""",
 
 INSTALL_PREFIX = "/tmp/bazel/erlang"
 
-DEFAULT_ERL_PATH = "/usr/bin/erl"
+# DEFAULT_ERL_PATH = "/usr/bin/erl"
 
-ERLANG_VERSION_UNKNOWN = "UNKNOWN"
+# ERLANG_VERSION_UNKNOWN = "UNKNOWN"
 
 def _install_root(install_prefix):
     (root_dir, _, _) = install_prefix.removeprefix("/").partition("/")
@@ -222,23 +222,12 @@ erlang_build = rule(
 
 def _erlang_external_impl(ctx):
     erlang_home = ctx.attr.erlang_home
+    if erlang_home == "":
+        erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
+
     erlang_version = ctx.attr.erlang_version
-
-    # erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
-    # erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
-
-    # if erlang_home == "":
-    #     attr_erl_path = ctx.attr.erl_path.replace(
-    #         "C:/",
-    #         "/c/",
-    #     ).replace(
-    #         "erl.exe",
-    #         "erl",
-    #     )
-    #     erlang_home = attr_erl_path.removesuffix("/bin/erl")
-
-    # if erlang_version == "":
-    #     erlang_version = ctx.attr.version
+    if erlang_version == "":
+        erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
 
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
@@ -259,7 +248,6 @@ echo "$V" >> {version_file}
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
             erlang_version = erlang_version,
-            erlang_version_unknown = ERLANG_VERSION_UNKNOWN,
             erlang_home = erlang_home,
             version_file = version_file.path,
         ),
@@ -284,7 +272,7 @@ erlang_external = rule(
     attrs = {
         "_erlang_home": attr.label(default = Label("//:erlang_home")),
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
-        "erlang_home": attr.string(default = DEFAULT_ERL_PATH),
-        "erlang_version": attr.string(default = ERLANG_VERSION_UNKNOWN),
+        "erlang_home": attr.string(),
+        "erlang_version": attr.string(),
     },
 )

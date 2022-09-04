@@ -111,7 +111,7 @@ eunit_test = rule(
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
             mandatory = True,
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "eunit_mods": attr.string_list(mandatory = True),
         "data": attr.label_list(allow_files = True),
@@ -121,9 +121,9 @@ eunit_test = rule(
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
     test = True,
