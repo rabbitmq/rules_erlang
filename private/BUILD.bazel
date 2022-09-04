@@ -1,4 +1,15 @@
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "string_list_flag",
+)
+
 config_setting(
     name = "private_stamp_detect",
     values = {"stamp": "1"},
+)
+
+string_list_flag(
+    name = "pre_transition_platforms",
+    build_setting_default = [],
+    visibility = ["//visibility:public"],
 )

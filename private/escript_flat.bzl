@@ -3,8 +3,10 @@ load(
     "erlang_dirs",
     "maybe_install_erlang",
 )
-load(":transitions.bzl",
-"beam_transition")
+load(
+    ":transitions.bzl",
+    "beam_transition",
+)
 
 def _impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.out if ctx.attr.out != "" else ctx.label.name)
@@ -65,15 +67,15 @@ escript_flat = rule(
         ),
         "beam": attr.label(
             allow_single_file = [".beam"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "out": attr.string(),
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
 )

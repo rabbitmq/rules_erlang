@@ -179,7 +179,7 @@ app_file = rule(
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(
             allow_files = [".beam"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "dest": attr.string(
@@ -194,13 +194,12 @@ stable-status.txt as the app version if the build is stamped""",
         # Is --stamp set on the command line?
         # TODO(https://github.com/bazelbuild/rules_pkg/issues/340): Remove this.
         "private_stamp_detect": attr.bool(default = False),
-                # This attribute is required to use starlark transitions. It allows
+        # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://docs.bazel.build/versions/master/skylark/config.html#user-defined-transitions
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
-
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
 )

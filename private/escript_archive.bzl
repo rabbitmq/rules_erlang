@@ -12,8 +12,10 @@ load(
     "//:util.bzl",
     "path_join",
 )
-load(":transitions.bzl",
-"beam_transition")
+load(
+    ":transitions.bzl",
+    "beam_transition",
+)
 load(
     ":util.bzl",
     "additional_file_dest_relative_path",

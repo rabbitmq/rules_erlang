@@ -221,21 +221,24 @@ erlang_build = rule(
 )
 
 def _erlang_external_impl(ctx):
-    erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
-    erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
+    erlang_home = ctx.attr.erlang_home
+    erlang_version = ctx.attr.erlang_version
 
-    if erlang_home == "":
-        attr_erl_path = ctx.attr.erl_path.replace(
-            "C:/",
-            "/c/",
-        ).replace(
-            "erl.exe",
-            "erl",
-        )
-        erlang_home = attr_erl_path.removesuffix("/bin/erl")
+    # erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
+    # erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
 
-    if erlang_version == "":
-        erlang_version = ctx.attr.version
+    # if erlang_home == "":
+    #     attr_erl_path = ctx.attr.erl_path.replace(
+    #         "C:/",
+    #         "/c/",
+    #     ).replace(
+    #         "erl.exe",
+    #         "erl",
+    #     )
+    #     erlang_home = attr_erl_path.removesuffix("/bin/erl")
+
+    # if erlang_version == "":
+    #     erlang_version = ctx.attr.version
 
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
@@ -246,11 +249,9 @@ def _erlang_external_impl(ctx):
 
 {begins_with_fun}
 V=$("{erlang_home}"/bin/{query_erlang_version})
-if [ "{erlang_version}" != "{erlang_version_unknown}" ]; then
 if ! beginswith "{erlang_version}" "$V"; then
 echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
 exit 1
-fi
 fi
 
 echo "$V" >> {version_file}
@@ -283,7 +284,7 @@ erlang_external = rule(
     attrs = {
         "_erlang_home": attr.label(default = Label("//:erlang_home")),
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
-        "erl_path": attr.string(default = DEFAULT_ERL_PATH),
-        "version": attr.string(default = ERLANG_VERSION_UNKNOWN),
+        "erlang_home": attr.string(default = DEFAULT_ERL_PATH),
+        "erlang_version": attr.string(default = ERLANG_VERSION_UNKNOWN),
     },
 )

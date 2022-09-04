@@ -29,7 +29,7 @@ erlang_toolchain(
 toolchain(
     name = "toolchain",
     exec_compatible_with = [
-        "//:erlang_%{ERLANG_MAJOR}",
+        "//:erlang_internal",
     ],
     target_compatible_with = [
         "//:erlang_%{ERLANG_MAJOR}",

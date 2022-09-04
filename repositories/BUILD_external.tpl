@@ -11,7 +11,8 @@ load(
 
 erlang_external(
     name = "otp",
-    erl_path = %{ERL_PATH_VALUE},
+    erlang_home = "%{ERLANG_HOME}",
+    erlang_version = "%{ERLANG_VERSION}",
     # target_compatible_with = [
     #     "//:erlang_external",
     # ],
@@ -25,8 +26,11 @@ erlang_toolchain(
 
 toolchain(
     name = "toolchain",
-    target_compatible_with = [
+    exec_compatible_with = [
         "//:erlang_external",
+    ],
+    target_compatible_with = [
+        "//:erlang_%{ERLANG_MAJOR}",
     ],
     toolchain = ":erlang",
     toolchain_type = "%{RULES_ERLANG_WORKSPACE}//tools:toolchain_type",
