@@ -74,10 +74,7 @@ def _impl(repository_ctx):
 
     repository_ctx.file(
         "BUILD.bazel",
-        _build_file_content(
-            erlang_installations,
-            repository_ctx.attr.parent_platform,
-        ),
+        _build_file_content(erlang_installations),
         False,
     )
 
@@ -106,14 +103,13 @@ erlang_config = repository_rule(
         "urls": attr.string_dict(),
         "strip_prefixs": attr.string_dict(),
         "sha256s": attr.string_dict(),
-        "parent_platform": attr.label(),
     },
     environ = [
         "ERLANG_HOME",
     ],
 )
 
-def _build_file_content(erlang_installations, parent_platform):
+def _build_file_content(erlang_installations):
     if _EXTERNAL_ERLANG_PACKAGE in erlang_installations:
         default_internal_external = "external"
         default_major = erlang_installations[_EXTERNAL_ERLANG_PACKAGE]
@@ -186,20 +182,5 @@ platform(
 )
 
 """.format(major = major)
-
-    if parent_platform != None:
-        parent_string = '"%s"' % parent_platform
-    else:
-        parent_string = ""
-
-    build_file_content += """\
-platform(
-    name = "erlang_internal_platform",
-    constraint_values = [
-        ":erlang_internal",
-    ],
-    parents = [{parent_string}],
-)
-""".format(parent_string = parent_string)
 
     return build_file_content

@@ -1,5 +1,13 @@
 load("@rules_erlang//:shell.bzl", "shell")
 
+platform(
+    name = "erlang_internal_platform",
+    constraint_values = [
+        "@erlang_config//:erlang_internal",
+    ],
+    parents = ["@rbe//config:platform"],
+)
+
 shell(
     name = "repl",
 )

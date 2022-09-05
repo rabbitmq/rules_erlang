@@ -55,8 +55,7 @@ filegroup(
 # toolchains and platform defintions
 def erlang_config(
         rules_erlang_workspace = "@rules_erlang",
-        internal_erlang_configs = [],
-        internal_erlang_parent_platform = None):
+        internal_erlang_configs = []):
     versions = {c.name: c.version for c in internal_erlang_configs}
     urls = {c.name: c.url for c in internal_erlang_configs}
     strip_prefixs = {c.name: c.strip_prefix for c in internal_erlang_configs if c.strip_prefix}
@@ -69,7 +68,6 @@ def erlang_config(
         urls = urls,
         strip_prefixs = strip_prefixs,
         sha256s = sha256s,
-        parent_platform = internal_erlang_parent_platform,
     )
 
 def internal_erlang_from_http_archive(

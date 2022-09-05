@@ -68,7 +68,6 @@ erlang_config(
     internal_erlang_configs = [
         internal_erlang_from_github_release(),
     ],
-    internal_erlang_parent_platform = "@rbe//config:platform",
 )
 
 rules_erlang_dependencies()
