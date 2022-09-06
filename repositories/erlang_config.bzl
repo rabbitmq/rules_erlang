@@ -9,6 +9,8 @@ DEFAULT_ERL_PATH = "/usr/bin/erl"
 _EXTERNAL_ERLANG_PACKAGE = "external"
 
 def _impl(repository_ctx):
+    rules_erlang_workspace = repository_ctx.attr.rules_erlang_workspace
+
     erlang_installations = {}
 
     if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
@@ -43,7 +45,7 @@ def _impl(repository_ctx):
                 "%{ERLANG_HOME}": erlang_home,
                 "%{ERLANG_VERSION}": erlang_version,
                 "%{ERLANG_MAJOR}": major,
-                "%{RULES_ERLANG_WORKSPACE}": repository_ctx.attr.rules_erlang_workspace,
+                "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
             },
             False,
         )
@@ -67,7 +69,7 @@ def _impl(repository_ctx):
                 "%{STRIP_PREFIX}": repository_ctx.attr.strip_prefixs.get(name, ""),
                 "%{SHA_256}": repository_ctx.attr.sha256s.get(name, ""),
                 "%{ERLANG_MAJOR}": major,
-                "%{RULES_ERLANG_WORKSPACE}": repository_ctx.attr.rules_erlang_workspace,
+                "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
             },
             False,
         )

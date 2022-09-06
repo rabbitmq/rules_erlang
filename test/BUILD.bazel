@@ -8,6 +8,15 @@ platform(
     parents = ["@rbe//config:platform"],
 )
 
+# define an alias for @erlang_config//:erlang_24_platform, so
+# that it can be passed in the cli/.bazelrc and not encounter
+# the lack of mapping, as per
+# https://github.com/bazelbuild/bazel/issues/14852
+alias(
+    name = "erlang_24_platform",
+    actual = "@erlang_config//:erlang_24_platform",
+)
+
 shell(
     name = "repl",
 )

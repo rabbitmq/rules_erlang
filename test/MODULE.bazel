@@ -12,3 +12,21 @@ local_path_override(
     module_name = "rules_erlang",
     path = "..",
 )
+
+erlang_config_extension = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "erlang_config",
+    dev_dependency = True,
+)
+
+erlang_config_extension.internal_erlang_from_github_release()
+
+use_repo(
+    erlang_config_extension,
+    "erlang_config",
+)
+
+register_toolchains(
+    "@erlang_config//external:toolchain",
+    "@erlang_config//internal:toolchain",
+)
