@@ -32,7 +32,7 @@ load(
 
 def _erlang_config(ctx):
     internal_erlangs = []
-    for mod in [m for m in ctx.modules if m.is_root]:
+    for mod in ctx.modules:
         for erlang in mod.tags.internal_erlang_from_http_archive:
             internal_erlangs.append(struct(
                 name = erlang.name,
