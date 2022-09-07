@@ -26,14 +26,12 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
 bazel_skylib_workspace()
 
-load(":rules_erlang.bzl", "rules_erlang_dependencies")
+load(":rules_erlang.bzl", "erlang_config", "rules_erlang_dependencies")
+
+erlang_config(rules_erlang_workspace = "@")
 
 rules_erlang_dependencies()
 
-register_toolchains(
-    "//:erlang_toolchain_external",
-)
+load("@erlang_config//:defaults.bzl", "register_defaults")
 
-register_execution_platforms(
-    "//platforms:erlang_external_platform",
-)
+register_defaults()

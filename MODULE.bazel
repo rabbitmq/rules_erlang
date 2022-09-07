@@ -24,3 +24,13 @@ use_repo(
     "getopt_src",
     "xref_runner_src",
 )
+
+erlang_config_extension = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "erlang_config",
+)
+
+use_repo(
+    erlang_config_extension,
+    "erlang_config",
+)

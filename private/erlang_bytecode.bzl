@@ -130,7 +130,11 @@ erlang_bytecode = rule(
     attrs = {
         "compile_first": attr.label(
             executable = True,
-            cfg = "exec",
+            # I would have thought this should be "exec", since this is run
+            # in the execution environment. However, it's an ecript needing
+            # beam, and "target" allows it to match the toolchains for this
+            # rule.
+            cfg = "target",
         ),
         "hdrs": attr.label_list(
             allow_files = [".hrl"],

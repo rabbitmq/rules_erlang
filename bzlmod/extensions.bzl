@@ -20,6 +20,82 @@ load(
     "//:rules_erlang.bzl",
     "xref_runner_sources",
 )
+load(
+    "//repositories:erlang_config.bzl",
+    _erlang_config_rule = "erlang_config",
+)
+load(
+    "//tools:erlang.bzl",
+    "DEFAULT_ERLANG_SHA256",
+    "DEFAULT_ERLANG_VERSION",
+)
+
+def _erlang_config(ctx):
+    internal_erlangs = []
+    for mod in ctx.modules:
+        for erlang in mod.tags.internal_erlang_from_http_archive:
+            internal_erlangs.append(struct(
+                name = erlang.name,
+                version = erlang.version,
+                url = erlang.url,
+                strip_prefix = erlang.strip_prefix,
+                sha256 = erlang.sha256,
+            ))
+        for erlang in mod.tags.internal_erlang_from_github_release:
+            url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
+                v = erlang.version,
+            )
+            strip_prefix = "otp_src_{}".format(erlang.version)
+
+            internal_erlangs.append(struct(
+                name = erlang.name,
+                version = erlang.version,
+                url = url,
+                strip_prefix = strip_prefix,
+                sha256 = erlang.sha256,
+            ))
+
+    versions = {c.name: c.version for c in internal_erlangs}
+    urls = {c.name: c.url for c in internal_erlangs}
+    strip_prefixs = {c.name: c.strip_prefix for c in internal_erlangs if c.strip_prefix}
+    sha256s = {c.name: c.sha256 for c in internal_erlangs if c.sha256}
+
+    _erlang_config_rule(
+        name = "erlang_config",
+        rules_erlang_workspace = "@rules_erlang",
+        versions = versions,
+        urls = urls,
+        strip_prefixs = strip_prefixs,
+        sha256s = sha256s,
+    )
+
+internal_erlang_from_http_archive = tag_class(attrs = {
+    "name": attr.string(),
+    "version": attr.string(),
+    "url": attr.string(),
+    "strip_prefix": attr.string(),
+    "sha256": attr.string(),
+})
+
+internal_erlang_from_github_release = tag_class(attrs = {
+    "name": attr.string(
+        default = "internal",
+    ),
+    "version": attr.string(
+        default = DEFAULT_ERLANG_VERSION,
+    ),
+    "sha256": attr.string(
+        default = DEFAULT_ERLANG_SHA256,
+    ),
+})
+
+erlang_config = module_extension(
+    implementation = _erlang_config,
+    tag_classes = {
+        "internal_erlang_from_http_archive": internal_erlang_from_http_archive,
+        "internal_erlang_from_github_release": internal_erlang_from_github_release,
+    },
+)
 
 _RESOLVE_MAX_PASSES = 500
 

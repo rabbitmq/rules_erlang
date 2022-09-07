@@ -217,8 +217,13 @@ erlang_build = rule(
 )
 
 def _erlang_external_impl(ctx):
-    erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
-    erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
+    erlang_home = ctx.attr.erlang_home
+    if erlang_home == "":
+        erlang_home = ctx.attr._erlang_home[BuildSettingInfo].value
+
+    erlang_version = ctx.attr.erlang_version
+    if erlang_version == "":
+        erlang_version = ctx.attr._erlang_version[BuildSettingInfo].value
 
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
@@ -263,5 +268,7 @@ erlang_external = rule(
     attrs = {
         "_erlang_home": attr.label(default = Label("//:erlang_home")),
         "_erlang_version": attr.label(default = Label("//:erlang_version")),
+        "erlang_home": attr.string(),
+        "erlang_version": attr.string(),
     },
 )
