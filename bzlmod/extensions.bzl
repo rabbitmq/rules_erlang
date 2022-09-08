@@ -22,6 +22,8 @@ load(
 )
 load(
     "//repositories:erlang_config.bzl",
+    "INSTALLATION_TYPE_EXTERNAL",
+    "INSTALLATION_TYPE_INTERNAL",
     _erlang_config_rule = "erlang_config",
 )
 load(
@@ -31,43 +33,54 @@ load(
 )
 
 def _erlang_config(ctx):
-    internal_erlangs = []
+    types = {}
+    versions = {}
+    urls = {}
+    strip_prefixs = {}
+    sha256s = {}
+    erlang_homes = {}
+
     for mod in ctx.modules:
+        for erlang in mod.tags.external_erlang_from_path:
+            types[erlang.name] = INSTALLATION_TYPE_EXTERNAL
+            versions[erlang.name] = erlang.version
+            erlang_homes[erlang.name] = erlang.erlang_home
+
         for erlang in mod.tags.internal_erlang_from_http_archive:
-            internal_erlangs.append(struct(
-                name = erlang.name,
-                version = erlang.version,
-                url = erlang.url,
-                strip_prefix = erlang.strip_prefix,
-                sha256 = erlang.sha256,
-            ))
+            types[erlang.name] = INSTALLATION_TYPE_INTERNAL
+            versions[erlang.name] = erlang.version
+            urls[erlang.name] = erlang.url
+            strip_prefixs[erlang.name] = erlang.strip_prefix
+            sha256s[erlang.name] = erlang.sha256
+
         for erlang in mod.tags.internal_erlang_from_github_release:
             url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
                 v = erlang.version,
             )
             strip_prefix = "otp_src_{}".format(erlang.version)
 
-            internal_erlangs.append(struct(
-                name = erlang.name,
-                version = erlang.version,
-                url = url,
-                strip_prefix = strip_prefix,
-                sha256 = erlang.sha256,
-            ))
-
-    versions = {c.name: c.version for c in internal_erlangs}
-    urls = {c.name: c.url for c in internal_erlangs}
-    strip_prefixs = {c.name: c.strip_prefix for c in internal_erlangs if c.strip_prefix}
-    sha256s = {c.name: c.sha256 for c in internal_erlangs if c.sha256}
+            types[erlang.name] = INSTALLATION_TYPE_INTERNAL
+            versions[erlang.name] = erlang.version
+            urls[erlang.name] = url
+            strip_prefixs[erlang.name] = strip_prefix
+            sha256s[erlang.name] = erlang.sha256
 
     _erlang_config_rule(
         name = "erlang_config",
         rules_erlang_workspace = "@rules_erlang",
+        types = types,
         versions = versions,
         urls = urls,
         strip_prefixs = strip_prefixs,
         sha256s = sha256s,
+        erlang_homes = erlang_homes,
     )
+
+external_erlang_from_path = tag_class(attrs = {
+    "name": attr.string(),
+    "version": attr.string(),
+    "erlang_home": attr.string(),
+})
 
 internal_erlang_from_http_archive = tag_class(attrs = {
     "name": attr.string(),
@@ -92,6 +105,7 @@ internal_erlang_from_github_release = tag_class(attrs = {
 erlang_config = module_extension(
     implementation = _erlang_config,
     tag_classes = {
+        "external_erlang_from_path": external_erlang_from_path,
         "internal_erlang_from_http_archive": internal_erlang_from_http_archive,
         "internal_erlang_from_github_release": internal_erlang_from_github_release,
     },
