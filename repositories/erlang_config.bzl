@@ -148,9 +148,9 @@ def _build_file_content(erlang_installations):
     if _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME in erlang_installations:
         default_installation = erlang_installations[_DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME]
     elif len(external_installations) > 0:
-        default_installation = external_installations[0]
+        default_installation = _any_value(external_installations)
     else:
-        default_installation = erlang_installations[0]
+        default_installation = _any_value(erlang_installations)
 
     build_file_content = """\
 package(
@@ -214,3 +214,8 @@ platform(
 """.format(major = major)
 
     return build_file_content
+
+def _any_value(d):
+    for v in d.values():
+        return v
+    return None
