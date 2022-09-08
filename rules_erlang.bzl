@@ -4,6 +4,7 @@ load(
 )
 load(
     "//repositories:erlang_config.bzl",
+    "INSTALLATION_TYPE_INTERNAL",
     _erlang_config = "erlang_config",
 )
 load(
@@ -56,6 +57,7 @@ filegroup(
 def erlang_config(
         rules_erlang_workspace = "@rules_erlang",
         internal_erlang_configs = []):
+    types = {c.name: INSTALLATION_TYPE_INTERNAL for c in internal_erlang_configs}
     versions = {c.name: c.version for c in internal_erlang_configs}
     urls = {c.name: c.url for c in internal_erlang_configs}
     strip_prefixs = {c.name: c.strip_prefix for c in internal_erlang_configs if c.strip_prefix}
@@ -64,6 +66,7 @@ def erlang_config(
     _erlang_config(
         name = "erlang_config",
         rules_erlang_workspace = rules_erlang_workspace,
+        types = types,
         versions = versions,
         urls = urls,
         strip_prefixs = strip_prefixs,
