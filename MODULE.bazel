@@ -34,3 +34,7 @@ use_repo(
     erlang_config_extension,
     "erlang_config",
 )
+
+register_toolchains(
+    "@erlang_config//external:toolchain",
+)

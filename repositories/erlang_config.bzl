@@ -7,6 +7,7 @@ ERLANG_HOME_ENV_VAR = "ERLANG_HOME"
 DEFAULT_ERL_PATH = "/usr/bin/erl"
 
 _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME = "external"
+_ERLANG_VERSION_UNKNOWN = "UNKNOWN"
 
 INSTALLATION_TYPE_EXTERNAL = "external"
 INSTALLATION_TYPE_INTERNAL = "internal"
@@ -136,7 +137,14 @@ def _default_erlang_dict(repository_ctx):
             ),
         }
     else:
-        return {}
+        return {
+            _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME: struct(
+                type = INSTALLATION_TYPE_EXTERNAL,
+                version = _ERLANG_VERSION_UNKNOWN,
+                major = _ERLANG_VERSION_UNKNOWN.lower(),
+                erlang_home = erlang_home,
+            ),
+        }
 
 def _build_file_content(erlang_installations):
     external_installations = {
