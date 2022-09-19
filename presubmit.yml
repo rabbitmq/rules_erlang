@@ -26,7 +26,6 @@ platforms:
     shell_commands: *shell_commands
     build_flags:
     - --incompatible_strict_action_env
-    - --extra_toolchains=@erlang_config//external:toolchain
     build_targets:
     - '@rules_erlang//...'
   ubuntu2004:
@@ -36,6 +35,5 @@ platforms:
     shell_commands: *shell_commands
     build_flags:
     - --incompatible_strict_action_env
-    - --extra_toolchains=@erlang_config//external:toolchain
     build_targets:
     - '@rules_erlang//...'
