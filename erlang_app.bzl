@@ -5,6 +5,10 @@ load(
     "erlang_app_info",
     _ErlangAppInfo = "ErlangAppInfo",
 )
+load(
+    ":util.bzl",
+    "without",
+)
 
 DEFAULT_ERLC_OPTS = [
     "-Werror",
@@ -35,7 +39,10 @@ def erlang_app(
         app_env = "",
         app_extra_keys = "",
         extra_apps = [],
-        erlc_opts = DEFAULT_ERLC_OPTS,
+        erlc_opts = select({
+            Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
+            "//conditions:default": DEFAULT_ERLC_OPTS,
+        }),
         extra_hdrs = [],
         extra_srcs = [],
         extra_priv = [],
@@ -98,7 +105,10 @@ def test_erlang_app(
         app_env = "",
         app_extra_keys = "",
         extra_apps = [],
-        erlc_opts = DEFAULT_TEST_ERLC_OPTS,
+        erlc_opts = select({
+            Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_TEST_ERLC_OPTS),
+            "//conditions:default": DEFAULT_TEST_ERLC_OPTS,
+        }),
         extra_hdrs = [],
         extra_srcs = [],
         extra_priv = [],
