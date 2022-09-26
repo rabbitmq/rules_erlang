@@ -246,10 +246,10 @@ erlang_app(
     $(if $(LOCAL_DEPS),extra_apps = [$(foreach dep,$(LOCAL_DEPS),\n        "$(dep)",)\n    ]$(comma))
     $(if $(BUILD_DEPS),build_deps = [$(foreach dep,$(BUILD_DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
     $(if $(DEPS),deps = [$(foreach dep,$(DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
+    erlc_opts = select({{
+        "@rules_erlang//:debug_build": ["+debug_info"],
+        "//conditions:default": ["+deterministic", "+debug_info"],
+    }}),
     stamp = 0,
 )
 endef
@@ -278,10 +278,10 @@ load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 erlang_app(
     app_name = "{name}",
     app_version = "{version}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
+    erlc_opts = select({{
+        "@rules_erlang//:debug_build": ["+debug_info"],
+        "//conditions:default": ["+deterministic", "+debug_info"],
+    }}),
     deps = {deps},
     stamp = 0,
 )
@@ -299,10 +299,10 @@ load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 erlang_app(
     app_name = "{name}",
     app_version = "{version}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
+    erlc_opts = select({{
+        "@rules_erlang//:debug_build": ["+debug_info"],
+        "//conditions:default": ["+deterministic", "+debug_info"],
+    }}),
     stamp = 0,
 )
 EOF
@@ -316,10 +316,10 @@ load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 
 erlang_app(
     app_name = "{name}",
-    erlc_opts = [
-        "+deterministic",
-        "+debug_info",
-    ],
+    erlc_opts = select({{
+        "@rules_erlang//:debug_build": ["+debug_info"],
+        "//conditions:default": ["+deterministic", "+debug_info"],
+    }}),
     stamp = 0,
 )
 EOF
