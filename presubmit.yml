@@ -5,18 +5,6 @@ shell_commands: &shell_commands
 - ./kerl build ${ERLANG_VERSION}
 - ./kerl install ${ERLANG_VERSION} ~/kerl/${ERLANG_VERSION}
 - realpath ~/kerl/${ERLANG_VERSION}
-- |
-    cat << EOF >> $(ls MODULE*)
-    erlang_config_extension = use_extension(
-        "@rules_erlang//bzlmod:extensions.bzl",
-        "erlang_config",
-    )
-
-    use_repo(
-        erlang_config_extension,
-        "erlang_config",
-    )
-    EOF
 
 platforms:
   macos:
