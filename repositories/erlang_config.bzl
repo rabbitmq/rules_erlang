@@ -1,5 +1,6 @@
 load(
     "//:util.bzl",
+    "msys2_path",
     "path_join",
 )
 
@@ -143,13 +144,13 @@ def _default_erlang_dict(repository_ctx):
     if _is_windows(repository_ctx):
         if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
             erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
-            erlang_home = erlang_home.replace("\\", "/")
-            erl_path = path_join(erlang_home, "bin", "erl.exe")
+            erl_path = erlang_home + "\\bin\\erl.exe"
         else:
             erl_path = repository_ctx.which("erl.exe")
             if erl_path == None:
                 erl_path = repository_ctx.path("C:/Program Files/Erlang OTP/bin/erl.exe")
             erlang_home = _erlang_home_from_erl_path(repository_ctx, erl_path)
+        erlang_home = msys2_path(erlang_home)
     elif ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
         erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
         erl_path = path_join(erlang_home, "bin", "erl")
