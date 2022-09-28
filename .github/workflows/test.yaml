@@ -56,21 +56,23 @@ jobs:
       with:
         otp-version: ${{ matrix.otp }}
     - name: CONFIGURE BAZEL
-      id: configure
       working-directory: test
       shell: bash
       run: |
         cat << EOF >> user.bazelrc
           startup --windows_enable_symlinks
           build --enable_runfiles
+          build --color=yes
         EOF
-
-        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        echo "::set-output name=ERLANG_HOME::${ERLANG_HOME}"
     - name: TEST
       working-directory: test
+      shell: cmd
       run: |
-        set "ERLANG_HOME=${{ steps.configure.outputs.ERLANG_HOME }}"
+        where erl > tmpFile
+        set /p ERL_PATH= < tmpFile
+        del tmpFile
+
+        set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
 
         bazelisk test //... --noexperimental_enable_bzlmod
     #! https://github.com/actions/upload-artifact/issues/240
@@ -100,13 +102,6 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp }}
-    - name: CONFIGURE BAZEL
-      working-directory: test
-      run: |
-        cat << EOF >> user.bazelrc
-          build:buildbuddy --remote_download_minimal
-          build:buildbuddy --color=yes
-        EOF
     - name: TEST
       working-directory: test
       run: |
@@ -133,8 +128,6 @@ jobs:
         cat << EOF >> user.bazelrc
           build:buildbuddy --remote_download_minimal
           build:buildbuddy --color=yes
-
-          #! build:rbe --extra_execution_platforms=@erlang_config//:erlang_24_platform
         EOF
     - name: BUILD
       working-directory: test
