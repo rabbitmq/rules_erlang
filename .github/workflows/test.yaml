@@ -65,8 +65,7 @@ jobs:
           build --enable_runfiles
         EOF
 
-        ERL_PATH="$(which erl)"
-        ERLANG_HOME="${ERL_PATH/\/bin\/erl/}"
+        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         echo "::set-output name=ERLANG_HOME::${ERLANG_HOME}"
     - name: TEST
       working-directory: test
