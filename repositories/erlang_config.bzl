@@ -4,7 +4,6 @@ load(
 )
 
 ERLANG_HOME_ENV_VAR = "ERLANG_HOME"
-DEFAULT_ERL_PATH = "/usr/bin/erl"
 
 _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME = "external"
 _ERLANG_VERSION_UNKNOWN = "UNKNOWN"
@@ -122,18 +121,25 @@ erlang_config = repository_rule(
 )
 
 def _default_erlang_dict(repository_ctx):
-    if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
-        erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
-    else:
-        if repository_ctx.os.name.find("windows") > 0:
-            erl_path = repository_ctx.which("erl.exe")
+    if repository_ctx.os.name.find("windows") > -1:
+        if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
+            erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
+            erlang_home = erlang_home.replace("\\", "/")
+            erl_path = path_join(erlang_home, "bin", "erl.exe")
         else:
-            erl_path = repository_ctx.which("erl")
+            erl_path = repository_ctx.which("erl.exe")
+            if erl_path == None:
+                erl_path = repository_ctx.path("C:/Program Files/Erlang OTP/bin/erl.exe")
+            erlang_home = str(erl_path.dirname.dirname)
+    elif ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
+        erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
+        erl_path = path_join(erlang_home, "bin", "erl")
+    else:
+        erl_path = repository_ctx.which("erl")
         if erl_path == None:
-            erl_path = repository_ctx.path(DEFAULT_ERL_PATH)
+            erl_path = repository_ctx.path("/usr/bin/erl")
         erlang_home = str(erl_path.dirname.dirname)
 
-    erl_path = path_join(erlang_home, "bin", "erl")
     version = repository_ctx.execute(
         [
             erl_path,
@@ -156,11 +162,23 @@ def _default_erlang_dict(repository_ctx):
             ),
         }
     else:
+        repository_ctx.execute(
+            [
+                repository_ctx.which("echo"),
+                "RULES_ERLANG: " + "Could not determine erlang version for {}: {}".format(
+                    erl_path,
+                    version.stderr,
+                ),
+            ],
+            timeout = 1,
+            quiet = False,
+        )
         return {
             _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME: struct(
                 type = INSTALLATION_TYPE_EXTERNAL,
                 version = _ERLANG_VERSION_UNKNOWN,
                 major = _ERLANG_VERSION_UNKNOWN.lower(),
+                minor = None,
                 erlang_home = erlang_home,
             ),
         }
