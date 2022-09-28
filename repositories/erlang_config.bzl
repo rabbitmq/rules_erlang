@@ -120,6 +120,22 @@ erlang_config = repository_rule(
     ],
 )
 
+def _erlang_home_from_erl_path(repository_ctx, erl_path):
+    ehr = repository_ctx.execute(
+        [
+            erl_path,
+            "-noshell",
+            "-eval",
+            'io:format("~s",[code:root_dir()]), halt().',
+        ],
+        timeout = 10,
+    )
+    if ehr.return_code == 0:
+        erlang_home = ehr.stdout.strip("\n")
+    else:
+        erlang_home = str(erl_path.dirname.dirname)
+    return erlang_home
+
 def _default_erlang_dict(repository_ctx):
     if repository_ctx.os.name.find("windows") > -1:
         if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
@@ -130,7 +146,7 @@ def _default_erlang_dict(repository_ctx):
             erl_path = repository_ctx.which("erl.exe")
             if erl_path == None:
                 erl_path = repository_ctx.path("C:/Program Files/Erlang OTP/bin/erl.exe")
-            erlang_home = str(erl_path.dirname.dirname)
+            erlang_home = _erlang_home_from_erl_path(repository_ctx, erl_path)
     elif ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
         erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
         erl_path = path_join(erlang_home, "bin", "erl")
@@ -138,7 +154,7 @@ def _default_erlang_dict(repository_ctx):
         erl_path = repository_ctx.which("erl")
         if erl_path == None:
             erl_path = repository_ctx.path("/usr/bin/erl")
-        erlang_home = str(erl_path.dirname.dirname)
+        erlang_home = _erlang_home_from_erl_path(repository_ctx, erl_path)
 
     version = repository_ctx.execute(
         [
