@@ -31,7 +31,6 @@ http_archive(
 load(
     "@rules_erlang//:rules_erlang.bzl",
     "erlang_config",
-    "internal_erlang_from_github_release",
     "rules_erlang_dependencies",
 )
 
