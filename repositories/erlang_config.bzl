@@ -136,8 +136,11 @@ def _erlang_home_from_erl_path(repository_ctx, erl_path):
         erlang_home = str(erl_path.dirname.dirname)
     return erlang_home
 
+def _is_windows(repository_ctx):
+    return repository_ctx.os.name.lower().find("windows") != -1
+
 def _default_erlang_dict(repository_ctx):
-    if repository_ctx.os.name.find("windows") > -1:
+    if _is_windows(repository_ctx):
         if ERLANG_HOME_ENV_VAR in repository_ctx.os.environ:
             erlang_home = repository_ctx.os.environ[ERLANG_HOME_ENV_VAR]
             erlang_home = erlang_home.replace("\\", "/")
@@ -178,17 +181,10 @@ def _default_erlang_dict(repository_ctx):
             ),
         }
     else:
-        repository_ctx.execute(
-            [
-                repository_ctx.which("echo"),
-                "RULES_ERLANG: " + "Could not determine erlang version for {}: {}".format(
-                    erl_path,
-                    version.stderr,
-                ),
-            ],
-            timeout = 1,
-            quiet = False,
-        )
+        repository_ctx.report_progress("Could not determine erlang version for {}: {}".format(
+            erl_path,
+            version.stderr,
+        ))
         return {
             _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME: struct(
                 type = INSTALLATION_TYPE_EXTERNAL,
