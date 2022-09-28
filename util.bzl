@@ -19,6 +19,15 @@ def windows_path(path):
             ).replace("/", "\\")
     return path.replace("/", "\\")
 
+def msys2_path(path):
+    for letter in _DRIVE_LETTERS:
+        for prefix in ["%s:" % letter.upper(), "%s:" % letter]:
+            if path.startswith(prefix):
+                return "/%s" % letter + path.removeprefix(
+                    prefix,
+                ).replace("\\", "/")
+    return path.replace("\\", "/")
+
 def without(item, elements):
     c = list(elements)
     c.remove(item)
