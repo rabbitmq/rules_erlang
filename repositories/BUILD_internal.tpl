@@ -28,7 +28,8 @@ toolchain(
     exec_compatible_with = [
         "//:erlang_internal",
     ],
-    target_compatible_with = [%{TARGET_COMPATIBLE_WITH}
+    target_compatible_with = [
+        "%{TARGET_COMPATIBLE_WITH}",
     ],
     toolchain = ":erlang",
     toolchain_type = "%{RULES_ERLANG_WORKSPACE}//tools:toolchain_type",

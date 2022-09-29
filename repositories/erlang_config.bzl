@@ -42,15 +42,10 @@ def _impl(repository_ctx):
         )
 
     for (name, props) in erlang_installations.items():
-        target_compatible_with = ["//:erlang_{}".format(props.major)]
         if props.minor != None:
-            target_compatible_with.append(
-                "//:erlang_{}_{}".format(props.major, props.minor),
-            )
-        target_compatible_with = "".join([
-            "\n        \"%s\"," % c
-            for c in target_compatible_with
-        ])
+            target_compatible_with = "//:erlang_{}_{}".format(props.major, props.minor)
+        else:
+            target_compatible_with = "//:erlang_{}".format(props.major)
 
         if props.type == INSTALLATION_TYPE_EXTERNAL:
             repository_ctx.template(
@@ -199,6 +194,14 @@ def _default_erlang_dict(repository_ctx):
 def _build_file_content(erlang_installations):
     default_installation = erlang_installations[_DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME]
 
+    if default_installation.minor != None:
+        default_identifier = "{}_{}".format(
+            default_installation.major,
+            default_installation.minor,
+        )
+    else:
+        default_identifier = default_installation.major
+
     build_file_content = """\
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
@@ -212,13 +215,8 @@ constraint_setting(
 )
 
 constraint_setting(
-    name = "erlang_major_version",
-    default_constraint_value = ":erlang_{default_major}",
-)
-
-constraint_setting(
-    name = "erlang_major_minor_version",
-    default_constraint_value = ":erlang_{default_major}_{default_minor}",
+    name = "erlang_version",
+    default_constraint_value = ":erlang_{default_identifier}",
 )
 
 constraint_value(
@@ -227,8 +225,7 @@ constraint_value(
 )
 
 """.format(
-        default_major = default_installation.major,
-        default_minor = default_installation.minor,
+        default_identifier = default_identifier,
     )
 
     external_installations = {
@@ -253,24 +250,47 @@ constraint_value(
         major_by_minors[props.major] = minors
 
     for (major, minors) in major_by_minors.items():
-        build_file_content += """\
+        if len(minors) == 0:
+            build_file_content += """\
 constraint_value(
     name = "erlang_{major}",
-    constraint_setting = ":erlang_major_version",
+    constraint_setting = ":erlang_version",
+)
+
+platform(
+    name = "erlang_{major}_platform",
+    constraint_values = [
+        ":erlang_{major}",
+    ],
 )
 
 """.format(
-            major = major,
-        )
-        if len(minors) > 0:
-            constraints = [
-                ":erlang_{}_{}".format(major, minor)
-                for minor in minors
-            ]
+                major = major,
+            )
+        else:
+            constraints = []
+            for minor in minors:
+                constraints.append(
+                    ":erlang_{}_{}".format(major, minor),
+                )
+                build_file_content += """\
+constraint_value(
+    name = "erlang_{major}_{minor}",
+    constraint_setting = ":erlang_version",
+)
+
+platform(
+    name = "erlang_{major}_{minor}_platform",
+    constraint_values = [
+        ":erlang_{major}_{minor}",
+    ],
+)
+
+""".format(major = major, minor = minor)
 
             build_file_content += """\
 selects.config_setting_group(
-    name = "erlang_{major}_any_minor",
+    name = "erlang_{major}",
     match_any = {constraints},
 )
 
@@ -278,7 +298,6 @@ platform(
     name = "erlang_{major}_platform",
     constraint_values = [
         ":erlang_{major}",
-        ":erlang_{major}_any_minor",
     ],
 )
 
@@ -286,35 +305,5 @@ platform(
                 major = major,
                 constraints = constraints,
             )
-        else:
-            build_file_content += """\
-platform(
-    name = "erlang_{major}_platform",
-    constraint_values = [
-        ":erlang_{major}",
-    ],
-)
-
-""".format(
-                major = major,
-            )
-
-        for minor in minors:
-            if minor != None:
-                build_file_content += """\
-constraint_value(
-    name = "erlang_{major}_{minor}",
-    constraint_setting = ":erlang_major_minor_version",
-)
-
-platform(
-    name = "erlang_{major}_{minor}_platform",
-    constraint_values = [
-        ":erlang_{major}",
-        ":erlang_{major}_{minor}",
-    ],
-)
-
-""".format(major = major, minor = minor)
 
     return build_file_content
