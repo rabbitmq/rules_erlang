@@ -19,7 +19,7 @@ def _impl(ctx):
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
         dep_path = path_join(ctx.label.name, lib_info.app_name)
-        for src in lib_info.include + lib_info.srcs + lib_info.priv + lib_info.license_files:
+        for src in lib_info.srcs + lib_info.priv + lib_info.license_files:
             rp = additional_file_dest_relative_path(dep.label, src)
             dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
