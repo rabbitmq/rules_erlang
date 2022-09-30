@@ -52,10 +52,11 @@ def erlang_app(
         runtime_deps = [],
         stamp = -1):
     srcs = native.glob(["src/**/*.erl"]) + extra_srcs
+    hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]) + extra_hdrs
 
     erlang_bytecode(
         name = "beam_files",
-        hdrs = native.glob(["include/**/*.hrl", "src/**/*.hrl"]) + extra_hdrs,
+        hdrs = hdrs,
         srcs = srcs,
         erlc_opts = erlc_opts,
         dest = "ebin",
@@ -91,7 +92,7 @@ def erlang_app(
         beam = [":beam_files"],
         priv = native.glob(["priv/**/*"]) + extra_priv,
         license_files = native.glob(["LICENSE*"]) + extra_license_files,
-        srcs = srcs,
+        srcs = hdrs + srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
     )
