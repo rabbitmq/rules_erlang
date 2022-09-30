@@ -90,10 +90,13 @@ def internal_erlang_from_http_archive(
 def internal_erlang_from_github_release(
         name = "internal",
         version = DEFAULT_ERLANG_VERSION,
-        sha256 = DEFAULT_ERLANG_SHA256):
+        sha256 = None):
     url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
         v = version,
     )
+
+    if version == DEFAULT_ERLANG_VERSION and sha256 == None:
+        sha256 = DEFAULT_ERLANG_SHA256
 
     return internal_erlang_from_http_archive(
         name = name,

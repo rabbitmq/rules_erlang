@@ -59,11 +59,16 @@ def _erlang_config(ctx):
             )
             strip_prefix = "otp_src_{}".format(erlang.version)
 
+            if erlang.version == DEFAULT_ERLANG_VERSION and erlang.sha256 == "":
+                sha256 = DEFAULT_ERLANG_SHA256
+            else:
+                sha256 = erlang.sha256
+
             types[erlang.name] = INSTALLATION_TYPE_INTERNAL
             versions[erlang.name] = erlang.version
             urls[erlang.name] = url
             strip_prefixs[erlang.name] = strip_prefix
-            sha256s[erlang.name] = erlang.sha256
+            sha256s[erlang.name] = sha256
 
     _erlang_config_rule(
         name = "erlang_config",
@@ -97,9 +102,7 @@ internal_erlang_from_github_release = tag_class(attrs = {
     "version": attr.string(
         default = DEFAULT_ERLANG_VERSION,
     ),
-    "sha256": attr.string(
-        default = DEFAULT_ERLANG_SHA256,
-    ),
+    "sha256": attr.string(),
 })
 
 erlang_config = module_extension(
