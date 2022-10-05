@@ -29,11 +29,13 @@ jobs:
           --noexperimental_enable_bzlmod \
           --color=yes
     - name: RESOVLE TEST LOGS PATH
+      if: always()
       working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
+      if: always()
       uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-${{matrix.otp}}
@@ -58,6 +60,7 @@ jobs:
       shell: bash
       run: |
         cat << EOF >> user.bazelrc
+          startup --output_user_root=C:/tmp
           startup --windows_enable_symlinks
           build --enable_runfiles
           build --color=yes
@@ -74,17 +77,20 @@ jobs:
         set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
 
         bazelisk test //... --noexperimental_enable_bzlmod
-    #! https://github.com/actions/upload-artifact/issues/240
-    #! - name: RESOVLE TEST LOGS PATH
-    #!   run: |
-    #!     Set-Variable -Name logs_path -Value (Get-Item bazel-testlogs).Target
-    #!     Write-Output "::set-output name=LOGS_PATH::$logs_path"
-    #!   id: resolve-test-logs-path
-    #! - name: CAPTURE TEST LOGS
-    #!   uses: actions/upload-artifact@v3
-    #!   with:
-    #!     name: bazel-testlogs-${{matrix.otp}}
-    #!     path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      working-directory: test
+      shell: bash
+      run: |
+        LOGS_TAR=$PWD/logs.tar
+        cd bazel-testlogs
+        tar -cf $LOGS_TAR *
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: bazel-testlogs-windows-${{matrix.otp}}
+        path: test/logs.tar
   test-bzlmod:
     runs-on: ubuntu-20.04
     strategy:
@@ -105,11 +111,13 @@ jobs:
       run: |
         bazelisk test //...
     - name: RESOVLE TEST LOGS PATH
+      if: always()
       working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
+      if: always()
       uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
@@ -133,6 +141,7 @@ jobs:
       shell: bash
       run: |
         cat << EOF >> user.bazelrc
+          startup --output_user_root=C:/tmp
           startup --windows_enable_symlinks
           build --enable_runfiles
           build --color=yes
@@ -143,6 +152,20 @@ jobs:
       shell: cmd
       run: |
         bazelisk test //...
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      working-directory: test
+      shell: bash
+      run: |
+        LOGS_TAR=$PWD/logs.tar
+        cd bazel-testlogs
+        tar -cf $LOGS_TAR *
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: bazel-testlogs-bzlmod-windows-${{matrix.otp}}
+        path: test/logs.tar
   test-bzlmod-internal-erlang:
     runs-on: ubuntu-20.04
     steps:
@@ -170,14 +193,16 @@ jobs:
           --toolchain_resolution_debug="@rules_erlang.*" \
           --verbose_failures
     - name: RESOVLE TEST LOGS PATH
+      if: always()
       working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
+      if: always()
       uses: actions/upload-artifact@v3
       with:
-        name: bazel-testlogs-bzlmod-${{matrix.otp}}
+        name: bazel-testlogs-bzlmod-internal-erlang
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-host-erlang-change-detected:
     runs-on: ubuntu-20.04
@@ -212,3 +237,31 @@ jobs:
         if [[ "${{ steps.before.outputs.otp }}" == "${{ steps.after.outputs.otp }}" ]]; then
           echo "Fail"
         fi
+  test-gazelle-extension:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: 25
+    - name: TEST GAZELLE PACKAGE
+      run: |
+        cat << EOF >> user.bazelrc
+          build --color=yes
+        EOF
+
+        bazelisk test //gazelle:all \
+          || bazelisk test //gazelle:all
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      run: |
+        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: bazel-testlogs-gazelle
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*

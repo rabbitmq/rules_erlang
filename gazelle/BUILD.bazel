@@ -1,0 +1,90 @@
+load("@bazel_gazelle//:def.bzl", "gazelle_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+exports_files(["erl_attrs_to_json.sh"])
+
+go_library(
+    name = "gazelle",
+    srcs = [
+        "configure.go",
+        "dot_app_parser.go",
+        "erl_parser.go",
+        "erlang_app.go",
+        "fix.go",
+        "generate.go",
+        "github_com.go",
+        "hex_metadata_parser.go",
+        "hex_pm.go",
+        "kinds.go",
+        "language.go",
+        "moduleindex.go",
+        "mutable_set.go",
+        "rebar_config_parser.go",
+        "resolve.go",
+        "tar.go",
+        "update.go",
+        "util.go",
+    ],
+    importpath = "github.com/rabbitmq/rules_erlang/gazelle",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//config:go_default_library",
+        "@bazel_gazelle//label:go_default_library",
+        "@bazel_gazelle//language:go_default_library",
+        "@bazel_gazelle//repo:go_default_library",
+        "@bazel_gazelle//resolve:go_default_library",
+        "@bazel_gazelle//rule:go_default_library",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@com_github_google_go_cmp//cmp",
+        "@in_gopkg_yaml_v2//:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+
+sh_binary(
+    name = "dot_app_to_json",
+    srcs = ["dot_app_to_json.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "erl_attrs_to_json",
+    srcs = ["erl_attrs_to_json.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "hex_metadata_config_to_json",
+    srcs = ["hex_metadata_config_to_json.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "rebar_config_to_json",
+    srcs = ["rebar_config_to_json.sh"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "gazelle_test",
+    srcs = ["erlang_test.go"],
+    data = [
+        ":gazelle_erlang_binary",
+        ":dot_app_to_json",
+        ":erl_attrs_to_json",
+        ":hex_metadata_config_to_json",
+        ":rebar_config_to_json",
+    ] + glob(["testdata/**"]),
+    deps = [
+        "@bazel_gazelle//testtools:go_default_library",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist",
+        "@com_github_ghodss_yaml//:yaml",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+
+gazelle_binary(
+    name = "gazelle_erlang_binary",
+    languages = ["//gazelle"],
+    visibility = ["//visibility:public"],
+)

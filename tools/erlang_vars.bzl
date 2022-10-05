@@ -4,9 +4,9 @@ def _impl(ctx):
         "OTP_VERSION": otpinfo.version,
         "ERLANG_HOME": otpinfo.erlang_home,
     }
-    if otpinfo.release_dir != None:
-        vars["ERLANG_RELEASE_DIR_PATH"] = otpinfo.release_dir.path
-        vars["ERLANG_RELEASE_DIR_SHORT_PATH"] = otpinfo.release_dir.short_path
+    if otpinfo.release_dir_tar != None:
+        vars["ERLANG_RELEASE_TAR_PATH"] = otpinfo.release_dir_tar.path
+        vars["ERLANG_RELEASE_TAR_SHORT_PATH"] = otpinfo.release_dir_tar.short_path
 
     return [platform_common.TemplateVariableInfo(vars)]
 
