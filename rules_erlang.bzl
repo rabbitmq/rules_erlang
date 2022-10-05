@@ -1,7 +1,4 @@
-load(
-    ":hex_archive.bzl",
-    "hex_archive",
-)
+load(":hex_archive.bzl", "hex_archive")
 load(
     "//repositories:erlang_config.bzl",
     "INSTALLATION_TYPE_INTERNAL",

@@ -1,0 +1,186 @@
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode")
+load("@rules_erlang//:app_file2.bzl", "app_file")
+load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
+load("@rules_erlang//:untar.bzl", "untar")
+
+untar(
+    name = "contents",
+    outs = [
+        "LICENSE",
+        "LICENSE-APACHE2",
+        "LICENSE-MPL-RabbitMQ",
+        "README.md",
+        "rebar.config",
+        "rebar.lock",
+        "src/aten.app.src",
+        "src/aten.erl",
+        "src/aten_app.erl",
+        "src/aten_detect.erl",
+        "src/aten_detector.erl",
+        "src/aten_emitter.erl",
+        "src/aten_sink.erl",
+        "src/aten_sup.erl",
+    ],
+    archive = "contents.tar.gz",
+)
+
+erlang_bytecode(
+    name = "beam_files_0",
+    srcs = ["src/aten.erl"],
+    outs = ["ebin/aten.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_1",
+    srcs = ["src/aten_app.erl"],
+    outs = ["ebin/aten_app.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_2",
+    srcs = ["src/aten_detect.erl"],
+    outs = ["ebin/aten_detect.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_3",
+    srcs = ["src/aten_detector.erl"],
+    outs = ["ebin/aten_detector.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_4",
+    srcs = ["src/aten_emitter.erl"],
+    outs = ["ebin/aten_emitter.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_5",
+    srcs = ["src/aten_sink.erl"],
+    outs = ["ebin/aten_sink.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+erlang_bytecode(
+    name = "beam_files_6",
+    srcs = ["src/aten_sup.erl"],
+    outs = ["ebin/aten_sup.beam"],
+    erlc_opts = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+)
+
+app_file(
+    name = "app_file",
+    out = "ebin/aten.app",
+    app_description = "Erlang node failure detector",
+    app_name = "aten",
+    app_src = ["src/aten.app.src"],
+    app_version = "0.5.8",
+    modules = [
+        "ebin/aten.beam",
+        "ebin/aten_app.beam",
+        "ebin/aten_detect.beam",
+        "ebin/aten_detector.beam",
+        "ebin/aten_emitter.beam",
+        "ebin/aten_sink.beam",
+        "ebin/aten_sup.beam",
+    ],
+)
+
+erlang_app_info(
+    name = "aten",
+    srcs = [
+        "src/aten.app.src",
+        "src/aten.erl",
+        "src/aten_app.erl",
+        "src/aten_detect.erl",
+        "src/aten_detector.erl",
+        "src/aten_emitter.erl",
+        "src/aten_sink.erl",
+        "src/aten_sup.erl",
+    ],
+    hdrs = [],
+    app = ":app_file",
+    app_name = "aten",
+    beam = [
+        "ebin/aten.beam",
+        "ebin/aten_app.beam",
+        "ebin/aten_detect.beam",
+        "ebin/aten_detector.beam",
+        "ebin/aten_emitter.beam",
+        "ebin/aten_sink.beam",
+        "ebin/aten_sup.beam",
+    ],
+    license_files = [
+        "LICENSE",
+        "LICENSE-APACHE2",
+        "LICENSE-MPL-RabbitMQ",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "erlang_app",
+    actual = ":aten",
+    visibility = ["//visibility:public"],
+)
