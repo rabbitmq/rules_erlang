@@ -39,7 +39,7 @@ GitPackage = provider(fields = [
 ])
 
 def log(ctx, msg):
-    ctx.execute([ctx.which("echo"), "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
+    ctx.execute(["echo", "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
 
 def hex_tree(
         ctx,
