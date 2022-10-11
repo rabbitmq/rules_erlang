@@ -1,4 +1,8 @@
 load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+)
+load(
     ":hex_pm.bzl",
     "hex_package_info",
     "satisfies",
@@ -300,5 +304,35 @@ erlang_package = module_extension(
         "hex_package": hex_package_tag,
         "hex_package_tree": hex_package_tree_tag,
         "git_package": git_package_tag,
+    },
+)
+
+def _when_root_module(ctx):
+    for mod in [m for m in ctx.modules if m.is_root]:
+        for repo in mod.tags.git_repository:
+            props = {
+                "name": repo.name,
+                "remote": repo.remote,
+            }
+            if repo.commit != "":
+                props["commit"] = repo.commit
+            if repo.tag != "":
+                props["tag"] = repo.tag
+            if repo.branch != "":
+                props["branch"] = repo.branch
+            git_repository(**props)
+
+git_repository_tag = tag_class(attrs = {
+    "name": attr.string(),
+    "remote": attr.string(),
+    "branch": attr.string(),
+    "tag": attr.string(),
+    "commit": attr.string(),
+})
+
+when_root_module = module_extension(
+    implementation = _when_root_module,
+    tag_classes = {
+        "git_repository": git_repository_tag,
     },
 )
