@@ -12,9 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "23.3"
         - "24.3"
-        - "25.0"
+        - "25.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -45,9 +44,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "23.3"
         - "24.3"
-        - "25.0"
+        - "25.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -92,9 +90,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "23.3"
         - "24.3"
-        - "25.0"
+        - "25.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -117,6 +114,40 @@ jobs:
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  test-bzlmod-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        otp:
+        - "25.1"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: CONFIGURE BAZEL
+      working-directory: test
+      shell: bash
+      run: |
+        cat << EOF >> user.bazelrc
+          startup --windows_enable_symlinks
+          build --enable_runfiles
+          build --color=yes
+        EOF
+    - name: TEST
+      working-directory: test
+      shell: cmd
+      run: |
+        where erl > tmpFile
+        set /p ERL_PATH= < tmpFile
+        del tmpFile
+
+        set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
+
+        bazelisk test //...
   test-bzlmod-internal-erlang:
     runs-on: ubuntu-latest
     steps:
