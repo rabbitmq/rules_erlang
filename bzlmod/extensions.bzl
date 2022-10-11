@@ -39,21 +39,42 @@ def _erlang_config(ctx):
     strip_prefixs = {}
     sha256s = {}
     erlang_homes = {}
+    owners_by_name = {}
 
     for mod in ctx.modules:
         for erlang in mod.tags.external_erlang_from_path:
+            if erlang.name in types:
+                fail("{} declares an erlang installation named {}, but the name is already used by {}".format(
+                    mod.name,
+                    erlang.name,
+                    owners_by_name[erlang.name].name,
+                ))
             types[erlang.name] = INSTALLATION_TYPE_EXTERNAL
             versions[erlang.name] = erlang.version
             erlang_homes[erlang.name] = erlang.erlang_home
+            owners_by_name[erlang.name] = mod
 
         for erlang in mod.tags.internal_erlang_from_http_archive:
+            if erlang.name in types:
+                fail("{} declares an erlang installation named {}, but the name is already used by {}".format(
+                    mod.name,
+                    erlang.name,
+                    owners_by_name[erlang.name].name,
+                ))
             types[erlang.name] = INSTALLATION_TYPE_INTERNAL
             versions[erlang.name] = erlang.version
             urls[erlang.name] = erlang.url
             strip_prefixs[erlang.name] = erlang.strip_prefix
             sha256s[erlang.name] = erlang.sha256
+            owners_by_name[erlang.name] = mod
 
         for erlang in mod.tags.internal_erlang_from_github_release:
+            if erlang.name in types:
+                fail("{} declares an erlang installation named {}, but the name is already used by {}".format(
+                    mod.name,
+                    erlang.name,
+                    owners_by_name[erlang.name].name,
+                ))
             url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
                 v = erlang.version,
             )
@@ -69,6 +90,7 @@ def _erlang_config(ctx):
             urls[erlang.name] = url
             strip_prefixs[erlang.name] = strip_prefix
             sha256s[erlang.name] = sha256
+            owners_by_name[erlang.name] = mod
 
     _erlang_config_rule(
         name = "erlang_config",
