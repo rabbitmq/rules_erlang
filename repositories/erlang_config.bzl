@@ -17,7 +17,7 @@ def _parse_maybe_semver(version_string):
     if len(parts) > 1:
         return (parts[0], parts[1])
     else:
-        return (parts[0], None)
+        return (parts[0], _ERLANG_VERSION_UNKNOWN.lower())
 
 def _impl(repository_ctx):
     rules_erlang_workspace = repository_ctx.attr.rules_erlang_workspace
@@ -42,11 +42,6 @@ def _impl(repository_ctx):
         )
 
     for (name, props) in erlang_installations.items():
-        if props.minor != None:
-            target_compatible_with = "//:erlang_{}_{}".format(props.major, props.minor)
-        else:
-            target_compatible_with = "//:erlang_{}".format(props.major)
-
         if props.type == INSTALLATION_TYPE_EXTERNAL:
             repository_ctx.template(
                 "{}/BUILD.bazel".format(name),
@@ -54,7 +49,8 @@ def _impl(repository_ctx):
                 {
                     "%{ERLANG_HOME}": props.erlang_home,
                     "%{ERLANG_VERSION}": props.version,
-                    "%{TARGET_COMPATIBLE_WITH}": target_compatible_with,
+                    "%{ERLANG_MAJOR}": props.major,
+                    "%{ERLANG_MINOR}": props.minor,
                     "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
                 },
                 False,
@@ -68,7 +64,8 @@ def _impl(repository_ctx):
                     "%{URL}": props.url,
                     "%{STRIP_PREFIX}": props.strip_prefix or "",
                     "%{SHA_256}": props.sha256 or "",
-                    "%{TARGET_COMPATIBLE_WITH}": target_compatible_with,
+                    "%{ERLANG_MAJOR}": props.major,
+                    "%{ERLANG_MINOR}": props.minor,
                     "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
                 },
                 False,
@@ -83,10 +80,12 @@ def _impl(repository_ctx):
         False,
     )
 
-    toolchains = [
-        "@{}//{}:toolchain".format(repository_ctx.name, name)
-        for name in erlang_installations.keys()
-    ]
+    toolchains = []
+    for name in erlang_installations.keys():
+        toolchains.extend([
+            "@{}//{}:toolchain".format(repository_ctx.name, name),
+            "@{}//{}:toolchain2".format(repository_ctx.name, name),
+        ])
 
     repository_ctx.template(
         "defaults.bzl",
@@ -186,25 +185,13 @@ def _default_erlang_dict(repository_ctx):
                 type = INSTALLATION_TYPE_EXTERNAL,
                 version = _ERLANG_VERSION_UNKNOWN,
                 major = _ERLANG_VERSION_UNKNOWN.lower(),
-                minor = None,
+                minor = _ERLANG_VERSION_UNKNOWN.lower(),
                 erlang_home = erlang_home,
             ),
         }
 
 def _build_file_content(erlang_installations):
-    default_installation = erlang_installations[_DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME]
-
-    if default_installation.minor != None:
-        default_identifier = "{}_{}".format(
-            default_installation.major,
-            default_installation.minor,
-        )
-    else:
-        default_identifier = default_installation.major
-
     build_file_content = """\
-load("@bazel_skylib//lib:selects.bzl", "selects")
-
 package(
     default_visibility = ["//visibility:public"],
 )
@@ -214,27 +201,11 @@ constraint_setting(
     default_constraint_value = ":erlang_external",
 )
 
-constraint_setting(
-    name = "erlang_version",
-    default_constraint_value = ":erlang_{default_identifier}",
-)
-
 constraint_value(
     name = "erlang_external",
     constraint_setting = ":erlang_internal_external",
 )
 
-""".format(
-        default_identifier = default_identifier,
-    )
-
-    external_installations = {
-        name: props
-        for (name, props) in erlang_installations.items()
-        if props.type == INSTALLATION_TYPE_EXTERNAL
-    }
-    if len(erlang_installations) > len(external_installations):
-        build_file_content += """\
 constraint_value(
     name = "erlang_internal",
     constraint_setting = ":erlang_internal_external",
@@ -242,16 +213,25 @@ constraint_value(
 
 """
 
+    default_installation = erlang_installations[_DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME]
+
+    build_file_content += """\
+constraint_setting(
+    name = "erlang_version",
+    default_constraint_value = ":erlang_{}_{}",
+)
+
+""".format(default_installation.major, default_installation.minor)
+
     major_by_minors = {}
     for (name, props) in erlang_installations.items():
         minors = major_by_minors.get(props.major, [])
-        if props.minor != None and props.minor not in minors:
+        if props.minor not in minors:
             minors.append(props.minor)
         major_by_minors[props.major] = minors
 
     for (major, minors) in major_by_minors.items():
-        if len(minors) == 0:
-            build_file_content += """\
+        build_file_content += """\
 constraint_value(
     name = "erlang_{major}",
     constraint_setting = ":erlang_version",
@@ -264,16 +244,10 @@ platform(
     ],
 )
 
-""".format(
-                major = major,
-            )
-        else:
-            constraints = []
-            for minor in minors:
-                constraints.append(
-                    ":erlang_{}_{}".format(major, minor),
-                )
-                build_file_content += """\
+""".format(major = major)
+
+        for minor in minors:
+            build_file_content += """\
 constraint_value(
     name = "erlang_{major}_{minor}",
     constraint_setting = ":erlang_version",
@@ -287,23 +261,5 @@ platform(
 )
 
 """.format(major = major, minor = minor)
-
-            build_file_content += """\
-selects.config_setting_group(
-    name = "erlang_{major}",
-    match_any = {constraints},
-)
-
-platform(
-    name = "erlang_{major}_platform",
-    constraint_values = [
-        ":erlang_{major}",
-    ],
-)
-
-""".format(
-                major = major,
-                constraints = constraints,
-            )
 
     return build_file_content

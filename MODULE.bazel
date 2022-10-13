@@ -37,4 +37,5 @@ use_repo(
 
 register_toolchains(
     "@erlang_config//external:toolchain",
+    "@erlang_config//external:toolchain2",
 )
