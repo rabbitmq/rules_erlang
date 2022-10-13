@@ -28,4 +28,5 @@ use_repo(
 
 register_toolchains(
     "@erlang_config//internal:toolchain",
+    "@erlang_config//internal:toolchain2",
 )

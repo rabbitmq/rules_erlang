@@ -27,7 +27,20 @@ toolchain(
         "//:erlang_external",
     ],
     target_compatible_with = [
-        "%{TARGET_COMPATIBLE_WITH}",
+        "//:erlang_%{ERLANG_MAJOR}",
+    ],
+    toolchain = ":erlang",
+    toolchain_type = "%{RULES_ERLANG_WORKSPACE}//tools:toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+toolchain(
+    name = "toolchain2",
+    exec_compatible_with = [
+        "//:erlang_external",
+    ],
+    target_compatible_with = [
+        "//:erlang_%{ERLANG_MAJOR}_%{ERLANG_MINOR}",
     ],
     toolchain = ":erlang",
     toolchain_type = "%{RULES_ERLANG_WORKSPACE}//tools:toolchain_type",
