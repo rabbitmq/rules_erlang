@@ -34,10 +34,12 @@ def _impl(ctx):
     else:
         registered_list = ""
 
-    applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
-    for dep in ctx.attr.deps:
-        applications.append(dep[ErlangAppInfo].app_name)
-    applications_list = "[" + ",".join(applications) + "]"
+    applications_list = ""
+    if src == "" or len(ctx.attr.extra_apps > 0) or len(ctx.attr.deps) > 0:
+        applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
+        for dep in ctx.attr.deps:
+            applications.append(dep[ErlangAppInfo].app_name)
+        applications_list = "[" + ",".join(applications) + "]"
 
     stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                     ctx.attr.private_stamp_detect)
