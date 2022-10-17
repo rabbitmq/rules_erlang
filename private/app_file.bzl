@@ -158,7 +158,10 @@ fi
     )
 
     return [
-        DefaultInfo(files = depset([app_file])),
+        DefaultInfo(
+            files = depset([app_file]),
+            runfiles = ctx.runfiles([app_file]),
+        ),
     ]
 
 app_file = rule(
