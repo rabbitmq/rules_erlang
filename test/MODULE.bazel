@@ -4,6 +4,11 @@ module(
 )
 
 bazel_dep(
+    name = "platforms",
+    version = "0.0.5",
+)
+
+bazel_dep(
     name = "rules_erlang",
     version = "3.0.0",
 )

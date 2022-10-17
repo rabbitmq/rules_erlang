@@ -12,4 +12,9 @@ sh_test(
     srcs = [":test_applications_preserved.sh"],
     args = ["$(location :app_file)"],
     data = [":app_file"],
+    target_compatible_with = select({
+        "@platforms//os:osx": [],
+        "@platforms//os:linux": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
 )
