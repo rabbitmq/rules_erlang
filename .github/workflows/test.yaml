@@ -102,7 +102,6 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         bazelisk test //...
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
@@ -141,12 +140,6 @@ jobs:
       working-directory: test
       shell: cmd
       run: |
-        where erl > tmpFile
-        set /p ERL_PATH= < tmpFile
-        del tmpFile
-
-        set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
-
         bazelisk test //...
   test-bzlmod-internal-erlang:
     runs-on: ubuntu-latest
@@ -184,3 +177,32 @@ jobs:
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  test-host-erlang-change-detected:
+    runs-on: ubuntu-latest
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: BUILD
+      working-directory: test
+      id: before
+      run: |
+        bazelisk build :otp_version \
+          --color=yes
+        echo "otp=$(cat bazel-bin/otp_version.txt)" >> $GITHUB_OUTPUT
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: "24.3"
+    - name: BUILD
+      working-directory: test
+      id: after
+      run: |
+        bazelisk build :otp_version \
+          --color=yes
+        echo "otp=$(cat bazel-bin/otp_version.txt)" >> $GITHUB_OUTPUT
+    - name: CHECK
+      run: |
+        set -x
+        if [[ "${{ steps.before.outputs.otp }}" == "${{ steps.after.outputs.otp }}" ]]; then
+          echo "Fail"
+        fi

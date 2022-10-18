@@ -112,6 +112,7 @@ erlang_config = repository_rule(
     },
     environ = [
         ERLANG_HOME_ENV_VAR,
+        "PATH",
     ],
     local = True,
 )
@@ -177,10 +178,6 @@ def _default_erlang_dict(repository_ctx):
             ),
         }
     else:
-        repository_ctx.report_progress("Could not determine erlang version for {}: {}".format(
-            erl_path,
-            version.stderr,
-        ))
         return {
             _DEFAULT_EXTERNAL_ERLANG_PACKAGE_NAME: struct(
                 type = INSTALLATION_TYPE_EXTERNAL,
