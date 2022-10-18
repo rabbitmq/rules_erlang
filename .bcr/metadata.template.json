@@ -1,0 +1,12 @@
+{
+  "homepage": "https://github.com/rabbitmq/rules_erlang",
+  "maintainers": [
+    {
+      "email": "kuryloskip@vmware.com",
+      "github": "pjk25",
+      "name": "Rin Kuryloski"
+    }
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}
