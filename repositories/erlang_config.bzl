@@ -112,6 +112,7 @@ erlang_config = repository_rule(
     },
     environ = [
         ERLANG_HOME_ENV_VAR,
+        "PATH",
     ],
     local = True,
 )
