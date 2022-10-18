@@ -111,7 +111,7 @@ erlang_config = repository_rule(
         "erlang_homes": attr.string_dict(),
     },
     environ = [
-        "ERLANG_HOME",
+        ERLANG_HOME_ENV_VAR,
     ],
     local = True,
 )
