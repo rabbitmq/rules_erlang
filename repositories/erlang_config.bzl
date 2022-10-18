@@ -113,6 +113,7 @@ erlang_config = repository_rule(
     environ = [
         "ERLANG_HOME",
     ],
+    local = True,
 )
 
 def _erlang_home_from_erl_path(repository_ctx, erl_path):
