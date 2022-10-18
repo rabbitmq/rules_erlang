@@ -102,7 +102,6 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         bazelisk test //...
     - name: RESOVLE TEST LOGS PATH
       working-directory: test
@@ -141,12 +140,6 @@ jobs:
       working-directory: test
       shell: cmd
       run: |
-        where erl > tmpFile
-        set /p ERL_PATH= < tmpFile
-        del tmpFile
-
-        set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
-
         bazelisk test //...
   test-bzlmod-internal-erlang:
     runs-on: ubuntu-latest
