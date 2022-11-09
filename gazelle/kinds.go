@@ -5,11 +5,12 @@ import (
 )
 
 const (
-	erlangBytecodeKind = "erlang_bytecode"
-	appFileKind        = "app_file"
-	erlangAppInfoKind  = "erlang_app_info"
-	untarKind          = "untar"
-	hexPmErlangAppKind = "hex_pm_erlang_app"
+	erlangBytecodeKind  = "erlang_bytecode"
+	appFileKind         = "app_file"
+	erlangAppInfoKind   = "erlang_app_info"
+	untarKind           = "untar"
+	hexPmErlangAppKind  = "hex_pm_erlang_app"
+	githubErlangAppKind = "github_erlang_app"
 )
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
@@ -104,6 +105,19 @@ var erlangKinds = map[string]rule.KindInfo{
 			"version": true,
 		},
 	},
+	githubErlangAppKind: {
+		NonEmptyAttrs: map[string]bool{
+			"repo":    true,
+			"org":     true,
+			"ref":     true,
+			"version": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"ref":     true,
+			"version": true,
+		},
+	},
 }
 
 func (erlang *erlangLang) Loads() []rule.LoadInfo {
@@ -139,6 +153,12 @@ var erlangLoads = []rule.LoadInfo{
 		Name: "@rules_erlang//:hex_pm.bzl",
 		Symbols: []string{
 			hexPmErlangAppKind,
+		},
+	},
+	{
+		Name: "@rules_erlang//:github.bzl",
+		Symbols: []string{
+			githubErlangAppKind,
 		},
 	},
 }
