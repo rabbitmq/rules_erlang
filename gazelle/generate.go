@@ -327,11 +327,23 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		theseBeam := []string{}
 		for _, behaviour := range erlAttrs.Behaviour {
+			found := false
 			for _, s := range erlangApp.Srcs.Values() {
 				src := s.(string)
 				if moduleName(src) == behaviour {
 					theseBeam = append(theseBeam, beamFile(src))
+					found = true
+					break
 				}
+			}
+			if !found {
+				erlangConfig := args.Config.Exts[languageName].(ErlangConfig)
+				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+					theseDeps = append(theseDeps, dep)
+				}
+			}
+			if !found {
+				Log(args.Config, "    ", behaviour, "source not found, skipping.")
 			}
 		}
 

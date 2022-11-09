@@ -25,10 +25,10 @@ var erlangKinds = map[string]rule.KindInfo{
 	erlangBytecodeKind: {
 		MatchAttrs: []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{
+			"beam":       true,
 			"deps":       true,
 			"srcs":       true,
 			"hdrs":       true,
-			"dest":       false,
 			"erlc_opts":  false,
 			"outs":       true,
 			"visibility": true,
@@ -37,6 +37,7 @@ var erlangKinds = map[string]rule.KindInfo{
 		MergeableAttrs: map[string]bool{
 			"srcs": true,
 			"hdrs": true,
+			"beam": true,
 			"outs": true,
 		},
 		ResolveAttrs: map[string]bool{
