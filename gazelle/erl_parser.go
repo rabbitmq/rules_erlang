@@ -109,4 +109,5 @@ func (p *erlParser) parseErl(erlFilePath string) (*erlAttrs, error) {
 type erlAttrs struct {
 	IncludeLib []string `json:"include_lib"`
 	Include    []string `json:"include"`
+	Behaviour  []string `json:"behaviour"`
 }

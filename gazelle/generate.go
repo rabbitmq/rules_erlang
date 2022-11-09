@@ -116,6 +116,15 @@ func guessKind(f string, erlangApp *erlangApp) {
 	}
 }
 
+func moduleName(src string) string {
+	return strings.TrimSuffix(filepath.Base(src), ".erl")
+}
+
+func beamFile(src string) string {
+	r := "ebin/" + strings.TrimPrefix(src, "src/")
+	return strings.TrimSuffix(r, ".erl") + ".beam"
+}
+
 func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) (string, error) {
 	Log(args.Config, "    Hex.pm archive detected")
 
@@ -316,6 +325,16 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 		}
 
+		theseBeam := []string{}
+		for _, behaviour := range erlAttrs.Behaviour {
+			for _, s := range erlangApp.Srcs.Values() {
+				src := s.(string)
+				if moduleName(src) == behaviour {
+					theseBeam = append(theseBeam, beamFile(src))
+				}
+			}
+		}
+
 		Log(args.Config, src, erlAttrs)
 
 		out := "ebin/" + strings.TrimPrefix(src.(string), "src/")
@@ -329,6 +348,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 		erlang_bytecode.SetAttr("erlc_opts", erlcOptsWithSelect(erlangApp.ErlcOpts))
 		erlang_bytecode.SetAttr("outs", []string{out})
+		if len(theseBeam) > 0 {
+			erlang_bytecode.SetAttr("beam", theseBeam)
+		}
 		if len(theseDeps) > 0 {
 			erlang_bytecode.SetAttr("deps", theseDeps)
 		}

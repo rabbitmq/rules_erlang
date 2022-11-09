@@ -27,10 +27,10 @@ parse_json_string(Line) ->
             end
     end.
 
-%% record_attr(E, _F, _Dir, behavior, Dep) ->
-%%     ets:insert(E, {Dep});
-%% record_attr(E, _F, _Dir, behaviour, Dep) ->
-%%     ets:insert(E, {Dep});
+record_attr(E, _F, _Dir, behavior, Dep) ->
+    ets:insert(E, {behaviour, Dep});
+record_attr(E, _F, _Dir, behaviour, Dep) ->
+    ets:insert(E, {behaviour, Dep});
 %% record_attr(E, _F, _Dir, compile, {parse_transform, Dep}) ->
 %%     ets:insert(E, {Dep});
 %% record_attr(E, _F, _Dir, compile, Opts) when is_list(Opts) ->
@@ -71,12 +71,15 @@ deps(E, _F) ->
               Acc#{include_lib := [Path | IncludeLib]};
           ({include, Path}, #{include := Include} = Acc) ->
               Acc#{include := [Path | Include]};
+          ({behaviour, Dep}, #{behaviour := Behaviours} = Acc) ->
+              Acc#{behaviour := [Dep | Behaviours]};
           (_, Acc) ->
               Acc
       end,
       #{
         include_lib => [],
-        include => []
+        include => [],
+        behaviour => []
        },
       E).
 
