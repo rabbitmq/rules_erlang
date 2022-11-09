@@ -289,9 +289,11 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	// TODO: detect "extra_apps" from the .app.src if necessary
-	//       any 'applications' not in the deps are assumed to be
-	//       local/builtin
+	erlc_opts := rule.NewRule("erlc_opts", "erlc_opts")
+	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
+
+	result.Gen = append(result.Gen, erlc_opts)
+	result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
 
 	Log(args.Config, "    Analyzing sources...")
 
@@ -358,7 +360,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		if len(theseHdrs) > 0 {
 			erlang_bytecode.SetAttr("hdrs", theseHdrs)
 		}
-		erlang_bytecode.SetAttr("erlc_opts", erlcOptsWithSelect(erlangApp.ErlcOpts))
+		erlang_bytecode.SetAttr("erlc_opts", ":"+erlc_opts.Name())
 		erlang_bytecode.SetAttr("outs", []string{out})
 		if len(theseBeam) > 0 {
 			erlang_bytecode.SetAttr("beam", theseBeam)

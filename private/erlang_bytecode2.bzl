@@ -8,6 +8,13 @@ load(
     "maybe_install_erlang",
 )
 
+ErlcOptsInfo = provider(
+    doc = "Reusable set of erlc options",
+    fields = {
+        "values": "Strings to be passed as additional options to erlc",
+    },
+)
+
 def _impl(ctx):
     outputs = [
         ctx.actions.declare_file(f.name)
@@ -71,7 +78,10 @@ mkdir -p {out_dir}
         include_args = " ".join(include_args),
         pa_args = " ".join(pa_args),
         out_dir = out_dir,
-        erlc_opts = " ".join(["'{}'".format(opt) for opt in ctx.attr.erlc_opts]),
+        erlc_opts = " ".join([
+            "'{}'".format(opt)
+            for opt in ctx.attr.erlc_opts[ErlcOptsInfo].values
+        ]),
     )
 
     inputs = depset(
@@ -109,10 +119,23 @@ erlang_bytecode = rule(
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
         ),
-        "erlc_opts": attr.string_list(),
+        "erlc_opts": attr.label(
+            providers = [ErlcOptsInfo],
+        ),
         "outs": attr.output_list(
             mandatory = True,
         ),
     },
     toolchains = ["//tools:toolchain_type"],
+)
+
+def _erlc_opts_impl(ctx):
+    return [ErlcOptsInfo(values = ctx.attr.values)]
+
+erlc_opts = rule(
+    implementation = _erlc_opts_impl,
+    attrs = {
+        "values": attr.string_list(),
+    },
+    provides = [ErlcOptsInfo],
 )

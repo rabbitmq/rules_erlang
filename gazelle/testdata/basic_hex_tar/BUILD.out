@@ -1,4 +1,4 @@
-load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode")
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
 load("@rules_erlang//:app_file2.bzl", "app_file")
 load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
 load("@rules_erlang//:untar.bzl", "untar")
@@ -24,11 +24,9 @@ untar(
     archive = "contents.tar.gz",
 )
 
-erlang_bytecode(
-    name = "beam_files_0",
-    srcs = ["src/aten.erl"],
-    outs = ["ebin/aten.beam"],
-    erlc_opts = select({
+erlc_opts(
+    name = "erlc_opts",
+    values = select({
         "@rules_erlang//:debug_build": [
             "+debug_info",
         ],
@@ -37,96 +35,55 @@ erlang_bytecode(
             "+deterministic",
         ],
     }),
+)
+
+erlang_bytecode(
+    name = "beam_files_0",
+    srcs = ["src/aten.erl"],
+    outs = ["ebin/aten.beam"],
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_1",
     srcs = ["src/aten_app.erl"],
     outs = ["ebin/aten_app.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_2",
     srcs = ["src/aten_detect.erl"],
     outs = ["ebin/aten_detect.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_3",
     srcs = ["src/aten_detector.erl"],
     outs = ["ebin/aten_detector.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_4",
     srcs = ["src/aten_emitter.erl"],
     outs = ["ebin/aten_emitter.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_5",
     srcs = ["src/aten_sink.erl"],
     outs = ["ebin/aten_sink.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_6",
     srcs = ["src/aten_sup.erl"],
     outs = ["ebin/aten_sup.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 app_file(

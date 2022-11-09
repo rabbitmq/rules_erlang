@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	erlcOptsKind        = "erlc_opts"
 	erlangBytecodeKind  = "erlang_bytecode"
 	appFileKind         = "app_file"
 	erlangAppInfoKind   = "erlang_app_info"
@@ -21,6 +22,16 @@ var erlangKinds = map[string]rule.KindInfo{
 	"alias": {
 		NonEmptyAttrs:  map[string]bool{"actual": true},
 		MergeableAttrs: map[string]bool{"actual": true},
+	},
+	erlcOptsKind: {
+		MatchAny: true,
+		NonEmptyAttrs: map[string]bool{
+			"erlc_opts":  true,
+			"visibility": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs:  map[string]bool{},
+		ResolveAttrs:    map[string]bool{},
 	},
 	erlangBytecodeKind: {
 		MatchAttrs: []string{"srcs"},
@@ -129,6 +140,7 @@ var erlangLoads = []rule.LoadInfo{
 	{
 		Name: "@rules_erlang//:erlang_bytecode2.bzl",
 		Symbols: []string{
+			erlcOptsKind,
 			erlangBytecodeKind,
 		},
 	},

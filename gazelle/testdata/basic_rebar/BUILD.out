@@ -1,12 +1,10 @@
-load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode")
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
 load("@rules_erlang//:app_file2.bzl", "app_file")
 load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
 
-erlang_bytecode(
-    name = "beam_files_0",
-    srcs = ["src/seshat.erl"],
-    outs = ["ebin/seshat.beam"],
-    erlc_opts = select({
+erlc_opts(
+    name = "erlc_opts",
+    values = select({
         "@rules_erlang//:debug_build": [
             "+debug_info",
             "+recv_opt_info",
@@ -23,75 +21,34 @@ erlang_bytecode(
             "+deterministic",
         ],
     }),
+)
+
+erlang_bytecode(
+    name = "beam_files_0",
+    srcs = ["src/seshat.erl"],
+    outs = ["ebin/seshat.beam"],
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_1",
     srcs = ["src/seshat_app.erl"],
     outs = ["ebin/seshat_app.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_2",
     srcs = ["src/seshat_counters_server.erl"],
     outs = ["ebin/seshat_counters_server.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
     name = "beam_files_3",
     srcs = ["src/seshat_sup.erl"],
     outs = ["ebin/seshat_sup.beam"],
-    erlc_opts = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-        ],
-        "//conditions:default": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-            "+deterministic",
-        ],
-    }),
+    erlc_opts = ":erlc_opts",
 )
 
 app_file(
