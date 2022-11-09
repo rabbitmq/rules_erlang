@@ -23,6 +23,18 @@ var erlangKinds = map[string]rule.KindInfo{
 		NonEmptyAttrs:  map[string]bool{"actual": true},
 		MergeableAttrs: map[string]bool{"actual": true},
 	},
+	"filegroup": {
+		MatchAttrs: []string{"srcs"},
+		NonEmptyAttrs: map[string]bool{
+			"srcs":       true,
+			"visibility": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"srcs": true,
+		},
+		ResolveAttrs: map[string]bool{},
+	},
 	erlcOptsKind: {
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{

@@ -344,12 +344,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 					theseDeps = append(theseDeps, dep)
 				}
 			}
-			if !found {
-				Log(args.Config, "    ", behaviour, "source not found, skipping.")
-			}
 		}
-
-		Log(args.Config, src, erlAttrs)
 
 		out := "ebin/" + strings.TrimPrefix(src.(string), "src/")
 		out = strings.TrimSuffix(out, ".erl") + ".beam"
@@ -373,17 +368,25 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, erlang_bytecode.PrivateAttr(config.GazelleImportsKey))
 	}
 
+	beam_files := rule.NewRule("filegroup", "beam_files")
+	beam_files.SetAttr("srcs", outs.Values())
+
+	result.Gen = append(result.Gen, beam_files)
+	result.Imports = append(result.Imports, beam_files.PrivateAttr(config.GazelleImportsKey))
+
 	app_file := rule.NewRule("app_file", "app_file")
 	if erlangApp.Description != "" {
 		app_file.SetAttr("app_description", erlangApp.Description)
 	}
 	app_file.SetAttr("app_name", erlangApp.Name)
-	app_file.SetAttr("app_src", erlangApp.AppSrc.Values())
+	if !erlangApp.AppSrc.Empty() {
+		app_file.SetAttr("app_src", erlangApp.AppSrc.Values())
+	}
 	if erlangApp.Version != "" {
 		app_file.SetAttr("app_version", erlangApp.Version)
 	}
 	app_file.SetAttr("out", filepath.Join("ebin", erlangApp.Name+".app"))
-	app_file.SetAttr("modules", outs.Values())
+	app_file.SetAttr("modules", []string{":" + beam_files.Name()})
 	if !erlangApp.ExtraApps.Empty() {
 		app_file.SetAttr("extra_apps", erlangApp.ExtraApps.Values())
 	}
@@ -399,7 +402,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values())
 	erlang_app_info.SetAttr("app", ":"+app_file.Name())
 	erlang_app_info.SetAttr("app_name", erlangApp.Name)
-	erlang_app_info.SetAttr("beam", outs.Values())
+	erlang_app_info.SetAttr("beam", []string{":" + beam_files.Name()})
 	erlang_app_info.SetAttr("license_files", erlangApp.LicenseFiles.Values())
 	erlang_app_info.SetAttr("visibility", []string{"//visibility:public"})
 	if !erlangApp.Deps.Empty() {

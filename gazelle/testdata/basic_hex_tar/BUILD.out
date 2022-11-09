@@ -86,14 +86,9 @@ erlang_bytecode(
     erlc_opts = ":erlc_opts",
 )
 
-app_file(
-    name = "app_file",
-    out = "ebin/aten.app",
-    app_description = "Erlang node failure detector",
-    app_name = "aten",
-    app_src = ["src/aten.app.src"],
-    app_version = "0.5.8",
-    modules = [
+filegroup(
+    name = "beam_files",
+    srcs = [
         "ebin/aten.beam",
         "ebin/aten_app.beam",
         "ebin/aten_detect.beam",
@@ -102,6 +97,16 @@ app_file(
         "ebin/aten_sink.beam",
         "ebin/aten_sup.beam",
     ],
+)
+
+app_file(
+    name = "app_file",
+    out = "ebin/aten.app",
+    app_description = "Erlang node failure detector",
+    app_name = "aten",
+    app_src = ["src/aten.app.src"],
+    app_version = "0.5.8",
+    modules = [":beam_files"],
 )
 
 erlang_app_info(
@@ -119,15 +124,7 @@ erlang_app_info(
     hdrs = [],
     app = ":app_file",
     app_name = "aten",
-    beam = [
-        "ebin/aten.beam",
-        "ebin/aten_app.beam",
-        "ebin/aten_detect.beam",
-        "ebin/aten_detector.beam",
-        "ebin/aten_emitter.beam",
-        "ebin/aten_sink.beam",
-        "ebin/aten_sup.beam",
-    ],
+    beam = [":beam_files"],
     license_files = [
         "LICENSE",
         "LICENSE-APACHE2",

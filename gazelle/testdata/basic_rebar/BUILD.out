@@ -51,6 +51,16 @@ erlang_bytecode(
     erlc_opts = ":erlc_opts",
 )
 
+filegroup(
+    name = "beam_files",
+    srcs = [
+        "ebin/seshat.beam",
+        "ebin/seshat_app.beam",
+        "ebin/seshat_counters_server.beam",
+        "ebin/seshat_sup.beam",
+    ],
+)
+
 app_file(
     name = "app_file",
     out = "ebin/seshat.app",
@@ -60,12 +70,7 @@ app_file(
         "crypto",
         "sasl",
     ],
-    modules = [
-        "ebin/seshat.beam",
-        "ebin/seshat_app.beam",
-        "ebin/seshat_counters_server.beam",
-        "ebin/seshat_sup.beam",
-    ],
+    modules = [":beam_files"],
 )
 
 erlang_app_info(
@@ -80,12 +85,7 @@ erlang_app_info(
     hdrs = [],
     app = ":app_file",
     app_name = "seshat",
-    beam = [
-        "ebin/seshat.beam",
-        "ebin/seshat_app.beam",
-        "ebin/seshat_counters_server.beam",
-        "ebin/seshat_sup.beam",
-    ],
+    beam = [":beam_files"],
     license_files = [
         "LICENSE",
         "LICENSE-APACHE2",
