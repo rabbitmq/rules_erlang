@@ -211,8 +211,8 @@ def gazelle_deps():
     go_repository(
         name = "org_golang_x_crypto",
         importpath = "golang.org/x/crypto",
-        sum = "h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=",
-        version = "v0.0.0-20190308221718-c2843e01d9a2",
+        sum = "h1:MDRAIl0xIo9Io2xV565hzXHw3zVseKrJKodhohM5CjU=",
+        version = "v0.1.0",
     )
 
     go_repository(
