@@ -438,6 +438,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, test_beam_files.PrivateAttr(config.GazelleImportsKey))
 	}
 
+	// TODO: handle the existence of a static .app file in src/
 	app_file := rule.NewRule("app_file", "app_file")
 	if erlangApp.Description != "" {
 		app_file.SetAttr("app_description", erlangApp.Description)
