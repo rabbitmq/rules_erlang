@@ -1,7 +1,6 @@
 package erlang
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -123,6 +122,11 @@ func moduleName(src string) string {
 func beamFile(src string) string {
 	r := "ebin/" + strings.TrimPrefix(src, "src/")
 	return strings.TrimSuffix(r, ".erl") + ".beam"
+}
+
+func ruleName(f string) string {
+	r := strings.ReplaceAll(f, string(filepath.Separator), "_")
+	return strings.ReplaceAll(r, ".", "_")
 }
 
 func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) (string, error) {
@@ -300,9 +304,11 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	erlParser := newErlParser(args.Config.RepoRoot, args.Rel)
 
 	outs := treeset.NewWith(godsutils.StringComparator)
-	for i, src := range erlangApp.Srcs.Values() {
-		Log(args.Config, "        Parsing", src, "->", filepath.Join(sourcePrefix, src.(string)))
-		erlAttrs, err := erlParser.parseErl(filepath.Join(sourcePrefix, src.(string)))
+	for _, s := range erlangApp.Srcs.Values() {
+		src := s.(string)
+
+		Log(args.Config, "        Parsing", src, "->", filepath.Join(sourcePrefix, src))
+		erlAttrs, err := erlParser.parseErl(filepath.Join(sourcePrefix, src))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -346,11 +352,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 		}
 
-		out := "ebin/" + strings.TrimPrefix(src.(string), "src/")
-		out = strings.TrimSuffix(out, ".erl") + ".beam"
+		out := beamFile(src)
 		outs.Add(out)
 
-		erlang_bytecode := rule.NewRule("erlang_bytecode", fmt.Sprintf("beam_files_%d", i))
+		erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(out))
 		erlang_bytecode.SetAttr("srcs", []interface{}{src})
 		if len(theseHdrs) > 0 {
 			erlang_bytecode.SetAttr("hdrs", theseHdrs)

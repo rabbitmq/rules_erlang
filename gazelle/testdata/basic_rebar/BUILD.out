@@ -24,28 +24,28 @@ erlc_opts(
 )
 
 erlang_bytecode(
-    name = "beam_files_0",
+    name = "ebin_seshat_beam",
     srcs = ["src/seshat.erl"],
     outs = ["ebin/seshat.beam"],
     erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
-    name = "beam_files_1",
+    name = "ebin_seshat_app_beam",
     srcs = ["src/seshat_app.erl"],
     outs = ["ebin/seshat_app.beam"],
     erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
-    name = "beam_files_2",
+    name = "ebin_seshat_counters_server_beam",
     srcs = ["src/seshat_counters_server.erl"],
     outs = ["ebin/seshat_counters_server.beam"],
     erlc_opts = ":erlc_opts",
 )
 
 erlang_bytecode(
-    name = "beam_files_3",
+    name = "ebin_seshat_sup_beam",
     srcs = ["src/seshat_sup.erl"],
     outs = ["ebin/seshat_sup.beam"],
     erlc_opts = ":erlc_opts",
