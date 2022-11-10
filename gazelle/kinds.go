@@ -36,9 +36,9 @@ var erlangKinds = map[string]rule.KindInfo{
 		ResolveAttrs: map[string]bool{},
 	},
 	erlcOptsKind: {
-		MatchAny: true,
+		MatchAttrs: []string{"values"},
 		NonEmptyAttrs: map[string]bool{
-			"erlc_opts":  true,
+			"values":     true,
 			"visibility": true,
 		},
 		SubstituteAttrs: map[string]bool{},
@@ -87,7 +87,7 @@ var erlangKinds = map[string]rule.KindInfo{
 		},
 	},
 	erlangAppInfoKind: {
-		MatchAttrs: []string{"app_name"},
+		MatchAttrs: []string{"beam"},
 		NonEmptyAttrs: map[string]bool{
 			"srcs":          true,
 			"hdrs":          true,

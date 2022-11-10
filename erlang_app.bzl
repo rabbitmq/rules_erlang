@@ -92,7 +92,7 @@ def erlang_app(
         app = "ebin/{}.app".format(app_name)
 
     erlang_app_info(
-        name = app_name,
+        name = erlang_app,
         app_name = app_name,
         hdrs = native.glob(
             ["include/**/*.hrl"],
@@ -111,8 +111,8 @@ def erlang_app(
     )
 
     native.alias(
-        name = "erlang_app",
-        actual = ":%s" % app_name,
+        name = app_name,
+        actual = ":erlang_app",
         visibility = ["//visibility:public"],
     )
 

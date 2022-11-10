@@ -23,11 +23,34 @@ erlc_opts(
     }),
 )
 
+erlc_opts(
+    name = "test_erlc_opts",
+    values = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+            "-DTEST=1",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "-DTEST=1",
+            "+deterministic",
+        ],
+    }),
+)
+
 erlang_bytecode(
     name = "ebin_seshat_beam",
     srcs = ["src/seshat.erl"],
     outs = ["ebin/seshat.beam"],
     erlc_opts = ":erlc_opts",
+)
+
+erlang_bytecode(
+    name = "test_seshat_beam",
+    testonly = True,
+    srcs = ["src/seshat.erl"],
+    outs = ["test/seshat.beam"],
+    erlc_opts = ":test_erlc_opts",
 )
 
 erlang_bytecode(
@@ -38,10 +61,26 @@ erlang_bytecode(
 )
 
 erlang_bytecode(
+    name = "test_seshat_app_beam",
+    testonly = True,
+    srcs = ["src/seshat_app.erl"],
+    outs = ["test/seshat_app.beam"],
+    erlc_opts = ":test_erlc_opts",
+)
+
+erlang_bytecode(
     name = "ebin_seshat_counters_server_beam",
     srcs = ["src/seshat_counters_server.erl"],
     outs = ["ebin/seshat_counters_server.beam"],
     erlc_opts = ":erlc_opts",
+)
+
+erlang_bytecode(
+    name = "test_seshat_counters_server_beam",
+    testonly = True,
+    srcs = ["src/seshat_counters_server.erl"],
+    outs = ["test/seshat_counters_server.beam"],
+    erlc_opts = ":test_erlc_opts",
 )
 
 erlang_bytecode(
@@ -51,6 +90,14 @@ erlang_bytecode(
     erlc_opts = ":erlc_opts",
 )
 
+erlang_bytecode(
+    name = "test_seshat_sup_beam",
+    testonly = True,
+    srcs = ["src/seshat_sup.erl"],
+    outs = ["test/seshat_sup.beam"],
+    erlc_opts = ":test_erlc_opts",
+)
+
 filegroup(
     name = "beam_files",
     srcs = [
@@ -58,6 +105,17 @@ filegroup(
         "ebin/seshat_app.beam",
         "ebin/seshat_counters_server.beam",
         "ebin/seshat_sup.beam",
+    ],
+)
+
+filegroup(
+    name = "test_beam_files",
+    testonly = True,
+    srcs = [
+        "test/seshat.beam",
+        "test/seshat_app.beam",
+        "test/seshat_counters_server.beam",
+        "test/seshat_sup.beam",
     ],
 )
 
@@ -74,7 +132,7 @@ app_file(
 )
 
 erlang_app_info(
-    name = "seshat",
+    name = "erlang_app",
     srcs = [
         "src/seshat.app.src",
         "src/seshat.erl",
@@ -94,8 +152,30 @@ erlang_app_info(
     visibility = ["//visibility:public"],
 )
 
+erlang_app_info(
+    name = "test_erlang_app",
+    testonly = True,
+    srcs = [
+        "src/seshat.app.src",
+        "src/seshat.erl",
+        "src/seshat_app.erl",
+        "src/seshat_counters_server.erl",
+        "src/seshat_sup.erl",
+    ],
+    hdrs = [],
+    app = ":app_file",
+    app_name = "seshat",
+    beam = [":test_beam_files"],
+    license_files = [
+        "LICENSE",
+        "LICENSE-APACHE2",
+        "LICENSE-MPL-RabbitMQ",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 alias(
-    name = "erlang_app",
-    actual = ":seshat",
+    name = "seshat",
+    actual = ":erlang_app",
     visibility = ["//visibility:public"],
 )

@@ -75,17 +75,28 @@ type erlangApp struct {
 	PrivateHdrs  *treeset.Set
 	PublicHdrs   *treeset.Set
 	AppSrc       *treeset.Set
+	TestSrcs     *treeset.Set
+	TestHdrs     *treeset.Set
 	LicenseFiles *treeset.Set
 	ErlcOpts     []string
+	TestErlcOpts []string
 	Deps         *treeset.Set
 	ExtraApps    *treeset.Set
 }
 
 func newErlangApp() *erlangApp {
 	return &erlangApp{
-		ErlcOpts:  []string{"+debug_info"},
-		Deps:      treeset.NewWith(godsutils.StringComparator),
-		ExtraApps: treeset.NewWith(godsutils.StringComparator),
+		Srcs:         treeset.NewWith(godsutils.StringComparator),
+		PrivateHdrs:  treeset.NewWith(godsutils.StringComparator),
+		PublicHdrs:   treeset.NewWith(godsutils.StringComparator),
+		AppSrc:       treeset.NewWith(godsutils.StringComparator),
+		TestSrcs:     treeset.NewWith(godsutils.StringComparator),
+		TestHdrs:     treeset.NewWith(godsutils.StringComparator),
+		LicenseFiles: treeset.NewWith(godsutils.StringComparator),
+		ErlcOpts:     []string{"+debug_info"},
+		TestErlcOpts: []string{"+debug_info", "-DTEST=1"},
+		Deps:         treeset.NewWith(godsutils.StringComparator),
+		ExtraApps:    treeset.NewWith(godsutils.StringComparator),
 	}
 }
 
@@ -110,6 +121,12 @@ func guessKind(f string, erlangApp *erlangApp) {
 		if strings.HasSuffix(f, ".hrl") {
 			erlangApp.PublicHdrs.Add(f)
 		}
+	} else if strings.HasPrefix(f, "test/") {
+		if strings.HasSuffix(f, ".erl") {
+			erlangApp.TestSrcs.Add(f)
+		} else if strings.HasSuffix(f, ".hrl") {
+			erlangApp.TestHdrs.Add(f)
+		}
 	} else if strings.HasPrefix(f, "LICENSE") {
 		erlangApp.LicenseFiles.Add(f)
 	}
@@ -121,6 +138,11 @@ func moduleName(src string) string {
 
 func beamFile(src string) string {
 	r := "ebin/" + strings.TrimPrefix(src, "src/")
+	return strings.TrimSuffix(r, ".erl") + ".beam"
+}
+
+func testBeamFile(src string) string {
+	r := "test/" + strings.TrimPrefix(src, "src/")
 	return strings.TrimSuffix(r, ".erl") + ".beam"
 }
 
@@ -206,13 +228,7 @@ func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erl
 		erlangApp.ErlcOpts[i] = "+" + o
 	}
 
-	if erlangApp.Srcs == nil {
-		erlangApp.Srcs = treeset.NewWith(godsutils.StringComparator)
-		erlangApp.PrivateHdrs = treeset.NewWith(godsutils.StringComparator)
-		erlangApp.PublicHdrs = treeset.NewWith(godsutils.StringComparator)
-		erlangApp.AppSrc = treeset.NewWith(godsutils.StringComparator)
-		erlangApp.LicenseFiles = treeset.NewWith(godsutils.StringComparator)
-
+	if erlangApp.Srcs.Empty() {
 		err := filepath.Walk(rebarAppPath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
@@ -267,7 +283,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	if erlangApp.Srcs == nil {
+	if erlangApp.Srcs.Empty() {
 		return language.GenerateResult{}
 	}
 
@@ -299,11 +315,21 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	result.Gen = append(result.Gen, erlc_opts)
 	result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
 
+	var test_erlc_opts *rule.Rule
+	if !erlangApp.TestSrcs.Empty() {
+		test_erlc_opts = rule.NewRule("erlc_opts", "test_erlc_opts")
+		test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+
+		result.Gen = append(result.Gen, test_erlc_opts)
+		result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+	}
+
 	Log(args.Config, "    Analyzing sources...")
 
 	erlParser := newErlParser(args.Config.RepoRoot, args.Rel)
 
 	outs := treeset.NewWith(godsutils.StringComparator)
+	testOuts := treeset.NewWith(godsutils.StringComparator)
 	for _, s := range erlangApp.Srcs.Values() {
 		src := s.(string)
 
@@ -371,6 +397,29 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		result.Gen = append(result.Gen, erlang_bytecode)
 		result.Imports = append(result.Imports, erlang_bytecode.PrivateAttr(config.GazelleImportsKey))
+
+		if !erlangApp.TestSrcs.Empty() {
+			test_out := testBeamFile(src)
+			testOuts.Add(test_out)
+
+			test_erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(test_out))
+			test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
+			if len(theseHdrs) > 0 {
+				erlang_bytecode.SetAttr("hdrs", theseHdrs)
+			}
+			test_erlang_bytecode.SetAttr("erlc_opts", ":"+test_erlc_opts.Name())
+			test_erlang_bytecode.SetAttr("outs", []string{test_out})
+			if len(theseBeam) > 0 {
+				test_erlang_bytecode.SetAttr("beam", theseBeam)
+			}
+			if len(theseDeps) > 0 {
+				test_erlang_bytecode.SetAttr("deps", theseDeps)
+			}
+			test_erlang_bytecode.SetAttr("testonly", true)
+
+			result.Gen = append(result.Gen, test_erlang_bytecode)
+			result.Imports = append(result.Imports, test_erlang_bytecode.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	beam_files := rule.NewRule("filegroup", "beam_files")
@@ -378,6 +427,16 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	result.Gen = append(result.Gen, beam_files)
 	result.Imports = append(result.Imports, beam_files.PrivateAttr(config.GazelleImportsKey))
+
+	var test_beam_files *rule.Rule
+	if !erlangApp.TestSrcs.Empty() {
+		test_beam_files = rule.NewRule("filegroup", "test_beam_files")
+		test_beam_files.SetAttr("srcs", testOuts.Values())
+		test_beam_files.SetAttr("testonly", true)
+
+		result.Gen = append(result.Gen, test_beam_files)
+		result.Imports = append(result.Imports, test_beam_files.PrivateAttr(config.GazelleImportsKey))
+	}
 
 	app_file := rule.NewRule("app_file", "app_file")
 	if erlangApp.Description != "" {
@@ -402,7 +461,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	result.Gen = append(result.Gen, app_file)
 	result.Imports = append(result.Imports, app_file.PrivateAttr(config.GazelleImportsKey))
 
-	erlang_app_info := rule.NewRule("erlang_app_info", erlangApp.Name)
+	erlang_app_info := rule.NewRule("erlang_app_info", "erlang_app")
 	erlang_app_info.SetAttr("srcs", erlangApp.Srcs.Union(erlangApp.PrivateHdrs).Union(erlangApp.PublicHdrs).Union(erlangApp.AppSrc).Values())
 	erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values())
 	erlang_app_info.SetAttr("app", ":"+app_file.Name())
@@ -417,8 +476,26 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	result.Gen = append(result.Gen, erlang_app_info)
 	result.Imports = append(result.Imports, erlang_app_info.PrivateAttr(config.GazelleImportsKey))
 
-	alias := rule.NewRule("alias", "erlang_app")
-	alias.SetAttr("actual", ":"+erlang_app_info.Name())
+	if !erlangApp.TestSrcs.Empty() {
+		test_erlang_app_info := rule.NewRule("erlang_app_info", "test_erlang_app")
+		test_erlang_app_info.SetAttr("srcs", erlangApp.Srcs.Union(erlangApp.PrivateHdrs).Union(erlangApp.PublicHdrs).Union(erlangApp.AppSrc).Values())
+		test_erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values())
+		test_erlang_app_info.SetAttr("app", ":"+app_file.Name())
+		test_erlang_app_info.SetAttr("app_name", erlangApp.Name)
+		test_erlang_app_info.SetAttr("beam", []string{":" + test_beam_files.Name()})
+		test_erlang_app_info.SetAttr("license_files", erlangApp.LicenseFiles.Values())
+		test_erlang_app_info.SetAttr("visibility", []string{"//visibility:public"})
+		test_erlang_app_info.SetAttr("testonly", true)
+		if !erlangApp.Deps.Empty() {
+			test_erlang_app_info.SetAttr("deps", erlangApp.Deps.Values())
+		}
+
+		result.Gen = append(result.Gen, test_erlang_app_info)
+		result.Imports = append(result.Imports, test_erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+	}
+
+	alias := rule.NewRule("alias", erlangApp.Name)
+	alias.SetAttr("actual", ":erlang_app")
 	alias.SetAttr("visibility", []string{"//visibility:public"})
 
 	result.Gen = append(result.Gen, alias)

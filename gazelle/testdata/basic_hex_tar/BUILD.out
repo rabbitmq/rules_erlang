@@ -110,7 +110,7 @@ app_file(
 )
 
 erlang_app_info(
-    name = "aten",
+    name = "erlang_app",
     srcs = [
         "src/aten.app.src",
         "src/aten.erl",
@@ -134,7 +134,7 @@ erlang_app_info(
 )
 
 alias(
-    name = "erlang_app",
-    actual = ":aten",
+    name = "aten",
+    actual = ":erlang_app",
     visibility = ["//visibility:public"],
 )
