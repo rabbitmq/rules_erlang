@@ -92,7 +92,7 @@ def erlang_app(
         app = "ebin/{}.app".format(app_name)
 
     erlang_app_info(
-        name = erlang_app,
+        name = "erlang_app",
         app_name = app_name,
         hdrs = native.glob(
             ["include/**/*.hrl"],
