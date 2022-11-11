@@ -16,7 +16,8 @@ const (
 type ErlangConfig struct {
 	Verbose                     bool
 	BehaviourMappings           map[string]string
-	ExcludeWhenRuleOfKindExists map[string]string
+	ExcludeWhenRuleOfKindExists map[string]bool
+	IgnoredDeps                 map[string]bool
 }
 
 type Configurer struct {
@@ -31,7 +32,8 @@ func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	c.Exts[languageName] = ErlangConfig{
 		Verbose:                     erlang.verbose,
 		BehaviourMappings:           make(map[string]string),
-		ExcludeWhenRuleOfKindExists: map[string]string{"erlang_app": ""},
+		ExcludeWhenRuleOfKindExists: map[string]bool{"erlang_app": true},
+		IgnoredDeps:                 map[string]bool{"kernel": true, "eunit": true},
 	}
 	return nil
 }
@@ -59,7 +61,7 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				dep := parts[1]
 				erlangConfig.BehaviourMappings[behaviour] = dep
 			case excludeWhenRuleOfKindExistsDirective:
-				erlangConfig.ExcludeWhenRuleOfKindExists[d.Value] = ""
+				erlangConfig.ExcludeWhenRuleOfKindExists[d.Value] = true
 			}
 		}
 	}

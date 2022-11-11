@@ -110,12 +110,6 @@ def erlang_app(
         visibility = ["//visibility:public"],
     )
 
-    native.alias(
-        name = app_name,
-        actual = ":erlang_app",
-        visibility = ["//visibility:public"],
-    )
-
 def test_erlang_app(
         app_name = "",
         app_version = "",

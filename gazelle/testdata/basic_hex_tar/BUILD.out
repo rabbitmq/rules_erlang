@@ -35,6 +35,23 @@ erlc_opts(
             "+deterministic",
         ],
     }),
+    visibility = [":__subpackages__"],
+)
+
+erlc_opts(
+    name = "test_erlc_opts",
+    values = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+            "-DTEST=1",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "-DTEST=1",
+            "+deterministic",
+        ],
+    }),
+    visibility = [":__subpackages__"],
 )
 
 erlang_bytecode(

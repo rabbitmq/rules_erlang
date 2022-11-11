@@ -21,6 +21,7 @@ erlc_opts(
             "+deterministic",
         ],
     }),
+    visibility = [":__subpackages__"],
 )
 
 erlc_opts(
@@ -36,6 +37,7 @@ erlc_opts(
             "+deterministic",
         ],
     }),
+    visibility = [":__subpackages__"],
 )
 
 erlang_bytecode(

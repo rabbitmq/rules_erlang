@@ -251,9 +251,11 @@ func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erl
 		return err
 	}
 
-	erlangApp.ErlcOpts = make([]string, len(rebarConfig.ErlOpts))
-	for i, o := range rebarConfig.ErlOpts {
-		erlangApp.ErlcOpts[i] = "+" + o
+	if rebarConfig.ErlOpts != nil {
+		erlangApp.ErlcOpts = make([]string, len(*rebarConfig.ErlOpts))
+		for i, o := range *rebarConfig.ErlOpts {
+			erlangApp.ErlcOpts[i] = "+" + o
+		}
 	}
 
 	if erlangApp.Srcs.Empty() {
@@ -324,7 +326,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	if args.File != nil {
 		for _, r := range args.File.Rules {
-			if _, exists := erlangConfig.ExcludeWhenRuleOfKindExists[r.Kind()]; exists {
+			if erlangConfig.ExcludeWhenRuleOfKindExists[r.Kind()] {
 				Log(args.Config, "    Skipping", args.Rel, "as a", r.Kind(), "is already defined")
 				return language.GenerateResult{}
 			}
@@ -357,10 +359,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	if erlangApp.Srcs.Empty() {
-		return language.GenerateResult{}
-	}
-
 	if erlangApp.Name == "" {
 		if !erlangApp.AppSrc.Empty() {
 			dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
@@ -386,20 +384,21 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	if args.Rel == "" {
 		erlc_opts := rule.NewRule("erlc_opts", erlcOptsRuleName)
 		erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
+		erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 
 		result.Gen = append(result.Gen, erlc_opts)
 		result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
 
-		var test_erlc_opts *rule.Rule
-		// This condition is no longer sufficient, we need to generate this if any subdir
-		// has tests
-		if !erlangApp.TestSrcs.Empty() {
-			test_erlc_opts = rule.NewRule("erlc_opts", testErlcOptsRuleName)
-			test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+		test_erlc_opts := rule.NewRule("erlc_opts", testErlcOptsRuleName)
+		test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+		test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 
-			result.Gen = append(result.Gen, test_erlc_opts)
-			result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
-		}
+		result.Gen = append(result.Gen, test_erlc_opts)
+		result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+	}
+
+	if erlangApp.Srcs.Empty() {
+		return result
 	}
 
 	Log(args.Config, "    Analyzing sources...")
@@ -417,7 +416,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		theseHdrs := []string{}
+		var theseHdrs []string
 		for _, include := range erlAttrs.Include {
 			for _, h := range erlangApp.PrivateHdrs.Union(erlangApp.PublicHdrs).Values() {
 				hdr := h.(string)
@@ -427,17 +426,17 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 		}
 
-		theseDeps := []string{}
+		var theseDeps []string
 		for _, include := range erlAttrs.IncludeLib {
-			for _, d := range erlangApp.Deps.Values() {
-				dep := d.(string)
-				if strings.HasPrefix(include, dep+"/") {
-					theseDeps = append(theseDeps, dep)
+			parts := strings.Split(include, string(os.PathSeparator))
+			if len(parts) > 0 {
+				if !erlangConfig.IgnoredDeps[parts[0]] {
+					theseDeps = append(theseDeps, parts[0])
 				}
 			}
 		}
 
-		theseBeam := []string{}
+		var theseBeam []string
 		for _, behaviour := range erlAttrs.Behaviour {
 			found := false
 			for _, s := range erlangApp.Srcs.Values() {

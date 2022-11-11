@@ -111,5 +111,5 @@ func (p *rebarConfigParser) parseRebarConfig(configFilename string) (*rebarConfi
 
 type rebarConfig struct {
 	Deps    []map[string]string `json:"deps"`
-	ErlOpts []string            `json:"erl_opts"`
+	ErlOpts *[]string           `json:"erl_opts"`
 }
