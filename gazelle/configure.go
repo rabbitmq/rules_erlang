@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	behaviourSourceDirective = "erlang_behaviour_source_lib"
+	behaviourSourceDirective             = "erlang_behaviour_source_lib"
+	excludeWhenRuleOfKindExistsDirective = "erlang_exclude_when_rule_of_kind_exists"
 )
 
 type ErlangConfig struct {
-	Verbose           bool
-	BehaviourMappings map[string]string
+	Verbose                     bool
+	BehaviourMappings           map[string]string
+	ExcludeWhenRuleOfKindExists map[string]string
 }
 
 type Configurer struct {
@@ -27,8 +29,9 @@ func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.
 
 func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	c.Exts[languageName] = ErlangConfig{
-		Verbose:           erlang.verbose,
-		BehaviourMappings: make(map[string]string),
+		Verbose:                     erlang.verbose,
+		BehaviourMappings:           make(map[string]string),
+		ExcludeWhenRuleOfKindExists: map[string]string{"erlang_app": ""},
 	}
 	return nil
 }
@@ -36,16 +39,17 @@ func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (erlang *Configurer) KnownDirectives() []string {
 	return []string{
 		behaviourSourceDirective,
+		excludeWhenRuleOfKindExistsDirective,
 	}
 }
 
 func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
+	erlangConfig := c.Exts[languageName].(ErlangConfig)
+
 	if f == nil {
 		Log(c, "Configure:", rel, f)
 	} else {
 		Log(c, "Configure:", rel, f.Path)
-
-		erlangConfig := c.Exts[languageName].(ErlangConfig)
 
 		for _, d := range f.Directives {
 			switch d.Key {
@@ -54,6 +58,8 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				behaviour := parts[0]
 				dep := parts[1]
 				erlangConfig.BehaviourMappings[behaviour] = dep
+			case excludeWhenRuleOfKindExistsDirective:
+				erlangConfig.ExcludeWhenRuleOfKindExists[d.Value] = ""
 			}
 		}
 	}

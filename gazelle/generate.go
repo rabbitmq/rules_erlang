@@ -108,6 +108,29 @@ func isRebar(regularFiles []string) bool {
 	return Contains(regularFiles, rebarConfigFilename)
 }
 
+func isProbablyBareErlang(args language.GenerateArgs) bool {
+	// if there is a src dir with .erl files in it
+	if Contains(args.Subdirs, "src") {
+		hasErlFiles := false
+		err := filepath.Walk(filepath.Join(args.Config.RepoRoot, args.Rel, "src"),
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() && strings.HasSuffix(filepath.Base(path), ".erl") {
+					hasErlFiles = true
+					return filepath.SkipDir
+				}
+				return nil
+			})
+		if err != nil {
+			log.Println(err)
+		}
+		return hasErlFiles
+	}
+	return false
+}
+
 func guessKind(f string, erlangApp *erlangApp) {
 	if strings.HasPrefix(f, "src/") {
 		if strings.HasSuffix(f, ".erl") {
@@ -152,7 +175,7 @@ func ruleName(f string) string {
 }
 
 func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) (string, error) {
-	Log(args.Config, "    Hex.pm archive detected")
+	Log(args.Config, "    Importing Hex.pm archive from", filepath.Join(args.Config.RepoRoot, args.Rel))
 
 	hexMetadataParser := newHexMetadataParser(args.Config.RepoRoot, args.Rel)
 
@@ -255,11 +278,52 @@ func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erl
 	return nil
 }
 
+func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
+	appPath := filepath.Join(args.Config.RepoRoot, args.Rel)
+	Log(args.Config, "    Importing bare erlang from", appPath)
+
+	err := filepath.Walk(appPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				if Contains(ignoredDirs, filepath.Base(path)) {
+					return filepath.SkipDir
+				} else {
+					return nil
+				}
+			}
+			rel, err := filepath.Rel(appPath, path)
+			if err != nil {
+				return err
+			}
+			guessKind(rel, erlangApp)
+			return nil
+		})
+	if err != nil {
+		log.Println(err)
+	}
+
+	return nil
+}
+
 func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if args.File != nil {
 		Log(args.Config, "GenerateRules:", args.Rel, args.File.Path)
 	} else {
 		Log(args.Config, "GenerateRules:", args.Rel, args.File)
+	}
+
+	erlangConfig := args.Config.Exts[languageName].(ErlangConfig)
+
+	if args.File != nil {
+		for _, r := range args.File.Rules {
+			if _, exists := erlangConfig.ExcludeWhenRuleOfKindExists[r.Kind()]; exists {
+				Log(args.Config, "    Skipping", args.Rel, "as a", r.Kind(), "is already defined")
+				return language.GenerateResult{}
+			}
+		}
 	}
 
 	var result language.GenerateResult
@@ -278,6 +342,11 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		sourcePrefix = prefix
 	} else if isRebar(args.RegularFiles) {
 		err := importRebar(args, sourcePrefix, erlangApp)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+	} else if isProbablyBareErlang(args) {
+		err := importBareErlang(args, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -371,7 +440,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 				}
 			}
 			if !found {
-				erlangConfig := args.Config.Exts[languageName].(ErlangConfig)
 				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
 					theseDeps = append(theseDeps, dep)
 				}
