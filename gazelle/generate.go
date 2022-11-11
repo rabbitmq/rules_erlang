@@ -40,6 +40,11 @@ var (
 	}
 )
 
+const (
+	erlcOptsRuleName     = "erlc_opts"
+	testErlcOptsRuleName = "test_erlc_opts"
+)
+
 func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
 	var defaultOpts []string
 	if Contains(debugOpts, "+deterministic") {
@@ -378,19 +383,23 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	erlc_opts := rule.NewRule("erlc_opts", "erlc_opts")
-	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
+	if args.Rel == "" {
+		erlc_opts := rule.NewRule("erlc_opts", erlcOptsRuleName)
+		erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
 
-	result.Gen = append(result.Gen, erlc_opts)
-	result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		result.Gen = append(result.Gen, erlc_opts)
+		result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
 
-	var test_erlc_opts *rule.Rule
-	if !erlangApp.TestSrcs.Empty() {
-		test_erlc_opts = rule.NewRule("erlc_opts", "test_erlc_opts")
-		test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+		var test_erlc_opts *rule.Rule
+		// This condition is no longer sufficient, we need to generate this if any subdir
+		// has tests
+		if !erlangApp.TestSrcs.Empty() {
+			test_erlc_opts = rule.NewRule("erlc_opts", testErlcOptsRuleName)
+			test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
 
-		result.Gen = append(result.Gen, test_erlc_opts)
-		result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+			result.Gen = append(result.Gen, test_erlc_opts)
+			result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	Log(args.Config, "    Analyzing sources...")
@@ -454,7 +463,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		if len(theseHdrs) > 0 {
 			erlang_bytecode.SetAttr("hdrs", theseHdrs)
 		}
-		erlang_bytecode.SetAttr("erlc_opts", ":"+erlc_opts.Name())
+		erlang_bytecode.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 		erlang_bytecode.SetAttr("outs", []string{out})
 		if len(theseBeam) > 0 {
 			erlang_bytecode.SetAttr("beam", theseBeam)
@@ -475,7 +484,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			if len(theseHdrs) > 0 {
 				erlang_bytecode.SetAttr("hdrs", theseHdrs)
 			}
-			test_erlang_bytecode.SetAttr("erlc_opts", ":"+test_erlc_opts.Name())
+			test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 			test_erlang_bytecode.SetAttr("outs", []string{test_out})
 			if len(theseBeam) > 0 {
 				test_erlang_bytecode.SetAttr("beam", theseBeam)
