@@ -60,15 +60,16 @@ def erlang_app(
         exclude = extra_hdrs,
     ) + extra_hdrs
 
-    erlang_bytecode(
-        name = "beam_files",
-        app_name = app_name,
-        hdrs = hdrs,
-        srcs = srcs,
-        erlc_opts = erlc_opts,
-        dest = "ebin",
-        deps = build_deps + deps,
-    )
+    if "beam_files" not in native.existing_rules():
+        erlang_bytecode(
+            name = "beam_files",
+            app_name = app_name,
+            hdrs = hdrs,
+            srcs = srcs,
+            erlc_opts = erlc_opts,
+            dest = "ebin",
+            deps = build_deps + deps,
+        )
 
     if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
         app_file(
@@ -139,16 +140,17 @@ def test_erlang_app(
         exclude = extra_hdrs,
     ) + extra_hdrs
 
-    erlang_bytecode(
-        name = "test_beam_files",
-        app_name = app_name,
-        hdrs = hdrs,
-        srcs = srcs,
-        erlc_opts = erlc_opts,
-        dest = "test",
-        deps = build_deps + deps,
-        testonly = True,
-    )
+    if "test_beam_files" not in native.existing_rules():
+        erlang_bytecode(
+            name = "test_beam_files",
+            app_name = app_name,
+            hdrs = hdrs,
+            srcs = srcs,
+            erlc_opts = erlc_opts,
+            dest = "test",
+            deps = build_deps + deps,
+            testonly = True,
+        )
 
     if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
         app = ":app_file"

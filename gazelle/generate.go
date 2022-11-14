@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/emirpasic/gods/sets/treeset"
 	godsutils "github.com/emirpasic/gods/utils"
+	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -43,6 +45,10 @@ var (
 const (
 	erlcOptsRuleName     = "erlc_opts"
 	testErlcOptsRuleName = "test_erlc_opts"
+)
+
+const (
+	macroFileName = "app.bzl"
 )
 
 func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
@@ -315,6 +321,57 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 	return nil
 }
 
+func updateRules(f *rule.File, rules []*rule.Rule, filename string) {
+	oldToNew := make(map[*rule.Rule]*rule.Rule)
+	var new []*rule.Rule
+
+	for _, newRule := range rules {
+		matched := false
+		newSrcs := newRule.AttrStrings("srcs")
+		for _, oldRule := range f.Rules {
+			oldSrcs := oldRule.AttrStrings("srcs")
+			if cmp.Equal(oldSrcs, newSrcs) {
+				oldToNew[oldRule] = newRule
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			new = append(new, newRule)
+		}
+	}
+	for _, oldRule := range f.Rules {
+		if newRule, ok := oldToNew[oldRule]; ok {
+			rule.MergeRules(newRule, oldRule, erlangKinds[erlangBytecodeKind].MergeableAttrs, filename)
+		} else {
+			oldRule.Delete()
+		}
+	}
+	for _, newRule := range new {
+		newRule.Insert(f)
+	}
+	sort.SliceStable(f.Rules, func(i, j int) bool {
+		return f.Rules[i].Name() < f.Rules[j].Name()
+	})
+}
+
+func ensureLoad(name, symbol string, index int, f *rule.File) {
+	needsLoad := true
+	for _, load := range f.Loads {
+		if load.Name() == name {
+			needsLoad = false
+			if !Contains(load.Symbols(), symbol) {
+				load.Add(symbol)
+			}
+		}
+	}
+	if needsLoad {
+		l := rule.NewLoad(name)
+		l.Add(symbol)
+		l.Insert(f, index)
+	}
+}
+
 func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if args.File != nil {
 		Log(args.Config, "GenerateRules:", args.Rel, args.File.Path)
@@ -322,8 +379,22 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		Log(args.Config, "GenerateRules:", args.Rel, args.File)
 	}
 
-	erlangConfig := args.Config.Exts[languageName].(ErlangConfig)
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+	Log(args.Config, "    ", erlangConfig)
 
+	// TODO: check if the generated files would tell us if we don't need to generate
+	//
+	//       hmm, empty. maybe only works in current dir
+	//       no, still empty everwhere but ampq_client with the generated hrl and erl
+	//       okay, does not include generated files in subirs
+	//       this points to src rules inside an ebin dir, which won't exist by default unfortunately
+	//       so it's tricky/impossible to generate the non-test beam in the ebin dir without rules in
+	//       the parent, even though that would be nice. Current convention is prod beam in ebin,
+	//       test beam in /src. Since the current macro generate in subdirs, I think we are stuck
+	//       with needing the directive, even if we generated test beam rules inside the src dir.
+	//       Only other option would be to patch the gazelle rule to generate ebin dirs and .gitkeep
+	//       them... (unless maybe the Configure steps could do it?)
+	// Log(args.Config, "    GenFiles:", args.GenFiles)
 	if args.File != nil {
 		for _, r := range args.File.Rules {
 			if erlangConfig.ExcludeWhenRuleOfKindExists[r.Kind()] {
@@ -405,6 +476,8 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	erlParser := newErlParser(args.Config.RepoRoot, args.Rel)
 
+	var beamFilesRules, testBeamFilesRules []*rule.Rule
+
 	outs := treeset.NewWith(godsutils.StringComparator)
 	testOuts := treeset.NewWith(godsutils.StringComparator)
 	for _, s := range erlangApp.Srcs.Values() {
@@ -471,8 +544,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			erlang_bytecode.SetAttr("deps", theseDeps)
 		}
 
-		result.Gen = append(result.Gen, erlang_bytecode)
-		result.Imports = append(result.Imports, erlang_bytecode.PrivateAttr(config.GazelleImportsKey))
+		beamFilesRules = append(beamFilesRules, erlang_bytecode)
 
 		if !erlangApp.TestSrcs.Empty() {
 			test_out := testBeamFile(src)
@@ -493,25 +565,81 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 			test_erlang_bytecode.SetAttr("testonly", true)
 
-			result.Gen = append(result.Gen, test_erlang_bytecode)
-			result.Imports = append(result.Imports, test_erlang_bytecode.PrivateAttr(config.GazelleImportsKey))
+			testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
 		}
 	}
 
 	beam_files := rule.NewRule("filegroup", "beam_files")
 	beam_files.SetAttr("srcs", outs.Values())
-
-	result.Gen = append(result.Gen, beam_files)
-	result.Imports = append(result.Imports, beam_files.PrivateAttr(config.GazelleImportsKey))
+	beamFilesRules = append(beamFilesRules, beam_files)
 
 	var test_beam_files *rule.Rule
 	if !erlangApp.TestSrcs.Empty() {
 		test_beam_files = rule.NewRule("filegroup", "test_beam_files")
 		test_beam_files.SetAttr("srcs", testOuts.Values())
 		test_beam_files.SetAttr("testonly", true)
+		testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
+	}
 
-		result.Gen = append(result.Gen, test_beam_files)
-		result.Imports = append(result.Imports, test_beam_files.PrivateAttr(config.GazelleImportsKey))
+	if erlangConfig.GenerateBeamFilesMacro {
+		Log(args.Config, "    Adding/updating app.bzl")
+		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
+		beamFilesMacro, err := rule.LoadMacroFile(appBzlFile, "", beamFilesKind)
+		if os.IsNotExist(err) {
+			beamFilesMacro, err = rule.EmptyMacroFile(appBzlFile, "", beamFilesKind)
+			if err != nil {
+				log.Fatalf("ERROR: %v\n", err)
+				// return fmt.Errorf("error creating %q: %v", appBzlFile, err)
+			}
+		} else if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			// return fmt.Errorf("error loading %q: %v", appBzlFile, err)
+		}
+
+		updateRules(beamFilesMacro, beamFilesRules, appBzlFile)
+		ensureLoad("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", 0, beamFilesMacro)
+		// NOTE: for some reason, LoadMacroFile ignores any "native.filegroup" rules
+		//       present in the macro. Therefore, we use our own "alias" of the
+		//       macro so that updates to the macro are stable
+		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", 1, beamFilesMacro)
+		beamFilesMacro.Save(appBzlFile)
+
+		beamFilesCall := rule.NewRule(beamFilesKind, "")
+		result.Gen = append(result.Gen, beamFilesCall)
+		result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
+
+		if !erlangApp.TestSrcs.Empty() {
+			var testBeamFilesMacro *rule.File
+			if !erlangApp.TestSrcs.Empty() {
+				testBeamFilesMacro, err = rule.LoadMacroFile(appBzlFile, "", testBeamFilesKind)
+				if os.IsNotExist(err) {
+					testBeamFilesMacro, err = rule.EmptyMacroFile(appBzlFile, "", testBeamFilesKind)
+					if err != nil {
+						log.Fatalf("ERROR: %v\n", err)
+						// return fmt.Errorf("error creating %q: %v", appBzlFile, err)
+					}
+				} else if err != nil {
+					log.Fatalf("ERROR: %v\n", err)
+					// return fmt.Errorf("error loading %q: %v", appBzlFile, err)
+				}
+			}
+
+			updateRules(testBeamFilesMacro, testBeamFilesRules, appBzlFile)
+			testBeamFilesMacro.Save(appBzlFile)
+
+			testBeamFilesCall := rule.NewRule(testBeamFilesKind, "")
+			result.Gen = append(result.Gen, testBeamFilesCall)
+			result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
+		}
+	} else {
+		for i, _ := range beamFilesRules {
+			result.Gen = append(result.Gen, beamFilesRules[i])
+			result.Imports = append(result.Imports, beamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
+			if !erlangApp.TestSrcs.Empty() {
+				result.Gen = append(result.Gen, testBeamFilesRules[i])
+				result.Imports = append(result.Imports, testBeamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
+			}
+		}
 	}
 
 	// TODO: handle the existence of a static .app file in src/

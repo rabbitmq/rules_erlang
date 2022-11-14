@@ -24,8 +24,17 @@ func ContainsAll[T comparable](s []T, elements []T) bool {
 	return true
 }
 
+func CopyMap[K, V comparable](m map[K]V) map[K]V {
+	result := make(map[K]V)
+	for k, v := range m {
+		result[k] = v
+	}
+	return result
+}
+
 func Log(c *config.Config, a ...interface{}) (n int, err error) {
-	if c.Exts[languageName].(ErlangConfig).Verbose {
+	rootConfig := c.Exts[languageName].(ErlangConfigs)[""]
+	if rootConfig.Verbose {
 		return fmt.Println(a...)
 	}
 	return 0, nil

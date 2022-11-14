@@ -12,6 +12,8 @@ const (
 	untarKind           = "untar"
 	hexPmErlangAppKind  = "hex_pm_erlang_app"
 	githubErlangAppKind = "github_erlang_app"
+	beamFilesKind       = "all_beam_files"
+	testBeamFilesKind   = "all_test_beam_files"
 )
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
@@ -34,6 +36,12 @@ var erlangKinds = map[string]rule.KindInfo{
 			"srcs": true,
 		},
 		ResolveAttrs: map[string]bool{},
+	},
+	beamFilesKind: {
+		MatchAny: true,
+	},
+	testBeamFilesKind: {
+		MatchAny: true,
 	},
 	erlcOptsKind: {
 		MatchAttrs: []string{"values"},
@@ -184,6 +192,13 @@ var erlangLoads = []rule.LoadInfo{
 		Name: "@rules_erlang//:github.bzl",
 		Symbols: []string{
 			githubErlangAppKind,
+		},
+	},
+	{
+		Name: ":app.bzl",
+		Symbols: []string{
+			beamFilesKind,
+			testBeamFilesKind,
 		},
 	},
 }
