@@ -111,3 +111,39 @@ type erlAttrs struct {
 	Include    []string `json:"include"`
 	Behaviour  []string `json:"behaviour"`
 }
+
+func (p *erlParser) parseHrl(hrlFilePath string, includes []string) ([]string, error) {
+	erlAttrs, err := p.parseErl(hrlFilePath)
+	if err != nil {
+		return nil, err
+	}
+	for _, include := range erlAttrs.Include {
+		if !Contains(includes, include) {
+			includes = append(includes, include)
+		}
+	}
+	return includes, nil
+}
+
+func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erlAttrs, error) {
+	rootAttrs, err := p.parseErl(erlFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	allHdrs := Union(erlangApp.PrivateHdrs, erlangApp.PublicHdrs)
+	var hdrIncludes []string
+	for _, include := range rootAttrs.Include {
+		// for each include, follow it's includes...
+		if allHdrs.Contains(include) {
+			hdrIncludes, err = p.parseHrl(include, hdrIncludes)
+			fmt.Println("    allHdrs", erlFilePath, include, hdrIncludes)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	// append the hdrIncludes to the rootAttrs
+
+	return rootAttrs, nil
+}
