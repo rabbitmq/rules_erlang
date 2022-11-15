@@ -1,6 +1,7 @@
 package erlang
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -367,6 +368,19 @@ func ensureLoad(name, symbol string, index int, f *rule.File) {
 	}
 }
 
+func macroFile(path string, defName string) (*rule.File, error) {
+	macroFile, err := rule.LoadMacroFile(path, "", defName)
+	if os.IsNotExist(err) {
+		macroFile, err = rule.EmptyMacroFile(path, "", defName)
+		if err != nil {
+			return nil, fmt.Errorf("error creating %q: %v", path, err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error loading %q: %v", path, err)
+	}
+	return macroFile, nil
+}
+
 func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if args.File != nil {
 		Log(args.Config, "GenerateRules:", args.Rel, args.File.Path)
@@ -571,19 +585,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
 	}
 
+	all_srcs := rule.NewRule("filegroup", "all_srcs")
+	all_srcs.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs, erlangApp.PublicHdrs, erlangApp.AppSrc).Values(strings.Compare))
+
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
 		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
-		beamFilesMacro, err := rule.LoadMacroFile(appBzlFile, "", beamFilesKind)
-		if os.IsNotExist(err) {
-			beamFilesMacro, err = rule.EmptyMacroFile(appBzlFile, "", beamFilesKind)
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-				// return fmt.Errorf("error creating %q: %v", appBzlFile, err)
-			}
-		} else if err != nil {
+		beamFilesMacro, err := macroFile(appBzlFile, beamFilesKind)
+		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
-			// return fmt.Errorf("error loading %q: %v", appBzlFile, err)
 		}
 
 		updateRules(args.Config, beamFilesMacro, beamFilesRules, appBzlFile)
@@ -599,19 +609,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
 
 		if !erlangApp.TestSrcs.IsEmpty() {
-			var testBeamFilesMacro *rule.File
-			if !erlangApp.TestSrcs.IsEmpty() {
-				testBeamFilesMacro, err = rule.LoadMacroFile(appBzlFile, "", testBeamFilesKind)
-				if os.IsNotExist(err) {
-					testBeamFilesMacro, err = rule.EmptyMacroFile(appBzlFile, "", testBeamFilesKind)
-					if err != nil {
-						log.Fatalf("ERROR: %v\n", err)
-						// return fmt.Errorf("error creating %q: %v", appBzlFile, err)
-					}
-				} else if err != nil {
-					log.Fatalf("ERROR: %v\n", err)
-					// return fmt.Errorf("error loading %q: %v", appBzlFile, err)
-				}
+			testBeamFilesMacro, err := macroFile(appBzlFile, testBeamFilesKind)
+			if err != nil {
+				log.Fatalf("ERROR: %v\n", err)
 			}
 
 			updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
@@ -621,8 +621,20 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			result.Gen = append(result.Gen, testBeamFilesCall)
 			result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
 		}
+
+		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		updateRules(args.Config, allSrcsMacro, []*rule.Rule{all_srcs}, appBzlFile)
+		allSrcsMacro.Save(appBzlFile)
+
+		allSrcsCall := rule.NewRule(allSrcsKind, "")
+		result.Gen = append(result.Gen, allSrcsCall)
+		result.Imports = append(result.Imports, allSrcsCall.PrivateAttr(config.GazelleImportsKey))
 	} else {
-		for i, _ := range beamFilesRules {
+		for i := range beamFilesRules {
 			result.Gen = append(result.Gen, beamFilesRules[i])
 			result.Imports = append(result.Imports, beamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
 			if !erlangApp.TestSrcs.IsEmpty() {
@@ -630,6 +642,8 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 				result.Imports = append(result.Imports, testBeamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
 			}
 		}
+		result.Gen = append(result.Gen, all_srcs)
+		result.Imports = append(result.Imports, all_srcs.PrivateAttr(config.GazelleImportsKey))
 	}
 
 	// TODO: handle the existence of a static .app file in src/
@@ -657,7 +671,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	result.Imports = append(result.Imports, app_file.PrivateAttr(config.GazelleImportsKey))
 
 	erlang_app_info := rule.NewRule("erlang_app_info", "erlang_app")
-	erlang_app_info.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs, erlangApp.PublicHdrs, erlangApp.AppSrc).Values(strings.Compare))
+	erlang_app_info.SetAttr("srcs", []string{":" + all_srcs.Name()})
 	erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
 	erlang_app_info.SetAttr("app", ":"+app_file.Name())
 	erlang_app_info.SetAttr("app_name", erlangApp.Name)
@@ -673,7 +687,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	if !erlangApp.TestSrcs.IsEmpty() {
 		test_erlang_app_info := rule.NewRule("erlang_app_info", "test_erlang_app")
-		test_erlang_app_info.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs, erlangApp.PublicHdrs, erlangApp.AppSrc).Values(strings.Compare))
+		test_erlang_app_info.SetAttr("srcs", []string{":" + all_srcs.Name()})
 		test_erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
 		test_erlang_app_info.SetAttr("app", ":"+app_file.Name())
 		test_erlang_app_info.SetAttr("app_name", erlangApp.Name)

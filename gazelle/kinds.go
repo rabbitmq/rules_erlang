@@ -14,6 +14,7 @@ const (
 	githubErlangAppKind = "github_erlang_app"
 	beamFilesKind       = "all_beam_files"
 	testBeamFilesKind   = "all_test_beam_files"
+	allSrcsKind         = "all_srcs"
 )
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
@@ -41,6 +42,9 @@ var erlangKinds = map[string]rule.KindInfo{
 		MatchAny: true,
 	},
 	testBeamFilesKind: {
+		MatchAny: true,
+	},
+	allSrcsKind: {
 		MatchAny: true,
 	},
 	erlcOptsKind: {
@@ -199,6 +203,7 @@ var erlangLoads = []rule.LoadInfo{
 		Symbols: []string{
 			beamFilesKind,
 			testBeamFilesKind,
+			allSrcsKind,
 		},
 	},
 }

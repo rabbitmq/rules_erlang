@@ -121,6 +121,17 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        "src/seshat.app.src",
+        "src/seshat.erl",
+        "src/seshat_app.erl",
+        "src/seshat_counters_server.erl",
+        "src/seshat_sup.erl",
+    ],
+)
+
 app_file(
     name = "app_file",
     out = "ebin/seshat.app",
@@ -135,13 +146,7 @@ app_file(
 
 erlang_app_info(
     name = "erlang_app",
-    srcs = [
-        "src/seshat.app.src",
-        "src/seshat.erl",
-        "src/seshat_app.erl",
-        "src/seshat_counters_server.erl",
-        "src/seshat_sup.erl",
-    ],
+    srcs = [":all_srcs"],
     hdrs = [],
     app = ":app_file",
     app_name = "seshat",
@@ -157,13 +162,7 @@ erlang_app_info(
 erlang_app_info(
     name = "test_erlang_app",
     testonly = True,
-    srcs = [
-        "src/seshat.app.src",
-        "src/seshat.erl",
-        "src/seshat_app.erl",
-        "src/seshat_counters_server.erl",
-        "src/seshat_sup.erl",
-    ],
+    srcs = [":all_srcs"],
     hdrs = [],
     app = ":app_file",
     app_name = "seshat",
