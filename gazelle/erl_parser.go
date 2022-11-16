@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -112,17 +113,35 @@ type erlAttrs struct {
 	Behaviour  []string `json:"behaviour"`
 }
 
-func (p *erlParser) parseHrl(hrlFilePath string, includes []string) ([]string, error) {
-	erlAttrs, err := p.parseErl(hrlFilePath)
-	if err != nil {
-		return nil, err
+func pathFor(erlangApp *erlangApp, include string) string {
+	privatePath := filepath.Join("src", include)
+	if erlangApp.PrivateHdrs.Contains(privatePath) {
+		return privatePath
 	}
-	for _, include := range erlAttrs.Include {
-		if !Contains(includes, include) {
-			includes = append(includes, include)
+	publicPath := filepath.Join("include", include)
+	if erlangApp.PublicHdrs.Contains(publicPath) {
+		return publicPath
+	}
+	return ""
+}
+
+func (p *erlParser) parseHrl(hrlFilePath string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
+	hrlAttrs, err := p.parseErl(filepath.Join(p.repoRoot, p.relPackagePath, hrlFilePath))
+	if err != nil {
+		return err
+	}
+	for _, include := range hrlAttrs.Include {
+		erlAttrs.Include = append(erlAttrs.Include, include)
+		path := pathFor(erlangApp, include)
+		if path != "" {
+			err := p.parseHrl(path, erlangApp, erlAttrs)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return includes, nil
+	erlAttrs.IncludeLib = append(erlAttrs.IncludeLib, hrlAttrs.IncludeLib...)
+	return nil
 }
 
 func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erlAttrs, error) {
@@ -131,19 +150,15 @@ func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erl
 		return nil, err
 	}
 
-	allHdrs := Union(erlangApp.PrivateHdrs, erlangApp.PublicHdrs)
-	var hdrIncludes []string
 	for _, include := range rootAttrs.Include {
-		// for each include, follow it's includes...
-		if allHdrs.Contains(include) {
-			hdrIncludes, err = p.parseHrl(include, hdrIncludes)
-			fmt.Println("    allHdrs", erlFilePath, include, hdrIncludes)
+		path := pathFor(erlangApp, include)
+		if path != "" {
+			err := p.parseHrl(path, erlangApp, rootAttrs)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
-	// append the hdrIncludes to the rootAttrs
 
 	return rootAttrs, nil
 }

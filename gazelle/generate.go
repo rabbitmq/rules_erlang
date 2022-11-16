@@ -488,7 +488,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	outs := NewMutableSet[string]()
 	testOuts := NewMutableSet[string]()
-	allHdrs := Union(erlangApp.PrivateHdrs, erlangApp.PublicHdrs)
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 		Log(args.Config, "        Parsing", src, "->", filepath.Join(sourcePrefix, src))
 		erlAttrs, err := erlParser.deepParseErl(filepath.Join(sourcePrefix, src), erlangApp)
@@ -498,9 +497,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		theseHdrs := NewMutableSet[string]()
 		for _, include := range erlAttrs.Include {
-			// probably don't need this filter
-			if allHdrs.Contains(include) {
-				theseHdrs.Add(include)
+			path := pathFor(erlangApp, include)
+			if path != "" {
+				theseHdrs.Add(path)
 			}
 		}
 
@@ -536,15 +535,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(out))
 		erlang_bytecode.SetAttr("srcs", []interface{}{src})
-		if len(theseHdrs) > 0 {
+		if !theseHdrs.IsEmpty() {
 			erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
 		}
 		erlang_bytecode.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 		erlang_bytecode.SetAttr("outs", []string{out})
-		if len(theseBeam) > 0 {
+		if !theseBeam.IsEmpty() {
 			erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
 		}
-		if len(theseDeps) > 0 {
+		if !theseDeps.IsEmpty() {
 			erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
 		}
 
@@ -556,15 +555,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 			test_erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(test_out))
 			test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
-			if len(theseHdrs) > 0 {
-				erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
+			if !theseHdrs.IsEmpty() {
+				test_erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
 			}
 			test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 			test_erlang_bytecode.SetAttr("outs", []string{test_out})
-			if len(theseBeam) > 0 {
+			if !theseBeam.IsEmpty() {
 				test_erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
 			}
-			if len(theseDeps) > 0 {
+			if !theseDeps.IsEmpty() {
 				test_erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
 			}
 			test_erlang_bytecode.SetAttr("testonly", true)

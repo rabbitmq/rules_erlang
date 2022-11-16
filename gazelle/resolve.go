@@ -55,7 +55,7 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 	if len(originals) > 0 {
 		resolved := make([]string, len(originals))
 		for i, dep := range originals {
-			if strings.HasPrefix(dep, "@") {
+			if strings.Contains(dep, ":") {
 				resolved[i] = dep
 			} else if apps.Contains(dep) {
 				resolved[i] = fmt.Sprintf("//%s/%s:erlang_app", erlangConfig.AppsDir, dep)
