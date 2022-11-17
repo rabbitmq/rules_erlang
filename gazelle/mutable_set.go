@@ -6,8 +6,10 @@ import (
 
 type MutableSet[T comparable] map[T]bool
 
-func NewMutableSet[T comparable]() MutableSet[T] {
-	return make(MutableSet[T])
+func NewMutableSet[T comparable](items ...T) MutableSet[T] {
+	s := make(MutableSet[T])
+	s.Add(items...)
+	return s
 }
 
 func (s MutableSet[T]) IsEmpty() bool {
@@ -18,8 +20,10 @@ func (s MutableSet[T]) Contains(item T) bool {
 	return s[item]
 }
 
-func (s MutableSet[T]) Add(item T) {
-	s[item] = true
+func (s MutableSet[T]) Add(items ...T) {
+	for _, item := range items {
+		s[item] = true
+	}
 }
 
 func (s MutableSet[T]) Any() T {
@@ -49,6 +53,10 @@ func Union[T comparable](sets ...MutableSet[T]) MutableSet[T] {
 		}
 	}
 	return result
+}
+
+func Copy[T comparable](set MutableSet[T]) MutableSet[T] {
+	return Union(set, NewMutableSet[T]())
 }
 
 func (s MutableSet[T]) Values(compare func(i T, j T) int) []T {

@@ -29,18 +29,20 @@ func (erlang *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return make([]label.Label, 0)
 }
 
-func appsDirApps(c *config.Config, rel string) MutableSet[string] {
-	result := NewMutableSet[string]()
+func appsDirApps(c *config.Config, rel string) map[string]string {
+	result := make(map[string]string)
 	erlangConfig := erlangConfigForRel(c, rel)
-	appsDir := filepath.Join(c.RepoRoot, erlangConfig.AppsDir)
-	if _, err := os.Stat(appsDir); !os.IsNotExist(err) {
-		dirs, err := ioutil.ReadDir(appsDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, d := range dirs {
-			if d.IsDir() {
-				result.Add(d.Name())
+	for _, appsDir := range erlangConfig.AppsDirs.Values(strings.Compare) {
+		absDir := filepath.Join(c.RepoRoot, appsDir)
+		if _, err := os.Stat(absDir); !os.IsNotExist(err) {
+			dirs, err := ioutil.ReadDir(absDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, d := range dirs {
+				if d.IsDir() {
+					result[d.Name()] = filepath.Join(appsDir, d.Name())
+				}
 			}
 		}
 	}
@@ -48,7 +50,6 @@ func appsDirApps(c *config.Config, rel string) MutableSet[string] {
 }
 
 func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
-	erlangConfig := erlangConfigForRel(c, rel)
 	apps := appsDirApps(c, rel)
 
 	originals := r.AttrStrings("deps")
@@ -57,12 +58,14 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 		for i, dep := range originals {
 			if strings.Contains(dep, ":") {
 				resolved[i] = dep
-			} else if apps.Contains(dep) {
-				resolved[i] = fmt.Sprintf("//%s/%s:erlang_app", erlangConfig.AppsDir, dep)
 			} else {
-				resolved[i] = fmt.Sprintf("@%s//:erlang_app", dep)
+				if pkg, ok := apps[dep]; ok {
+					resolved[i] = fmt.Sprintf("//%s:erlang_app", pkg)
+				} else {
+					resolved[i] = fmt.Sprintf("@%s//:erlang_app", dep)
+				}
+				Log(c, "    ", dep, "->", resolved[i])
 			}
-			Log(c, "    ", dep, "->", resolved[i])
 		}
 		r.SetAttr("deps", resolved)
 	}

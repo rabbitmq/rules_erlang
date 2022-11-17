@@ -32,6 +32,14 @@ func CopyMap[K, V comparable](m map[K]V) map[K]V {
 	return result
 }
 
+func Map[T, R any](f func(T) R, s []T) []R {
+	result := make([]R, len(s))
+	for i, elem := range s {
+		result[i] = f(elem)
+	}
+	return result
+}
+
 func Log(c *config.Config, a ...interface{}) (n int, err error) {
 	rootConfig := c.Exts[languageName].(ErlangConfigs)[""]
 	if rootConfig.Verbose {

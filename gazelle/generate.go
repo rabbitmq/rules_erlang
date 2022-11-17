@@ -203,8 +203,11 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	untar.SetAttr("archive", hexContentsArchiveFilename)
 	untar.SetAttr("outs", filterOutDirectories(hexMetadata.Files))
 
-	result.Gen = append(result.Gen, untar)
-	result.Imports = append(result.Imports, untar.PrivateAttr(config.GazelleImportsKey))
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+	if !erlangConfig.GenerateSkipRules.Contains(untar.Kind()) {
+		result.Gen = append(result.Gen, untar)
+		result.Imports = append(result.Imports, untar.PrivateAttr(config.GazelleImportsKey))
+	}
 
 	for _, f := range hexMetadata.Files {
 		guessKind(f, erlangApp)
@@ -465,15 +468,19 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
 		erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 
-		result.Gen = append(result.Gen, erlc_opts)
-		result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(erlc_opts.Kind()) {
+			result.Gen = append(result.Gen, erlc_opts)
+			result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		}
 
 		test_erlc_opts := rule.NewRule("erlc_opts", testErlcOptsRuleName)
 		test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
 		test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 
-		result.Gen = append(result.Gen, test_erlc_opts)
-		result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(test_erlc_opts.Kind()) {
+			result.Gen = append(result.Gen, test_erlc_opts)
+			result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	if erlangApp.Srcs.IsEmpty() {
@@ -604,8 +611,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		beamFilesMacro.Save(appBzlFile)
 
 		beamFilesCall := rule.NewRule(beamFilesKind, "")
-		result.Gen = append(result.Gen, beamFilesCall)
-		result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(beamFilesCall.Kind()) {
+			result.Gen = append(result.Gen, beamFilesCall)
+			result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
+		}
 
 		if !erlangApp.TestSrcs.IsEmpty() {
 			testBeamFilesMacro, err := macroFile(appBzlFile, testBeamFilesKind)
@@ -617,8 +626,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			testBeamFilesMacro.Save(appBzlFile)
 
 			testBeamFilesCall := rule.NewRule(testBeamFilesKind, "")
-			result.Gen = append(result.Gen, testBeamFilesCall)
-			result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
+			if !erlangConfig.GenerateSkipRules.Contains(testBeamFilesCall.Kind()) {
+				result.Gen = append(result.Gen, testBeamFilesCall)
+				result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
+			}
 		}
 
 		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
@@ -630,19 +641,25 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		allSrcsMacro.Save(appBzlFile)
 
 		allSrcsCall := rule.NewRule(allSrcsKind, "")
-		result.Gen = append(result.Gen, allSrcsCall)
-		result.Imports = append(result.Imports, allSrcsCall.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(allSrcsCall.Kind()) {
+			result.Gen = append(result.Gen, allSrcsCall)
+			result.Imports = append(result.Imports, allSrcsCall.PrivateAttr(config.GazelleImportsKey))
+		}
 	} else {
 		for i := range beamFilesRules {
-			result.Gen = append(result.Gen, beamFilesRules[i])
-			result.Imports = append(result.Imports, beamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
-			if !erlangApp.TestSrcs.IsEmpty() {
+			if !erlangConfig.GenerateSkipRules.Contains(beamFilesRules[i].Kind()) {
+				result.Gen = append(result.Gen, beamFilesRules[i])
+				result.Imports = append(result.Imports, beamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
+			}
+			if !erlangApp.TestSrcs.IsEmpty() && !erlangConfig.GenerateSkipRules.Contains(testBeamFilesRules[i].Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesRules[i])
 				result.Imports = append(result.Imports, testBeamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
 			}
 		}
-		result.Gen = append(result.Gen, all_srcs)
-		result.Imports = append(result.Imports, all_srcs.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(all_srcs.Kind()) {
+			result.Gen = append(result.Gen, all_srcs)
+			result.Imports = append(result.Imports, all_srcs.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	// TODO: handle the existence of a static .app file in src/
@@ -666,8 +683,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		app_file.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
 	}
 
-	result.Gen = append(result.Gen, app_file)
-	result.Imports = append(result.Imports, app_file.PrivateAttr(config.GazelleImportsKey))
+	if !erlangConfig.GenerateSkipRules.Contains(app_file.Kind()) {
+		result.Gen = append(result.Gen, app_file)
+		result.Imports = append(result.Imports, app_file.PrivateAttr(config.GazelleImportsKey))
+	}
 
 	erlang_app_info := rule.NewRule("erlang_app_info", "erlang_app")
 	erlang_app_info.SetAttr("srcs", []string{":" + all_srcs.Name()})
@@ -681,8 +700,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlang_app_info.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
 	}
 
-	result.Gen = append(result.Gen, erlang_app_info)
-	result.Imports = append(result.Imports, erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+	if !erlangConfig.GenerateSkipRules.Contains(erlang_app_info.Kind()) {
+		result.Gen = append(result.Gen, erlang_app_info)
+		result.Imports = append(result.Imports, erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+	}
 
 	if !erlangApp.TestSrcs.IsEmpty() {
 		test_erlang_app_info := rule.NewRule("erlang_app_info", "test_erlang_app")
@@ -698,16 +719,24 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			test_erlang_app_info.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
 		}
 
-		result.Gen = append(result.Gen, test_erlang_app_info)
-		result.Imports = append(result.Imports, test_erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+		if !erlangConfig.GenerateSkipRules.Contains(test_erlang_app_info.Kind()) {
+			result.Gen = append(result.Gen, test_erlang_app_info)
+			result.Imports = append(result.Imports, test_erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	alias := rule.NewRule("alias", erlangApp.Name)
 	alias.SetAttr("actual", ":erlang_app")
 	alias.SetAttr("visibility", []string{"//visibility:public"})
 
-	result.Gen = append(result.Gen, alias)
-	result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
+	if !erlangConfig.GenerateSkipRules.Contains(alias.Kind()) {
+		result.Gen = append(result.Gen, alias)
+		result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
+	}
+
+	Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
+		return r.Kind() + "/" + r.Name()
+	}, result.Gen))
 
 	return result
 }
