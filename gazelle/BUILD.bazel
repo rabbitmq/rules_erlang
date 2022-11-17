@@ -7,6 +7,7 @@ go_library(
         "configure.go",
         "dot_app_parser.go",
         "erl_parser.go",
+        "erlang_app.go",
         "fix.go",
         "generate.go",
         "hex_metadata_parser.go",
@@ -67,8 +68,6 @@ go_test(
         ":erl_attrs_to_json",
         ":hex_metadata_config_to_json",
         ":rebar_config_to_json",
-        # ":parse",
-        # ":std_modules",
     ] + glob(["testdata/**"]),
     deps = [
         "@bazel_gazelle//testtools:go_default_library",
