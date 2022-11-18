@@ -1,6 +1,5 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
-load("@rules_erlang//:app_file2.bzl", "app_file")
-load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 load("@rules_erlang//:untar.bzl", "untar")
 
 untar(
@@ -130,29 +129,25 @@ filegroup(
     ],
 )
 
-app_file(
-    name = "app_file",
-    out = "ebin/aten.app",
+erlang_app(
     app_description = "Erlang node failure detector",
     app_name = "aten",
-    app_src = ["src/aten.app.src"],
     app_version = "0.5.8",
-    modules = [":beam_files"],
-)
-
-erlang_app_info(
-    name = "erlang_app",
-    srcs = [":all_srcs"],
-    hdrs = [],
-    app = ":app_file",
-    app_name = "aten",
-    beam = [":beam_files"],
-    license_files = [
+    erlc_opts = "//:erlc_opts",
+    extra_license_files = [
         "LICENSE",
         "LICENSE-APACHE2",
         "LICENSE-MPL-RabbitMQ",
     ],
-    visibility = ["//visibility:public"],
+    extra_srcs = [
+        "src/aten.erl",
+        "src/aten_app.erl",
+        "src/aten_detect.erl",
+        "src/aten_detector.erl",
+        "src/aten_emitter.erl",
+        "src/aten_sink.erl",
+        "src/aten_sup.erl",
+    ],
 )
 
 alias(

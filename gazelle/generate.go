@@ -629,66 +629,18 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	// TODO: handle the existence of a static .app file in src/
-	app_file := rule.NewRule("app_file", "app_file")
-	if erlangApp.Description != "" {
-		app_file.SetAttr("app_description", erlangApp.Description)
-	}
-	app_file.SetAttr("app_name", erlangApp.Name)
-	if !erlangApp.AppSrc.IsEmpty() {
-		app_file.SetAttr("app_src", erlangApp.AppSrc.Values(strings.Compare))
-	}
-	if erlangApp.Version != "" {
-		app_file.SetAttr("app_version", erlangApp.Version)
-	}
-	app_file.SetAttr("out", filepath.Join("ebin", erlangApp.Name+".app"))
-	app_file.SetAttr("modules", []string{":" + beam_files.Name()})
-	if !erlangApp.ExtraApps.IsEmpty() {
-		app_file.SetAttr("extra_apps", erlangApp.ExtraApps.Values(strings.Compare))
-	}
-	if !erlangApp.Deps.IsEmpty() {
-		app_file.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
-	}
-
-	if !erlangConfig.GenerateSkipRules.Contains(app_file.Kind()) {
-		result.Gen = append(result.Gen, app_file)
-		result.Imports = append(result.Imports, app_file.PrivateAttr(config.GazelleImportsKey))
-	}
-
-	erlang_app_info := rule.NewRule("erlang_app_info", "erlang_app")
-	erlang_app_info.SetAttr("srcs", []string{":" + all_srcs.Name()})
-	erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
-	erlang_app_info.SetAttr("app", ":"+app_file.Name())
-	erlang_app_info.SetAttr("app_name", erlangApp.Name)
-	erlang_app_info.SetAttr("beam", []string{":" + beam_files.Name()})
-	erlang_app_info.SetAttr("license_files", erlangApp.LicenseFiles.Values(strings.Compare))
-	erlang_app_info.SetAttr("visibility", []string{"//visibility:public"})
-	if !erlangApp.Deps.IsEmpty() {
-		erlang_app_info.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
-	}
-
-	if !erlangConfig.GenerateSkipRules.Contains(erlang_app_info.Kind()) {
-		result.Gen = append(result.Gen, erlang_app_info)
-		result.Imports = append(result.Imports, erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+	explicitFiles := sourcePrefix != filepath.Join(args.Config.RepoRoot, args.Rel)
+	erlang_app := erlangApp.erlangAppRule(explicitFiles)
+	if !erlangConfig.GenerateSkipRules.Contains(erlang_app.Kind()) {
+		result.Gen = append(result.Gen, erlang_app)
+		result.Imports = append(result.Imports, erlang_app.PrivateAttr(config.GazelleImportsKey))
 	}
 
 	if !erlangApp.TestSrcs.IsEmpty() {
-		test_erlang_app_info := rule.NewRule("erlang_app_info", "test_erlang_app")
-		test_erlang_app_info.SetAttr("srcs", []string{":" + all_srcs.Name()})
-		test_erlang_app_info.SetAttr("hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
-		test_erlang_app_info.SetAttr("app", ":"+app_file.Name())
-		test_erlang_app_info.SetAttr("app_name", erlangApp.Name)
-		test_erlang_app_info.SetAttr("beam", []string{":" + test_beam_files.Name()})
-		test_erlang_app_info.SetAttr("license_files", erlangApp.LicenseFiles.Values(strings.Compare))
-		test_erlang_app_info.SetAttr("visibility", []string{"//visibility:public"})
-		test_erlang_app_info.SetAttr("testonly", true)
-		if !erlangApp.Deps.IsEmpty() {
-			test_erlang_app_info.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
-		}
-
-		if !erlangConfig.GenerateSkipRules.Contains(test_erlang_app_info.Kind()) {
-			result.Gen = append(result.Gen, test_erlang_app_info)
-			result.Imports = append(result.Imports, test_erlang_app_info.PrivateAttr(config.GazelleImportsKey))
+		test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
+		if !erlangConfig.GenerateSkipRules.Contains(test_erlang_app.Kind()) {
+			result.Gen = append(result.Gen, test_erlang_app)
+			result.Imports = append(result.Imports, test_erlang_app.PrivateAttr(config.GazelleImportsKey))
 		}
 	}
 
@@ -701,9 +653,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
 	}
 
-	Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
-		return r.Kind() + "/" + r.Name()
-	}, result.Gen))
+	// Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
+	// 	return r.Kind() + "/" + r.Name()
+	// }, result.Gen))
 
 	return result
 }

@@ -80,7 +80,7 @@ func (erlang *Resolver) Resolve(
 	from label.Label,
 ) {
 	// Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name))
-	if r.Kind() == erlangBytecodeKind || r.Kind() == appFileKind || r.Kind() == erlangAppInfoKind {
+	if r.Kind() == erlangBytecodeKind || r.Kind() == erlangAppKind || r.Kind() == testErlangAppKind {
 		resolveErlangDeps(c, from.Pkg, r)
 	}
 }

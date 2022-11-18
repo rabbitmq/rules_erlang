@@ -1,6 +1,5 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlc_opts")
-load("@rules_erlang//:app_file2.bzl", "app_file")
-load("@rules_erlang//:erlang_app_info.bzl", "erlang_app_info")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
 load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files")
 
 # gazelle:erlang_generate_beam_files_macro
@@ -49,47 +48,22 @@ all_test_beam_files()
 
 all_srcs()
 
-app_file(
-    name = "app_file",
-    out = "ebin/seshat.app",
+erlang_app(
     app_name = "seshat",
-    app_src = ["src/seshat.app.src"],
+    erlc_opts = "//:erlc_opts",
     extra_apps = [
         "crypto",
         "sasl",
     ],
-    modules = [":beam_files"],
 )
 
-erlang_app_info(
-    name = "erlang_app",
-    srcs = [":all_srcs"],
-    hdrs = [],
-    app = ":app_file",
+test_erlang_app(
     app_name = "seshat",
-    beam = [":beam_files"],
-    license_files = [
-        "LICENSE",
-        "LICENSE-APACHE2",
-        "LICENSE-MPL-RabbitMQ",
+    erlc_opts = "//:test_erlc_opts",
+    extra_apps = [
+        "crypto",
+        "sasl",
     ],
-    visibility = ["//visibility:public"],
-)
-
-erlang_app_info(
-    name = "test_erlang_app",
-    testonly = True,
-    srcs = [":all_srcs"],
-    hdrs = [],
-    app = ":app_file",
-    app_name = "seshat",
-    beam = [":test_beam_files"],
-    license_files = [
-        "LICENSE",
-        "LICENSE-APACHE2",
-        "LICENSE-MPL-RabbitMQ",
-    ],
-    visibility = ["//visibility:public"],
 )
 
 alias(

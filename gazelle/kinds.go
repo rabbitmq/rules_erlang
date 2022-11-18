@@ -5,10 +5,12 @@ import (
 )
 
 const (
-	erlcOptsKind        = "erlc_opts"
-	erlangBytecodeKind  = "erlang_bytecode"
-	appFileKind         = "app_file"
-	erlangAppInfoKind   = "erlang_app_info"
+	erlcOptsKind       = "erlc_opts"
+	erlangBytecodeKind = "erlang_bytecode"
+	erlangAppKind      = "erlang_app"
+	testErlangAppKind  = "test_erlang_app"
+	// appFileKind         = "app_file"
+	// erlangAppInfoKind   = "erlang_app_info"
 	untarKind           = "untar"
 	hexPmErlangAppKind  = "hex_pm_erlang_app"
 	githubErlangAppKind = "github_erlang_app"
@@ -19,6 +21,25 @@ const (
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
 	return erlangKinds
+}
+
+var erlangAppKindInfo = rule.KindInfo{
+	MatchAny: true,
+	NonEmptyAttrs: map[string]bool{
+		"app_name":        true,
+		"app_version":     true,
+		"app_description": true,
+		"extra_apps":      true,
+		"visibility":      true,
+	},
+	SubstituteAttrs: map[string]bool{},
+	MergeableAttrs: map[string]bool{
+		"extra_srcs": true,
+		"extra_hdrs": true,
+	},
+	ResolveAttrs: map[string]bool{
+		"deps": true,
+	},
 }
 
 var erlangKinds = map[string]rule.KindInfo{
@@ -79,46 +100,48 @@ var erlangKinds = map[string]rule.KindInfo{
 			"deps": true,
 		},
 	},
-	appFileKind: {
-		MatchAttrs: []string{"app_name"},
-		NonEmptyAttrs: map[string]bool{
-			"app_description": true,
-			"app_name":        true,
-			"app_src":         true,
-			"app_version":     true,
-			"deps":            true,
-			"out":             true,
-			"modules":         true,
-			"stamp":           false,
-			"visibility":      true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs:  map[string]bool{},
-		ResolveAttrs: map[string]bool{
-			"deps": true,
-		},
-	},
-	erlangAppInfoKind: {
-		MatchAttrs: []string{"beam"},
-		NonEmptyAttrs: map[string]bool{
-			"srcs":          true,
-			"hdrs":          true,
-			"app":           true,
-			"app_name":      true,
-			"extra_apps":    true,
-			"beam":          true,
-			"license_files": true,
-			"visibility":    true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"srcs": true,
-			"hdrs": true,
-		},
-		ResolveAttrs: map[string]bool{
-			"deps": true,
-		},
-	},
+	erlangAppKind:     erlangAppKindInfo,
+	testErlangAppKind: erlangAppKindInfo,
+	// appFileKind: {
+	// 	MatchAttrs: []string{"app_name"},
+	// 	NonEmptyAttrs: map[string]bool{
+	// 		"app_description": true,
+	// 		"app_name":        true,
+	// 		"app_src":         true,
+	// 		"app_version":     true,
+	// 		"deps":            true,
+	// 		"out":             true,
+	// 		"modules":         true,
+	// 		"stamp":           false,
+	// 		"visibility":      true,
+	// 	},
+	// 	SubstituteAttrs: map[string]bool{},
+	// 	MergeableAttrs:  map[string]bool{},
+	// 	ResolveAttrs: map[string]bool{
+	// 		"deps": true,
+	// 	},
+	// },
+	// erlangAppInfoKind: {
+	// 	MatchAttrs: []string{"beam"},
+	// 	NonEmptyAttrs: map[string]bool{
+	// 		"srcs":          true,
+	// 		"hdrs":          true,
+	// 		"app":           true,
+	// 		"app_name":      true,
+	// 		"extra_apps":    true,
+	// 		"beam":          true,
+	// 		"license_files": true,
+	// 		"visibility":    true,
+	// 	},
+	// 	SubstituteAttrs: map[string]bool{},
+	// 	MergeableAttrs: map[string]bool{
+	// 		"srcs": true,
+	// 		"hdrs": true,
+	// 	},
+	// 	ResolveAttrs: map[string]bool{
+	// 		"deps": true,
+	// 	},
+	// },
 	untarKind: {
 		MatchAttrs: []string{"archive"},
 		NonEmptyAttrs: map[string]bool{
@@ -169,17 +192,24 @@ var erlangLoads = []rule.LoadInfo{
 		},
 	},
 	{
-		Name: "@rules_erlang//:app_file2.bzl",
+		Name: "@rules_erlang//:erlang_app.bzl",
 		Symbols: []string{
-			appFileKind,
+			erlangAppKind,
+			testErlangAppKind,
 		},
 	},
-	{
-		Name: "@rules_erlang//:erlang_app_info.bzl",
-		Symbols: []string{
-			erlangAppInfoKind,
-		},
-	},
+	// {
+	// 	Name: "@rules_erlang//:app_file2.bzl",
+	// 	Symbols: []string{
+	// 		appFileKind,
+	// 	},
+	// },
+	// {
+	// 	Name: "@rules_erlang//:erlang_app_info.bzl",
+	// 	Symbols: []string{
+	// 		erlangAppInfoKind,
+	// 	},
+	// },
 	{
 		Name: "@rules_erlang//:untar.bzl",
 		Symbols: []string{
