@@ -39,6 +39,30 @@ func newErlangApp() *erlangApp {
 	}
 }
 
+func (erlangApp *erlangApp) addFile(f string) {
+	if strings.HasPrefix(f, "src/") {
+		if strings.HasSuffix(f, ".erl") {
+			erlangApp.Srcs.Add(f)
+		} else if strings.HasSuffix(f, ".hrl") {
+			erlangApp.PrivateHdrs.Add(f)
+		} else if strings.HasSuffix(f, ".app.src") {
+			erlangApp.AppSrc.Add(f)
+		}
+	} else if strings.HasPrefix(f, "include/") {
+		if strings.HasSuffix(f, ".hrl") {
+			erlangApp.PublicHdrs.Add(f)
+		}
+	} else if strings.HasPrefix(f, "test/") {
+		if strings.HasSuffix(f, ".erl") {
+			erlangApp.TestSrcs.Add(f)
+		} else if strings.HasSuffix(f, ".hrl") {
+			erlangApp.TestHdrs.Add(f)
+		}
+	} else if strings.HasPrefix(f, "LICENSE") {
+		erlangApp.LicenseFiles.Add(f)
+	}
+}
+
 func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	r := rule.NewRule(erlangAppKind, "")
 	r.SetAttr("app_name", erlangApp.Name)

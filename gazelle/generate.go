@@ -107,30 +107,6 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	return false
 }
 
-func guessKind(f string, erlangApp *erlangApp) {
-	if strings.HasPrefix(f, "src/") {
-		if strings.HasSuffix(f, ".erl") {
-			erlangApp.Srcs.Add(f)
-		} else if strings.HasSuffix(f, ".hrl") {
-			erlangApp.PrivateHdrs.Add(f)
-		} else if strings.HasSuffix(f, ".app.src") {
-			erlangApp.AppSrc.Add(f)
-		}
-	} else if strings.HasPrefix(f, "include/") {
-		if strings.HasSuffix(f, ".hrl") {
-			erlangApp.PublicHdrs.Add(f)
-		}
-	} else if strings.HasPrefix(f, "test/") {
-		if strings.HasSuffix(f, ".erl") {
-			erlangApp.TestSrcs.Add(f)
-		} else if strings.HasSuffix(f, ".hrl") {
-			erlangApp.TestHdrs.Add(f)
-		}
-	} else if strings.HasPrefix(f, "LICENSE") {
-		erlangApp.LicenseFiles.Add(f)
-	}
-}
-
 func moduleName(src string) string {
 	return strings.TrimSuffix(filepath.Base(src), ".erl")
 }
@@ -177,7 +153,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	}
 
 	for _, f := range hexMetadata.Files {
-		guessKind(f, erlangApp)
+		erlangApp.addFile(f)
 	}
 
 	for _, req := range hexMetadata.Requirements {
@@ -239,7 +215,7 @@ func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erl
 				if err != nil {
 					return err
 				}
-				guessKind(rel, erlangApp)
+				erlangApp.addFile(rel)
 				return nil
 			})
 		if err != nil {
@@ -273,7 +249,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 			if err != nil {
 				return err
 			}
-			guessKind(rel, erlangApp)
+			erlangApp.addFile(rel)
 			return nil
 		})
 	if err != nil {
