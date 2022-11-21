@@ -86,7 +86,6 @@ var erlangKinds = map[string]rule.KindInfo{
 			"deps":       true,
 			"srcs":       true,
 			"hdrs":       true,
-			"erlc_opts":  false,
 			"outs":       true,
 			"visibility": true,
 		},

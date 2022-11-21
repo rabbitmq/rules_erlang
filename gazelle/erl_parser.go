@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -125,8 +126,13 @@ func pathFor(erlangApp *erlangApp, include string) string {
 	return ""
 }
 
-func (p *erlParser) parseHrl(hrlFilePath string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
-	hrlAttrs, err := p.parseErl(filepath.Join(p.repoRoot, p.relPackagePath, hrlFilePath))
+func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
+	hrlFilePath := filepath.Join(p.repoRoot, p.relPackagePath, hrlFile)
+	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+
+	hrlAttrs, err := p.parseErl(hrlFilePath)
 	if err != nil {
 		return err
 	}
@@ -145,6 +151,10 @@ func (p *erlParser) parseHrl(hrlFilePath string, erlangApp *erlangApp, erlAttrs 
 }
 
 func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erlAttrs, error) {
+	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
+		return &erlAttrs{}, nil
+	}
+
 	rootAttrs, err := p.parseErl(erlFilePath)
 	if err != nil {
 		return nil, err

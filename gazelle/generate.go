@@ -255,37 +255,68 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 	if err != nil {
 		log.Println(err)
 	}
+	for _, f := range args.GenFiles {
+		// Log(args.Config, "        ", f)
+		erlangApp.addFile(f)
+	}
 
 	return nil
 }
 
+func mergeAttr(src, dst *rule.Rule, attr string) {
+	srcVals := NewMutableSet(src.AttrStrings(attr)...)
+	dstVals := NewMutableSet(dst.AttrStrings(attr)...)
+	mergedVals := Union(srcVals, dstVals)
+	if mergedVals.IsEmpty() {
+		dst.DelAttr(attr)
+	} else {
+		dst.SetAttr(attr, mergedVals.Values(strings.Compare))
+	}
+}
+
+func mergeRule(src, dst *rule.Rule) {
+	dst.SetName(src.Name())
+	dst.SetAttr("srcs", src.AttrStrings("srcs"))
+	if dst.Kind() == erlangBytecodeKind {
+		dst.SetAttr("outs", src.AttrStrings("outs"))
+
+		if src.Attr("erlc_opts") != nil {
+			dst.SetAttr("erlc_opts", src.Attr("erlc_opts"))
+		}
+
+		mergeAttr(src, dst, "hdrs")
+		mergeAttr(src, dst, "beam")
+		mergeAttr(src, dst, "deps")
+	}
+}
+
 func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename string) {
 	oldToNew := make(map[*rule.Rule]*rule.Rule)
-	var new []*rule.Rule
+	var strictlyNew []*rule.Rule
 
 	for _, newRule := range rules {
 		matched := false
 		newSrcs := newRule.AttrStrings("srcs")
 		for _, oldRule := range f.Rules {
 			oldSrcs := oldRule.AttrStrings("srcs")
-			if cmp.Equal(oldSrcs, newSrcs) {
+			if oldRule.Name() == newRule.Name() || cmp.Equal(oldSrcs, newSrcs) {
 				oldToNew[oldRule] = newRule
 				matched = true
 				break
 			}
 		}
 		if !matched {
-			new = append(new, newRule)
+			strictlyNew = append(strictlyNew, newRule)
 		}
 	}
 	for _, oldRule := range f.Rules {
 		if newRule, ok := oldToNew[oldRule]; ok {
-			rule.MergeRules(newRule, oldRule, erlangKinds[erlangBytecodeKind].MergeableAttrs, filename)
+			mergeRule(newRule, oldRule)
 		} else {
 			oldRule.Delete()
 		}
 	}
-	for _, newRule := range new {
+	for _, newRule := range strictlyNew {
 		newRule.Insert(f)
 	}
 	sort.SliceStable(f.Rules, func(i, j int) bool {
@@ -439,8 +470,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	outs := NewMutableSet[string]()
 	testOuts := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		Log(args.Config, "        Parsing", src, "->", filepath.Join(sourcePrefix, src))
-		erlAttrs, err := erlParser.deepParseErl(filepath.Join(sourcePrefix, src), erlangApp)
+		actualPath := filepath.Join(sourcePrefix, src)
+		// TODO: not print Parsing when the file does not exist
+		Log(args.Config, "        Parsing", src, "->", actualPath)
+		erlAttrs, err := erlParser.deepParseErl(actualPath, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -449,6 +482,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		for _, include := range erlAttrs.Include {
 			path := pathFor(erlangApp, include)
 			if path != "" {
+				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
 			}
 		}
@@ -458,6 +492,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			parts := strings.Split(include, string(os.PathSeparator))
 			if len(parts) > 0 {
 				if !erlangConfig.IgnoredDeps[parts[0]] {
+					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				}
 			}
@@ -468,6 +503,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			found := false
 			for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 				if moduleName(src) == behaviour {
+					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
 					theseBeam.Add(beamFile(src))
 					found = true
 					break
@@ -475,6 +511,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 			if !found {
 				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+					Log(args.Config, "            behaviour", behaviour, "->", dep)
 					theseDeps.Add(dep)
 				}
 			}

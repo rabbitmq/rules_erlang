@@ -87,14 +87,20 @@ parse(File) ->
     E = ets:new(makedep, [bag]),
     F = ets:new(visitedfiles, [bag]),
 
-    {ok, Fd} = file:open(File, [read]),
+    case file:open(File, [read]) of
+        {ok, Fd} ->
+            walk_forms(E, F, filename:dirname(File), Fd, 0),
+            Map = deps(E, F),
+            %% io:format(standard_error, "Map: ~p~n", [Map]),
+            to_json(Map);
+        {error, Reason} ->
+            io:format(standard_error, "~s: error opening ~s: ~p~n",
+                      [filename:basename(escript:script_name()), File, Reason]),
+            null
+    end.
 
-    walk_forms(E, F, filename:dirname(File), Fd, 0),
-
-    Map = deps(E, F),
-    %% io:format(standard_error, "Map: ~p~n", [Map]),
-    to_json(Map).
-
+to_json(null) ->
+    "null";
 to_json(M) when is_map(M) ->
     Pairs = [to_json(K) ++ ": " ++ to_json(V) || {K, V} <- maps:to_list(M)],
     "{" ++ string:join(Pairs, ",") ++ "}";
