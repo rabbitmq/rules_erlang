@@ -51,17 +51,13 @@ func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	if !erlangApp.ExtraApps.IsEmpty() {
 		r.SetAttr("extra_apps", erlangApp.ExtraApps.Values(strings.Compare))
 	}
-	r.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 
-	if explicitFiles {
-		if !erlangApp.PublicHdrs.IsEmpty() {
-			r.SetAttr("extra_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
-		}
-		r.SetAttr("extra_srcs", erlangApp.Srcs.Values(strings.Compare))
+	r.SetAttr("beam_files", []string{":beam_files"})
+	r.SetAttr("public_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
+	r.SetAttr("all_srcs", []string{":all_srcs"})
 
-		if !erlangApp.LicenseFiles.IsEmpty() {
-			r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
-		}
+	if explicitFiles && !erlangApp.LicenseFiles.IsEmpty() {
+		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
 	}
 
 	if !erlangApp.Deps.IsEmpty() {
@@ -82,17 +78,13 @@ func (erlangApp *erlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 	if !erlangApp.ExtraApps.IsEmpty() {
 		r.SetAttr("extra_apps", erlangApp.ExtraApps.Values(strings.Compare))
 	}
-	r.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 
-	if explicitFiles {
-		if !erlangApp.PublicHdrs.IsEmpty() {
-			r.SetAttr("extra_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
-		}
-		r.SetAttr("extra_srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs).Values(strings.Compare))
+	r.SetAttr("beam_files", []string{":test_beam_files"})
+	r.SetAttr("public_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
+	r.SetAttr("all_srcs", []string{":all_srcs"})
 
-		if !erlangApp.LicenseFiles.IsEmpty() {
-			r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
-		}
+	if explicitFiles && !erlangApp.LicenseFiles.IsEmpty() {
+		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
 	}
 
 	if !erlangApp.Deps.IsEmpty() {

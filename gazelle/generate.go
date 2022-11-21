@@ -564,7 +564,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
 		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
-		beamFilesMacro, err := macroFile(appBzlFile, beamFilesKind)
+		beamFilesMacro, err := macroFile(appBzlFile, allBeamFilesKind)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -577,14 +577,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", 1, beamFilesMacro)
 		beamFilesMacro.Save(appBzlFile)
 
-		beamFilesCall := rule.NewRule(beamFilesKind, "")
+		beamFilesCall := rule.NewRule(allBeamFilesKind, "")
 		if !erlangConfig.GenerateSkipRules.Contains(beamFilesCall.Kind()) {
 			result.Gen = append(result.Gen, beamFilesCall)
 			result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
 		}
 
 		if !erlangApp.TestSrcs.IsEmpty() {
-			testBeamFilesMacro, err := macroFile(appBzlFile, testBeamFilesKind)
+			testBeamFilesMacro, err := macroFile(appBzlFile, allTestBeamFilesKind)
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 			}
@@ -592,7 +592,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
 			testBeamFilesMacro.Save(appBzlFile)
 
-			testBeamFilesCall := rule.NewRule(testBeamFilesKind, "")
+			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, "")
 			if !erlangConfig.GenerateSkipRules.Contains(testBeamFilesCall.Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesCall)
 				result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))

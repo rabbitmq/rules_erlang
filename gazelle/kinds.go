@@ -5,18 +5,16 @@ import (
 )
 
 const (
-	erlcOptsKind       = "erlc_opts"
-	erlangBytecodeKind = "erlang_bytecode"
-	erlangAppKind      = "erlang_app"
-	testErlangAppKind  = "test_erlang_app"
-	// appFileKind         = "app_file"
-	// erlangAppInfoKind   = "erlang_app_info"
-	untarKind           = "untar"
-	hexPmErlangAppKind  = "hex_pm_erlang_app"
-	githubErlangAppKind = "github_erlang_app"
-	beamFilesKind       = "all_beam_files"
-	testBeamFilesKind   = "all_test_beam_files"
-	allSrcsKind         = "all_srcs"
+	erlcOptsKind         = "erlc_opts"
+	erlangBytecodeKind   = "erlang_bytecode"
+	erlangAppKind        = "erlang_app"
+	testErlangAppKind    = "test_erlang_app"
+	untarKind            = "untar"
+	hexPmErlangAppKind   = "hex_pm_erlang_app"
+	githubErlangAppKind  = "github_erlang_app"
+	allBeamFilesKind     = "all_beam_files"
+	allTestBeamFilesKind = "all_test_beam_files"
+	allSrcsKind          = "all_srcs"
 )
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
@@ -24,7 +22,7 @@ func (*erlangLang) Kinds() map[string]rule.KindInfo {
 }
 
 var erlangAppKindInfo = rule.KindInfo{
-	MatchAny: true,
+	MatchAttrs: []string{"app_name"},
 	NonEmptyAttrs: map[string]bool{
 		"app_name":        true,
 		"app_version":     true,
@@ -34,8 +32,11 @@ var erlangAppKindInfo = rule.KindInfo{
 	},
 	SubstituteAttrs: map[string]bool{},
 	MergeableAttrs: map[string]bool{
-		"extra_srcs": true,
-		"extra_hdrs": true,
+		"beam_files":          true,
+		"public_hdrs":         true,
+		"all_srcs":            true,
+		"extra_priv":          true,
+		"extra_license_files": true,
 	},
 	ResolveAttrs: map[string]bool{
 		"deps": true,
@@ -59,10 +60,10 @@ var erlangKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{},
 	},
-	beamFilesKind: {
+	allBeamFilesKind: {
 		MatchAny: true,
 	},
-	testBeamFilesKind: {
+	allTestBeamFilesKind: {
 		MatchAny: true,
 	},
 	allSrcsKind: {
@@ -102,46 +103,6 @@ var erlangKinds = map[string]rule.KindInfo{
 	},
 	erlangAppKind:     erlangAppKindInfo,
 	testErlangAppKind: erlangAppKindInfo,
-	// appFileKind: {
-	// 	MatchAttrs: []string{"app_name"},
-	// 	NonEmptyAttrs: map[string]bool{
-	// 		"app_description": true,
-	// 		"app_name":        true,
-	// 		"app_src":         true,
-	// 		"app_version":     true,
-	// 		"deps":            true,
-	// 		"out":             true,
-	// 		"modules":         true,
-	// 		"stamp":           false,
-	// 		"visibility":      true,
-	// 	},
-	// 	SubstituteAttrs: map[string]bool{},
-	// 	MergeableAttrs:  map[string]bool{},
-	// 	ResolveAttrs: map[string]bool{
-	// 		"deps": true,
-	// 	},
-	// },
-	// erlangAppInfoKind: {
-	// 	MatchAttrs: []string{"beam"},
-	// 	NonEmptyAttrs: map[string]bool{
-	// 		"srcs":          true,
-	// 		"hdrs":          true,
-	// 		"app":           true,
-	// 		"app_name":      true,
-	// 		"extra_apps":    true,
-	// 		"beam":          true,
-	// 		"license_files": true,
-	// 		"visibility":    true,
-	// 	},
-	// 	SubstituteAttrs: map[string]bool{},
-	// 	MergeableAttrs: map[string]bool{
-	// 		"srcs": true,
-	// 		"hdrs": true,
-	// 	},
-	// 	ResolveAttrs: map[string]bool{
-	// 		"deps": true,
-	// 	},
-	// },
 	untarKind: {
 		MatchAttrs: []string{"archive"},
 		NonEmptyAttrs: map[string]bool{
@@ -198,18 +159,6 @@ var erlangLoads = []rule.LoadInfo{
 			testErlangAppKind,
 		},
 	},
-	// {
-	// 	Name: "@rules_erlang//:app_file2.bzl",
-	// 	Symbols: []string{
-	// 		appFileKind,
-	// 	},
-	// },
-	// {
-	// 	Name: "@rules_erlang//:erlang_app_info.bzl",
-	// 	Symbols: []string{
-	// 		erlangAppInfoKind,
-	// 	},
-	// },
 	{
 		Name: "@rules_erlang//:untar.bzl",
 		Symbols: []string{
@@ -231,8 +180,8 @@ var erlangLoads = []rule.LoadInfo{
 	{
 		Name: ":app.bzl",
 		Symbols: []string{
-			beamFilesKind,
-			testBeamFilesKind,
+			allBeamFilesKind,
+			allTestBeamFilesKind,
 			allSrcsKind,
 		},
 	},
