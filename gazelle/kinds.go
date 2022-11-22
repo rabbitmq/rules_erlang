@@ -22,7 +22,7 @@ func (*erlangLang) Kinds() map[string]rule.KindInfo {
 }
 
 var erlangAppKindInfo = rule.KindInfo{
-	MatchAttrs: []string{"app_name"},
+	MatchAny: true,
 	NonEmptyAttrs: map[string]bool{
 		"app_name":        true,
 		"app_version":     true,

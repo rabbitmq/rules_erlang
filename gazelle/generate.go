@@ -311,21 +311,19 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 	}
 	for _, oldRule := range f.Rules {
 		if newRule, ok := oldToNew[oldRule]; ok {
+			resolveErlangDeps(c, f.Pkg, newRule)
 			mergeRule(newRule, oldRule)
 		} else {
 			oldRule.Delete()
 		}
 	}
 	for _, newRule := range strictlyNew {
+		resolveErlangDeps(c, f.Pkg, newRule)
 		newRule.Insert(f)
 	}
 	sort.SliceStable(f.Rules, func(i, j int) bool {
 		return f.Rules[i].Name() < f.Rules[j].Name()
 	})
-	// now need to resolve the deps
-	for _, r := range f.Rules {
-		resolveErlangDeps(c, f.Pkg, r)
-	}
 }
 
 func ensureLoad(name, symbol string, index int, f *rule.File) {

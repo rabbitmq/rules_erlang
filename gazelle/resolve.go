@@ -64,7 +64,7 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 				} else {
 					resolved[i] = fmt.Sprintf("@%s//:erlang_app", dep)
 				}
-				Log(c, "    ", dep, "->", resolved[i])
+				Log(c, "       ", dep, "->", resolved[i])
 			}
 		}
 		r.SetAttr("deps", resolved)
