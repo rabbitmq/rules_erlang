@@ -53,7 +53,7 @@ load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
 load("@rules_erlang//:ct.bzl", "ct_suite", "assert_suites")
 
 APP_NAME = "my_cool_app"
-APP_VERSION = "0.1.0
+APP_VERSION = "0.1.0"
 
 erlang_app(
     app_name = APP_NAME,
