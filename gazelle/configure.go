@@ -18,11 +18,12 @@ const (
 )
 
 var (
-	defaultIgnoredDeps = MutableSet[string]{
-		"kernel":     true,
-		"eunit":      true,
-		"public_key": true,
-	}
+	defaultIgnoredDeps = NewMutableSet(
+		"kernel",
+		"eunit",
+		"public_key",
+		"stdlib",
+	)
 )
 
 type ErlangConfig struct {
