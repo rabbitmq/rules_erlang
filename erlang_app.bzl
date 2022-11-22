@@ -68,7 +68,7 @@ def _erlang_app(
     if stamp == None:
         stamp = -1 if not test else 0
 
-    if beam_files == None:
+    if beam_files == None and erlc_opts == None:
         if not test:
             erlc_opts = select({
                 Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
