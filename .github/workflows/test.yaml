@@ -221,7 +221,7 @@ jobs:
         otp-version: 25
     - name: TEST GAZELLE PACKAGE
       run: |
-        bazel test //gazelle:all \
+        bazelisk test //gazelle:all \
           --noexperimental_enable_bzlmod \
           --color=yes
     - name: RESOVLE TEST LOGS PATH
