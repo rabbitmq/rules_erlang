@@ -534,40 +534,35 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		beamFilesRules = append(beamFilesRules, erlang_bytecode)
 
-		if !erlangApp.TestSrcs.IsEmpty() {
-			test_out := testBeamFile(src)
-			testOuts.Add(test_out)
+		test_out := testBeamFile(src)
+		testOuts.Add(test_out)
 
-			test_erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(test_out))
-			test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
-			if !theseHdrs.IsEmpty() {
-				test_erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
-			}
-			test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
-			test_erlang_bytecode.SetAttr("outs", []string{test_out})
-			if !theseBeam.IsEmpty() {
-				test_erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
-			}
-			if !theseDeps.IsEmpty() {
-				test_erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
-			}
-			test_erlang_bytecode.SetAttr("testonly", true)
-
-			testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
+		test_erlang_bytecode := rule.NewRule("erlang_bytecode", ruleName(test_out))
+		test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
+		if !theseHdrs.IsEmpty() {
+			test_erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
 		}
+		test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
+		test_erlang_bytecode.SetAttr("outs", []string{test_out})
+		if !theseBeam.IsEmpty() {
+			test_erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
+		}
+		if !theseDeps.IsEmpty() {
+			test_erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
+		}
+		test_erlang_bytecode.SetAttr("testonly", true)
+
+		testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
 	}
 
 	beam_files := rule.NewRule("filegroup", "beam_files")
 	beam_files.SetAttr("srcs", outs.Values(strings.Compare))
 	beamFilesRules = append(beamFilesRules, beam_files)
 
-	var test_beam_files *rule.Rule
-	if !erlangApp.TestSrcs.IsEmpty() {
-		test_beam_files = rule.NewRule("filegroup", "test_beam_files")
-		test_beam_files.SetAttr("srcs", testOuts.Values(strings.Compare))
-		test_beam_files.SetAttr("testonly", true)
-		testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
-	}
+	test_beam_files := rule.NewRule("filegroup", "test_beam_files")
+	test_beam_files.SetAttr("srcs", testOuts.Values(strings.Compare))
+	test_beam_files.SetAttr("testonly", true)
+	testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
 
 	all_srcs := rule.NewRule("filegroup", "all_srcs")
 	all_srcs.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs, erlangApp.PublicHdrs, erlangApp.AppSrc).Values(strings.Compare))
@@ -594,15 +589,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
 		}
 
+		testBeamFilesMacro, err := macroFile(appBzlFile, allTestBeamFilesKind)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
+		testBeamFilesMacro.Save(appBzlFile)
+
 		if !erlangApp.TestSrcs.IsEmpty() {
-			testBeamFilesMacro, err := macroFile(appBzlFile, allTestBeamFilesKind)
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-			}
-
-			updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
-			testBeamFilesMacro.Save(appBzlFile)
-
 			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, "")
 			if !erlangConfig.GenerateSkipRules.Contains(testBeamFilesCall.Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesCall)
