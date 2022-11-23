@@ -18,11 +18,52 @@ const (
 )
 
 var (
+	// https://www.erlang.org/doc/applications.html
 	defaultIgnoredDeps = NewMutableSet(
+		// Basic
+		"compiler",
+		"erts",
 		"kernel",
-		"eunit",
-		"public_key",
+		"sasl",
 		"stdlib",
+		// Database
+		"mnesia",
+		"odbc",
+		// Operation & Maintenance
+		"os_mon",
+		"snmp",
+		// Interface and Communication
+		"asn1",
+		"crypto",
+		"diameter",
+		"eldap",
+		"erl_interface",
+		"ftp",
+		"inets",
+		"jinterface",
+		"megaco",
+		"public_key",
+		"ssh",
+		"ssl",
+		"tftp",
+		"wx",
+		"xmerl",
+		// Tools
+		"debugger",
+		"dialyzer",
+		"et",
+		"observer",
+		"parsetools",
+		"reltool",
+		"runtime_tools",
+		"syntax_tools",
+		"tools",
+		// Test
+		"common_test",
+		"eunit",
+		// Documentation
+		"edoc",
+		"erl_docgen",
 	)
 )
 
