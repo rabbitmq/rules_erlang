@@ -23,9 +23,12 @@ def _impl(ctx):
 
     erl_libs_dir = ctx.label.name + "_deps"
 
+    # this actually just needs to be headers and behaviours, in the context of compiling,
+    # though it must include the transitive headers and behaviors. Therefore this file
+    # could have it's own optimized version of `erl_libs_contents`
     erl_libs_files = erl_libs_contents(
         ctx,
-        transitive = False,
+        transitive = True,
         headers = True,
         dir = erl_libs_dir,
     )
