@@ -68,17 +68,18 @@ def _erlang_app(
     if stamp == None:
         stamp = -1 if not test else 0
 
-    if beam_files == None and erlc_opts == None:
-        if not test:
-            erlc_opts = select({
-                Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
-                "//conditions:default": DEFAULT_ERLC_OPTS,
-            })
-        else:
-            erlc_opts = select({
-                Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_TEST_ERLC_OPTS),
-                "//conditions:default": DEFAULT_TEST_ERLC_OPTS,
-            })
+    if beam_files == None:
+        if erlc_opts == None:
+            if not test:
+                erlc_opts = select({
+                    Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
+                    "//conditions:default": DEFAULT_ERLC_OPTS,
+                })
+            else:
+                erlc_opts = select({
+                    Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_TEST_ERLC_OPTS),
+                    "//conditions:default": DEFAULT_TEST_ERLC_OPTS,
+                })
         srcs = native.glob(
             ["src/**/*.erl"],
             exclude = extra_srcs,
