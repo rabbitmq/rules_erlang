@@ -89,6 +89,7 @@ mkdir -p {out_dir}
 
     inputs = depset(
         direct = ctx.files.hdrs + ctx.files.srcs + ctx.files.beam + erl_libs_files,
+        transitive = [runfiles.files],
     )
 
     srcs = ctx.actions.args()
