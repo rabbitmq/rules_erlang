@@ -63,6 +63,33 @@ func (erlangApp *erlangApp) addFile(f string) {
 	}
 }
 
+func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
+	var defaultOpts []string
+	if Contains(debugOpts, "+deterministic") {
+		defaultOpts = debugOpts
+	} else {
+		defaultOpts = append(debugOpts, "+deterministic")
+	}
+	return rule.SelectStringListValue{
+		"@rules_erlang//:debug_build": debugOpts,
+		"//conditions:default":        defaultOpts,
+	}
+}
+
+func (erlangApp *erlangApp) erlcOptsRule() *rule.Rule {
+	erlc_opts := rule.NewRule("erlc_opts", erlcOptsRuleName)
+	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
+	erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
+	return erlc_opts
+}
+
+func (erlangApp *erlangApp) testErlcOptsRule() *rule.Rule {
+	test_erlc_opts := rule.NewRule("erlc_opts", testErlcOptsRuleName)
+	test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+	test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
+	return test_erlc_opts
+}
+
 func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	r := rule.NewRule(erlangAppKind, "")
 	r.SetAttr("app_name", erlangApp.Name)

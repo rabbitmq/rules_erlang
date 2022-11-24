@@ -49,19 +49,6 @@ const (
 	macroFileName = "app.bzl"
 )
 
-func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
-	var defaultOpts []string
-	if Contains(debugOpts, "+deterministic") {
-		defaultOpts = debugOpts
-	} else {
-		defaultOpts = append(debugOpts, "+deterministic")
-	}
-	return rule.SelectStringListValue{
-		"@rules_erlang//:debug_build": debugOpts,
-		"//conditions:default":        defaultOpts,
-	}
-}
-
 func filterOutDirectories(files []string) []string {
 	dirs := make([]string, len(files))
 	for i, f := range files {
@@ -436,19 +423,13 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	if args.Rel == "" {
-		erlc_opts := rule.NewRule("erlc_opts", erlcOptsRuleName)
-		erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
-		erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
-
+		erlc_opts := erlangApp.erlcOptsRule()
 		if !erlangConfig.GenerateSkipRules.Contains(erlc_opts.Kind()) {
 			result.Gen = append(result.Gen, erlc_opts)
 			result.Imports = append(result.Imports, erlc_opts.PrivateAttr(config.GazelleImportsKey))
 		}
 
-		test_erlc_opts := rule.NewRule("erlc_opts", testErlcOptsRuleName)
-		test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
-		test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
-
+		test_erlc_opts := erlangApp.testErlcOptsRule()
 		if !erlangConfig.GenerateSkipRules.Contains(test_erlc_opts.Kind()) {
 			result.Gen = append(result.Gen, test_erlc_opts)
 			result.Imports = append(result.Imports, test_erlc_opts.PrivateAttr(config.GazelleImportsKey))
