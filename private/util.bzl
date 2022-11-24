@@ -46,7 +46,7 @@ def erl_libs_contents2(ctx, target_info = None, deps = [], headers = False, dir 
                 ctx.actions.run_shell(
                     inputs = [src],
                     outputs = [dest],
-                    command = "cp -R {} {}".format(src.path, dest.dirname),
+                    command = "cp -R \"{}\"/* \"{}\"".format(src.path, dest.path),
                 )
             else:
                 dest = ctx.actions.declare_file(path_join(dep_path, "ebin", src.basename))
