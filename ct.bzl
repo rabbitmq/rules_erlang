@@ -92,4 +92,12 @@ def assert_suites(suite_names, suite_files = None):
     for f in suite_files:
         sn = f.rpartition("/")[-1].replace(".erl", "")
         if not sn in suite_names:
-            fail("A bazel rule has not been defined for {} (expected {} in {}".format(f, sn, suite_names))
+            fail("A bazel rule has not been defined for {} (expected {} in {})".format(f, sn, suite_names))
+
+def assert_suites2(suite_files = None):
+    if suite_files == None:
+        suite_files = native.glob(["test/**/*_SUITE.erl"])
+    for f in suite_files:
+        sn = f.rpartition("/")[-1].replace(".erl", "")
+        if not sn in native.existing_rules():
+            fail("A bazel rule has not been defined for {}".format(f))
