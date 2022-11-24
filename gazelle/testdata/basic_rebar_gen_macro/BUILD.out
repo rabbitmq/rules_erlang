@@ -1,5 +1,6 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
+load("@rules_erlang//:ct.bzl", "assert_suites2")
 load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files")
 
 # gazelle:erlang_generate_beam_files_macro
@@ -75,3 +76,5 @@ alias(
     actual = ":erlang_app",
     visibility = ["//visibility:public"],
 )
+
+assert_suites2()

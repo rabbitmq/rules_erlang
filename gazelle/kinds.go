@@ -9,6 +9,7 @@ const (
 	erlangBytecodeKind   = "erlang_bytecode"
 	erlangAppKind        = "erlang_app"
 	testErlangAppKind    = "test_erlang_app"
+	assertSuitesKind     = "assert_suites2"
 	untarKind            = "untar"
 	hexPmErlangAppKind   = "hex_pm_erlang_app"
 	githubErlangAppKind  = "github_erlang_app"
@@ -102,6 +103,15 @@ var erlangKinds = map[string]rule.KindInfo{
 	},
 	erlangAppKind:     erlangAppKindInfo,
 	testErlangAppKind: erlangAppKindInfo,
+	assertSuitesKind: {
+		MatchAny: true,
+		NonEmptyAttrs: map[string]bool{
+			"suite_files": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs:  map[string]bool{},
+		ResolveAttrs:    map[string]bool{},
+	},
 	untarKind: {
 		MatchAttrs: []string{"archive"},
 		NonEmptyAttrs: map[string]bool{
@@ -156,6 +166,12 @@ var erlangLoads = []rule.LoadInfo{
 		Symbols: []string{
 			erlangAppKind,
 			testErlangAppKind,
+		},
+	},
+	{
+		Name: "@rules_erlang//:ct.bzl",
+		Symbols: []string{
+			assertSuitesKind,
 		},
 	},
 	{

@@ -659,6 +659,12 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
 	}
 
+	assert_suites := rule.NewRule(assertSuitesKind, "")
+	if !erlangConfig.GenerateSkipRules.Contains(assert_suites.Kind()) {
+		result.Gen = append(result.Gen, assert_suites)
+		result.Imports = append(result.Imports, assert_suites.PrivateAttr(config.GazelleImportsKey))
+	}
+
 	// Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
 	// 	return r.Kind() + "/" + r.Name()
 	// }, result.Gen))
