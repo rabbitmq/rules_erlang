@@ -104,7 +104,7 @@ func (erlangApp *erlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 	}
 
 	r.SetAttr("beam_files", []string{":test_beam_files"})
-	r.SetAttr("public_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
+	r.SetAttr("public_hdrs", Union(erlangApp.PublicHdrs, erlangApp.PrivateHdrs).Values(strings.Compare))
 	r.SetAttr("all_srcs", []string{":all_srcs"})
 
 	if explicitFiles && !erlangApp.LicenseFiles.IsEmpty() {
