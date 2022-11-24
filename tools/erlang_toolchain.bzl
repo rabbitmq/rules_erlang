@@ -60,8 +60,7 @@ def maybe_install_erlang(ctx, short_path = False):
         return """\
 tar --extract \\
     --directory / \\
-    --file {release_tar}
-""".format(
+    --file {release_tar}""".format(
             release_tar = release_dir_tar.short_path if short_path else release_dir_tar.path,
             erlang_home = info.erlang_home,
         )
