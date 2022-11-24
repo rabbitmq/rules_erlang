@@ -39,7 +39,7 @@ def _erlang_app(
         app_env = "",
         app_extra_keys = "",
         extra_apps = [],
-        erlc_opts = [],
+        erlc_opts = None,
         extra_hdrs = [],
         extra_srcs = [],
         extra_priv = [],
@@ -54,7 +54,7 @@ def _erlang_app(
         all_srcs = None,
         test = False):
     if beam_files != None or public_hdrs != None or all_srcs != None:
-        if len(erlc_opts) > 0:
+        if erlc_opts != None:
             fail("Cannot set beam_files, public_hdrs or all_srcs AND erlc_opts")
         if len(extra_hdrs) > 0:
             fail("Cannot set beam_files, public_hdrs or all_srcs AND extra_hdrs")
@@ -68,18 +68,19 @@ def _erlang_app(
     if stamp == None:
         stamp = -1 if not test else 0
 
+    if erlc_opts == None:
+        if not test:
+            erlc_opts = select({
+                Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
+                "//conditions:default": DEFAULT_ERLC_OPTS,
+            })
+        else:
+            erlc_opts = select({
+                Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_TEST_ERLC_OPTS),
+                "//conditions:default": DEFAULT_TEST_ERLC_OPTS,
+            })
+
     if beam_files == None:
-        if erlc_opts == None:
-            if not test:
-                erlc_opts = select({
-                    Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_ERLC_OPTS),
-                    "//conditions:default": DEFAULT_ERLC_OPTS,
-                })
-            else:
-                erlc_opts = select({
-                    Label("@rules_erlang//:debug_build"): without("+deterministic", DEFAULT_TEST_ERLC_OPTS),
-                    "//conditions:default": DEFAULT_TEST_ERLC_OPTS,
-                })
         srcs = native.glob(
             ["src/**/*.erl"],
             exclude = extra_srcs,
