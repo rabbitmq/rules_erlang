@@ -31,6 +31,7 @@ DEFAULT_TEST_ERLC_OPTS = [
 ErlangAppInfo = _ErlangAppInfo
 
 def _erlang_app(
+        name = None,
         app_name = "",
         app_version = "",
         app_description = "",
@@ -64,6 +65,9 @@ def _erlang_app(
             print("Warning: build_deps are ignored when beam_files is set")
         if len(runtime_deps) > 0:
             print("Warning: deps and runtime_deps are equivalent when beam_files is set, consider just using deps")
+
+    if name == None:
+        name = "erlang_app" if not test else "test_erlang_app"
 
     if stamp == None:
         stamp = -1 if not test else 0
@@ -131,7 +135,7 @@ def _erlang_app(
         app = "ebin/{}.app".format(app_name)
 
     erlang_app_info(
-        name = "erlang_app" if not test else "test_erlang_app",
+        name = name,
         app_name = app_name,
         hdrs = public_hdrs,
         app = app,
