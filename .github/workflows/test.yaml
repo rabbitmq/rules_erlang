@@ -228,7 +228,6 @@ jobs:
     - name: TEST GAZELLE PACKAGE
       run: |
         bazelisk test //gazelle:all \
-          --noexperimental_enable_bzlmod \
           --color=yes
     - name: RESOVLE TEST LOGS PATH
       if: always()
