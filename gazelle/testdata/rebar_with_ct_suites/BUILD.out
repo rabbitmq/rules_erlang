@@ -91,13 +91,6 @@ eunit(
 )
 
 ct_test(
-    name = "osiris_util_SUITE",
-    compiled_suites = [":osiris_util_SUITE_beam_files"],
-    data = glob(["test/osiris_util_SUITE_data/**/*"]),
-    deps = [":test_erlang_app"],
-)
-
-ct_test(
     name = "osiris_SUITE",
     compiled_suites = [":osiris_SUITE_beam_files"],
     data = glob(["test/osiris_SUITE_data/**/*"]),
@@ -115,6 +108,13 @@ ct_test(
     name = "osiris_tracking_SUITE",
     compiled_suites = [":osiris_tracking_SUITE_beam_files"],
     data = glob(["test/osiris_tracking_SUITE_data/**/*"]),
+    deps = [":test_erlang_app"],
+)
+
+ct_test(
+    name = "osiris_util_SUITE",
+    compiled_suites = [":osiris_util_SUITE_beam_files"],
+    data = glob(["test/osiris_util_SUITE_data/**/*"]),
     deps = [":test_erlang_app"],
 )
 

@@ -430,7 +430,7 @@ func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 func (erlangApp *erlangApp) ctSuiteRules() []*rule.Rule {
 	var rules []*rule.Rule
 
-	for testSrc := range erlangApp.TestSrcs {
+	for _, testSrc := range erlangApp.TestSrcs.Values(strings.Compare) {
 		modName := moduleName(testSrc)
 		if strings.HasSuffix(modName, "_SUITE") {
 			r := rule.NewRule(ctTestKind, modName)
