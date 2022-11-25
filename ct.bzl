@@ -4,8 +4,8 @@ load(
 )
 load(
     "//private:ct.bzl",
-    "ct_test",
     _code_paths = "code_paths",
+    _ct_test = "ct_test",
     _sanitize_sname = "sanitize_sname",
 )
 load(
@@ -51,7 +51,8 @@ def ct_suite(
     ct_suite_variant(
         name = name,
         suite_name = suite_name,
-        deps = deps + runtime_deps,
+        deps = deps,
+        runtime_deps = runtime_deps,
         **kwargs
     )
 
@@ -70,7 +71,7 @@ def ct_suite_variant(
 
     data_dir_files = native.glob(["test/{}_data/**/*".format(suite_name)])
 
-    ct_test(
+    _ct_test(
         shard_suite = Label("@rules_erlang//tools/shard_suite:shard_suite"),
         name = name,
         suite_name = suite_name,
@@ -85,6 +86,30 @@ def ct_suite_variant(
     )
 
     return suite_name
+
+def ct_test(
+        name = None,
+        suite_name = None,
+        compiled_suites = None,
+        deps = [":test_erlang_app"],
+        shard_suite = Label("@rules_erlang//tools/shard_suite:shard_suite"),
+        **kwargs):
+    if suite_name == None or suite_name == "":
+        suite_name = name
+    if compiled_suites == None:
+        compiled_suites = [":{}_beam_files".format(suite_name)]
+    _ct_test(
+        name = name,
+        suite_name = suite_name,
+        compiled_suites = compiled_suites,
+        deps = deps,
+        shard_suite = shard_suite,
+        is_windows = select({
+            "@bazel_tools//src/conditions:host_windows": True,
+            "//conditions:default": False,
+        }),
+        **kwargs
+    )
 
 def assert_suites(suite_names, suite_files = None):
     if suite_files == None:

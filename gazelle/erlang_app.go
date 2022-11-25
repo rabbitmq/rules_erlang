@@ -68,7 +68,11 @@ func (erlangApp *erlangApp) addFile(f string) {
 }
 
 func moduleName(src string) string {
-	return strings.TrimSuffix(filepath.Base(src), ".erl")
+	base := filepath.Base(src)
+	if strings.HasSuffix(base, ".erl") {
+		return strings.TrimSuffix(base, ".erl")
+	}
+	return strings.TrimSuffix(base, ".beam")
 }
 
 func beamFile(src string) string {
@@ -421,6 +425,26 @@ func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 	eunit.SetAttr("deps", []string{":test_erlang_app"})
 
 	return eunit
+}
+
+func (erlangApp *erlangApp) ctSuiteRules() []*rule.Rule {
+	var rules []*rule.Rule
+
+	for testSrc := range erlangApp.TestSrcs {
+		modName := moduleName(testSrc)
+		if strings.HasSuffix(modName, "_SUITE") {
+			r := rule.NewRule(ctTestKind, modName)
+			r.SetAttr("compiled_suites", []string{":" + modName + "_beam_files"})
+			r.SetAttr("data", rule.GlobValue{
+				Patterns: []string{"test/" + modName + "_data/**/*"},
+			})
+			r.SetAttr("deps", []string{":test_erlang_app"})
+
+			rules = append(rules, r)
+		}
+	}
+
+	return rules
 }
 
 func (erlangApp *erlangApp) hasTestSuites() bool {

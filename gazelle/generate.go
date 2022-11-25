@@ -549,6 +549,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			result.Gen = append(result.Gen, eunitRule)
 			result.Imports = append(result.Imports, eunitRule.PrivateAttr(config.GazelleImportsKey))
 		}
+
+		ctSuiteRules := erlangApp.ctSuiteRules()
+		for _, r := range ctSuiteRules {
+			if !erlangConfig.GenerateSkipRules.Contains(r.Kind()) {
+				result.Gen = append(result.Gen, r)
+				result.Imports = append(result.Imports, r.PrivateAttr(config.GazelleImportsKey))
+			}
+		}
 	}
 
 	assert_suites := rule.NewRule(assertSuitesKind, "")

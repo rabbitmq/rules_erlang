@@ -10,6 +10,7 @@ const (
 	erlangAppKind          = "erlang_app"
 	testErlangAppKind      = "test_erlang_app"
 	eunitKind              = "eunit"
+	ctTestKind             = "ct_test"
 	assertSuitesKind       = "assert_suites2"
 	untarKind              = "untar"
 	hexPmErlangAppKind     = "hex_pm_erlang_app"
@@ -125,6 +126,21 @@ var erlangKinds = map[string]rule.KindInfo{
 			"deps": true,
 		},
 	},
+	ctTestKind: {
+		MatchAttrs: []string{"suite_name"},
+		NonEmptyAttrs: map[string]bool{
+			"suite_name":      true,
+			"compiled_suites": true,
+			"visibility":      true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"compiled_suites": true,
+		},
+		ResolveAttrs: map[string]bool{
+			"deps": true,
+		},
+	},
 	assertSuitesKind: {
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{
@@ -199,6 +215,7 @@ var erlangLoads = []rule.LoadInfo{
 	{
 		Name: "@rules_erlang//:ct.bzl",
 		Symbols: []string{
+			ctTestKind,
 			assertSuitesKind,
 		},
 	},

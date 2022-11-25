@@ -1,5 +1,6 @@
 load("//private:eunit.bzl", "eunit_test")
 
+# maybe just call this eunit_test, and rename this file?
 def eunit(
         name = "eunit",
         **kwargs):
