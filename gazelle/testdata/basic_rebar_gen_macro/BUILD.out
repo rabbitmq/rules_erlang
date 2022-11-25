@@ -44,15 +44,16 @@ erlc_opts(
     visibility = [":__subpackages__"],
 )
 
-all_beam_files()
+all_beam_files(name = "all_beam_files")
 
-all_test_beam_files()
+all_test_beam_files(name = "all_test_beam_files")
 
-test_suite_beam_files()
+test_suite_beam_files(name = "test_suite_beam_files")
 
-all_srcs()
+all_srcs(name = "all_srcs")
 
 erlang_app(
+    name = "erlang_app",
     all_srcs = [":all_srcs"],
     app_name = "seshat",
     beam_files = [":beam_files"],
@@ -64,6 +65,7 @@ erlang_app(
 )
 
 test_erlang_app(
+    name = "test_erlang_app",
     all_srcs = [":all_srcs"],
     app_name = "seshat",
     beam_files = [":test_beam_files"],

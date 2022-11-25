@@ -131,6 +131,7 @@ filegroup(
 )
 
 erlang_app(
+    name = "erlang_app",
     all_srcs = [":all_srcs"],
     app_description = "Erlang node failure detector",
     app_name = "aten",

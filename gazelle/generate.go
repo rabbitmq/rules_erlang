@@ -12,6 +12,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -324,6 +325,21 @@ func macroFile(path string, defName string) (*rule.File, error) {
 	return macroFile, nil
 }
 
+func addNameArg(macroFile *rule.File) {
+	for _, s := range macroFile.File.Stmt {
+		if defStmt, ok := s.(*build.DefStmt); ok {
+			if defStmt.Name == macroFile.DefName {
+				nameAttr := &build.AssignExpr{
+					LHS: &build.Ident{Name: "name"},
+					RHS: &build.StringExpr{Value: macroFile.DefName},
+					Op:  "=",
+				}
+				defStmt.Params = []build.Expr{nameAttr}
+			}
+		}
+	}
+}
+
 func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if args.File != nil {
 		Log(args.Config, "GenerateRules:", args.Rel, args.File.Path)
@@ -445,9 +461,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		//       present in the macro. Therefore, we use our own "alias" of the
 		//       macro so that updates to the macro are stable
 		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", 1, beamFilesMacro)
+		addNameArg(beamFilesMacro)
 		beamFilesMacro.Save(appBzlFile)
 
-		beamFilesCall := rule.NewRule(allBeamFilesKind, "")
+		beamFilesCall := rule.NewRule(allBeamFilesKind, allBeamFilesKind)
 		if !erlangConfig.GenerateSkipRules.Contains(beamFilesCall.Kind()) {
 			result.Gen = append(result.Gen, beamFilesCall)
 			result.Imports = append(result.Imports, beamFilesCall.PrivateAttr(config.GazelleImportsKey))
@@ -459,6 +476,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
+		addNameArg(testBeamFilesMacro)
 		testBeamFilesMacro.Save(appBzlFile)
 
 		testDirBeamFilesMacro, err := macroFile(appBzlFile, testSuiteBeamFilesKind)
@@ -467,16 +485,17 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, testDirBeamFilesMacro, testDirBeamFilesRules, appBzlFile)
+		addNameArg(testDirBeamFilesMacro)
 		testDirBeamFilesMacro.Save(appBzlFile)
 
 		if erlangApp.hasTestSuites() {
-			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, "")
+			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, allTestBeamFilesKind)
 			if !erlangConfig.GenerateSkipRules.Contains(testBeamFilesCall.Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesCall)
 				result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
 			}
 
-			testSuitesBeamFilesCall := rule.NewRule(testSuiteBeamFilesKind, "")
+			testSuitesBeamFilesCall := rule.NewRule(testSuiteBeamFilesKind, testSuiteBeamFilesKind)
 			if !erlangConfig.GenerateSkipRules.Contains(testSuitesBeamFilesCall.Kind()) {
 				result.Gen = append(result.Gen, testSuitesBeamFilesCall)
 				result.Imports = append(result.Imports, testSuitesBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
@@ -489,9 +508,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, allSrcsMacro, []*rule.Rule{all_srcs}, appBzlFile)
+		addNameArg(allSrcsMacro)
 		allSrcsMacro.Save(appBzlFile)
 
-		allSrcsCall := rule.NewRule(allSrcsKind, "")
+		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
 		if !erlangConfig.GenerateSkipRules.Contains(allSrcsCall.Kind()) {
 			result.Gen = append(result.Gen, allSrcsCall)
 			result.Imports = append(result.Imports, allSrcsCall.PrivateAttr(config.GazelleImportsKey))

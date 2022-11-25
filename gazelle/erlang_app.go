@@ -240,7 +240,7 @@ func (erlangApp *erlangApp) allSrcsRule() *rule.Rule {
 }
 
 func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
-	r := rule.NewRule(erlangAppKind, "")
+	r := rule.NewRule(erlangAppKind, "erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
 		r.SetAttr("app_version", erlangApp.Version)
@@ -267,7 +267,7 @@ func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 }
 
 func (erlangApp *erlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
-	r := rule.NewRule(testErlangAppKind, "")
+	r := rule.NewRule(testErlangAppKind, "test_erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
 		r.SetAttr("app_version", erlangApp.Version)
