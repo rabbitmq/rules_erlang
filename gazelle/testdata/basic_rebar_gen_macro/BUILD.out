@@ -1,7 +1,8 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
+load("@rules_erlang//:eunit2.bzl", "eunit")
 load("@rules_erlang//:ct.bzl", "assert_suites2")
-load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files")
+load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files", "test_suite_beam_files")
 
 # gazelle:erlang_generate_beam_files_macro
 
@@ -47,6 +48,8 @@ all_beam_files()
 
 all_test_beam_files()
 
+test_suite_beam_files()
+
 all_srcs()
 
 erlang_app(
@@ -75,6 +78,23 @@ alias(
     name = "seshat",
     actual = ":erlang_app",
     visibility = ["//visibility:public"],
+)
+
+eunit(
+    name = "eunit",
+    compiled_suites = [
+        ":test_seshat_counters_server_test_beam",
+        ":test_seshat_test_beam",
+    ],
+    eunit_mods = [
+        "seshat",
+        "seshat_app",
+        "seshat_counters_server",
+        "seshat_counters_server_test",
+        "seshat_sup",
+        "seshat_test",
+    ],
+    deps = [":test_erlang_app"],
 )
 
 assert_suites2()

@@ -25,6 +25,8 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
+    eunit_opts_term = "[" + ",".join(ctx.attr.eunit_opts) + "]"
+
     if not ctx.attr.is_windows:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
@@ -47,13 +49,14 @@ fi
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
     -pa test \\
-    -eval "case eunit:test({eunit_mods_term},[]) of ok -> ok; error -> halt(2) end, halt()"
+    -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()"
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             erl_libs_path = erl_libs_path,
             package = package,
             eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
+            eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
         )
     else:
@@ -74,12 +77,13 @@ if NOT [{package}] == [] cd {package}
 echo on
 "{erlang_home}\\bin\\erl" +A1 -noinput -boot no_dot_erlang ^
     -pa test ^
-    -eval "case eunit:test({eunit_mods_term},[]) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
+    -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
 """.format(
             package = package,
             erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path,
             eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
+            eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
         )
 
@@ -112,6 +116,7 @@ eunit_test = rule(
             mandatory = True,
         ),
         "eunit_mods": attr.string_list(mandatory = True),
+        "eunit_opts": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "tools": attr.label_list(),

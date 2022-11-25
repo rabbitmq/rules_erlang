@@ -5,17 +5,19 @@ import (
 )
 
 const (
-	erlcOptsKind         = "erlc_opts"
-	erlangBytecodeKind   = "erlang_bytecode"
-	erlangAppKind        = "erlang_app"
-	testErlangAppKind    = "test_erlang_app"
-	assertSuitesKind     = "assert_suites2"
-	untarKind            = "untar"
-	hexPmErlangAppKind   = "hex_pm_erlang_app"
-	githubErlangAppKind  = "github_erlang_app"
-	allBeamFilesKind     = "all_beam_files"
-	allTestBeamFilesKind = "all_test_beam_files"
-	allSrcsKind          = "all_srcs"
+	erlcOptsKind           = "erlc_opts"
+	erlangBytecodeKind     = "erlang_bytecode"
+	erlangAppKind          = "erlang_app"
+	testErlangAppKind      = "test_erlang_app"
+	eunitKind              = "eunit"
+	assertSuitesKind       = "assert_suites2"
+	untarKind              = "untar"
+	hexPmErlangAppKind     = "hex_pm_erlang_app"
+	githubErlangAppKind    = "github_erlang_app"
+	allBeamFilesKind       = "all_beam_files"
+	allTestBeamFilesKind   = "all_test_beam_files"
+	testSuiteBeamFilesKind = "test_suite_beam_files"
+	allSrcsKind            = "all_srcs"
 )
 
 func (*erlangLang) Kinds() map[string]rule.KindInfo {
@@ -67,6 +69,9 @@ var erlangKinds = map[string]rule.KindInfo{
 	allTestBeamFilesKind: {
 		MatchAny: true,
 	},
+	testSuiteBeamFilesKind: {
+		MatchAny: true,
+	},
 	allSrcsKind: {
 		MatchAny: true,
 	},
@@ -103,6 +108,23 @@ var erlangKinds = map[string]rule.KindInfo{
 	},
 	erlangAppKind:     erlangAppKindInfo,
 	testErlangAppKind: erlangAppKindInfo,
+	eunitKind: {
+		MatchAny: true,
+		NonEmptyAttrs: map[string]bool{
+			"compiled_suites": true,
+			"eunit_mods":      true,
+			"visibility":      true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"compiled_suites": true,
+			"eunit_mods":      true,
+			"data":            true,
+		},
+		ResolveAttrs: map[string]bool{
+			"deps": true,
+		},
+	},
 	assertSuitesKind: {
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{
@@ -169,6 +191,12 @@ var erlangLoads = []rule.LoadInfo{
 		},
 	},
 	{
+		Name: "@rules_erlang//:eunit2.bzl",
+		Symbols: []string{
+			eunitKind,
+		},
+	},
+	{
 		Name: "@rules_erlang//:ct.bzl",
 		Symbols: []string{
 			assertSuitesKind,
@@ -197,6 +225,7 @@ var erlangLoads = []rule.LoadInfo{
 		Symbols: []string{
 			allBeamFilesKind,
 			allTestBeamFilesKind,
+			testSuiteBeamFilesKind,
 			allSrcsKind,
 		},
 	},

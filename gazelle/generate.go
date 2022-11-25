@@ -94,25 +94,6 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	return false
 }
 
-func moduleName(src string) string {
-	return strings.TrimSuffix(filepath.Base(src), ".erl")
-}
-
-func beamFile(src string) string {
-	r := "ebin/" + strings.TrimPrefix(src, "src/")
-	return strings.TrimSuffix(r, ".erl") + ".beam"
-}
-
-func testBeamFile(src string) string {
-	r := "test/" + strings.TrimPrefix(src, "src/")
-	return strings.TrimSuffix(r, ".erl") + ".beam"
-}
-
-func ruleName(f string) string {
-	r := strings.ReplaceAll(f, string(filepath.Separator), "_")
-	return strings.ReplaceAll(r, ".", "_")
-}
-
 func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) (string, error) {
 	Log(args.Config, "    Importing Hex.pm archive from", filepath.Join(args.Config.RepoRoot, args.Rel))
 
@@ -448,6 +429,8 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	all_srcs := erlangApp.allSrcsRule()
 
+	testDirBeamFilesRules := erlangApp.testDirBeamFilesRules(args, erlParser, sourcePrefix)
+
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
 		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
@@ -478,11 +461,25 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
 		testBeamFilesMacro.Save(appBzlFile)
 
-		if !erlangApp.TestSrcs.IsEmpty() {
+		testDirBeamFilesMacro, err := macroFile(appBzlFile, testSuiteBeamFilesKind)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		updateRules(args.Config, testDirBeamFilesMacro, testDirBeamFilesRules, appBzlFile)
+		testDirBeamFilesMacro.Save(appBzlFile)
+
+		if erlangApp.hasTestSuites() {
 			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, "")
 			if !erlangConfig.GenerateSkipRules.Contains(testBeamFilesCall.Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesCall)
 				result.Imports = append(result.Imports, testBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
+			}
+
+			testSuitesBeamFilesCall := rule.NewRule(testSuiteBeamFilesKind, "")
+			if !erlangConfig.GenerateSkipRules.Contains(testSuitesBeamFilesCall.Kind()) {
+				result.Gen = append(result.Gen, testSuitesBeamFilesCall)
+				result.Imports = append(result.Imports, testSuitesBeamFilesCall.PrivateAttr(config.GazelleImportsKey))
 			}
 		}
 
@@ -505,9 +502,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 				result.Gen = append(result.Gen, beamFilesRules[i])
 				result.Imports = append(result.Imports, beamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
 			}
-			if !erlangApp.TestSrcs.IsEmpty() && !erlangConfig.GenerateSkipRules.Contains(testBeamFilesRules[i].Kind()) {
+			if erlangApp.hasTestSuites() && !erlangConfig.GenerateSkipRules.Contains(testBeamFilesRules[i].Kind()) {
 				result.Gen = append(result.Gen, testBeamFilesRules[i])
 				result.Imports = append(result.Imports, testBeamFilesRules[i].PrivateAttr(config.GazelleImportsKey))
+			}
+		}
+		for _, r := range testDirBeamFilesRules {
+			if !erlangConfig.GenerateSkipRules.Contains(r.Kind()) {
+				result.Gen = append(result.Gen, r)
+				result.Imports = append(result.Imports, r.PrivateAttr(config.GazelleImportsKey))
 			}
 		}
 		if !erlangConfig.GenerateSkipRules.Contains(all_srcs.Kind()) {
@@ -523,7 +526,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, erlang_app.PrivateAttr(config.GazelleImportsKey))
 	}
 
-	if !erlangApp.TestSrcs.IsEmpty() {
+	if erlangApp.hasTestSuites() {
 		test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
 		if !erlangConfig.GenerateSkipRules.Contains(test_erlang_app.Kind()) {
 			result.Gen = append(result.Gen, test_erlang_app)
@@ -538,6 +541,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	if !erlangConfig.GenerateSkipRules.Contains(alias.Kind()) {
 		result.Gen = append(result.Gen, alias)
 		result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
+	}
+
+	if erlangApp.hasTestSuites() {
+		eunitRule := erlangApp.eunitRule()
+		if !erlangConfig.GenerateSkipRules.Contains(eunitRule.Kind()) {
+			result.Gen = append(result.Gen, eunitRule)
+			result.Imports = append(result.Imports, eunitRule.PrivateAttr(config.GazelleImportsKey))
+		}
 	}
 
 	assert_suites := rule.NewRule(assertSuitesKind, "")

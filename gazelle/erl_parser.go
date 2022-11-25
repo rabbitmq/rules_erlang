@@ -114,18 +114,6 @@ type erlAttrs struct {
 	Behaviour  []string `json:"behaviour"`
 }
 
-func pathFor(erlangApp *erlangApp, include string) string {
-	privatePath := filepath.Join("src", include)
-	if erlangApp.PrivateHdrs.Contains(privatePath) {
-		return privatePath
-	}
-	publicPath := filepath.Join("include", include)
-	if erlangApp.PublicHdrs.Contains(publicPath) {
-		return publicPath
-	}
-	return ""
-}
-
 func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
 	hrlFilePath := filepath.Join(p.repoRoot, p.relPackagePath, hrlFile)
 	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
@@ -138,7 +126,7 @@ func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erl
 	}
 	for _, include := range hrlAttrs.Include {
 		erlAttrs.Include = append(erlAttrs.Include, include)
-		path := pathFor(erlangApp, include)
+		path := erlangApp.pathFor(include)
 		if path != "" {
 			err := p.parseHrl(path, erlangApp, erlAttrs)
 			if err != nil {
@@ -161,7 +149,7 @@ func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erl
 	}
 
 	for _, include := range rootAttrs.Include {
-		path := pathFor(erlangApp, include)
+		path := erlangApp.pathFor(include)
 		if path != "" {
 			err := p.parseHrl(path, erlangApp, rootAttrs)
 			if err != nil {
