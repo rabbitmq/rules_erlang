@@ -76,8 +76,8 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	// if there is a src dir with .erl files in it
 	if Contains(args.Subdirs, "src") {
 		hasErlFiles := false
-		err := filepath.Walk(filepath.Join(args.Config.RepoRoot, args.Rel, "src"),
-			func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(filepath.Join(args.Config.RepoRoot, args.Rel, "src"),
+			func(path string, info os.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -172,8 +172,8 @@ func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erl
 	}
 
 	if erlangApp.Srcs.IsEmpty() {
-		err := filepath.Walk(rebarAppPath,
-			func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(rebarAppPath,
+			func(path string, info os.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -202,8 +202,8 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 	appPath := filepath.Join(args.Config.RepoRoot, args.Rel)
 	Log(args.Config, "    Importing bare erlang from", appPath)
 
-	err := filepath.Walk(appPath,
-		func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(appPath,
+		func(path string, info os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -217,6 +217,9 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 			rel, err := filepath.Rel(appPath, path)
 			if err != nil {
 				return err
+			}
+			if rel != filepath.Base(rel) && args.Config.IsValidBuildFileName(info.Name()) {
+				return filepath.SkipDir
 			}
 			erlangApp.addFile(rel)
 			return nil
@@ -290,6 +293,7 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 		resolveErlangDeps(c, f.Pkg, newRule)
 		newRule.Insert(f)
 	}
+	// TODO: fix the sort to actully do something
 	sort.SliceStable(f.Rules, func(i, j int) bool {
 		return f.Rules[i].Name() < f.Rules[j].Name()
 	})
