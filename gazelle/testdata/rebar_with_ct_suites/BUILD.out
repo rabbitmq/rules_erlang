@@ -46,21 +46,17 @@ all_srcs(name = "all_srcs")
 
 erlang_app(
     name = "erlang_app",
-    all_srcs = [":all_srcs"],
+    srcs = [":all_srcs"],
     app_name = "rebar_with_ct_suites",
     beam_files = [":beam_files"],
-    public_hdrs = [],
 )
 
 test_erlang_app(
     name = "test_erlang_app",
-    all_srcs = [":all_srcs"],
+    srcs = [":all_srcs"],
+    hdrs = [":public_and_private_hdrs"],
     app_name = "rebar_with_ct_suites",
     beam_files = [":test_beam_files"],
-    public_hdrs = [
-        "src/osiris.hrl",
-        "src/osiris_peer_shim.hrl",
-    ],
 )
 
 alias(

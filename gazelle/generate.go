@@ -13,7 +13,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
-	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -268,10 +267,8 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 
 	for _, newRule := range rules {
 		matched := false
-		newSrcs := newRule.AttrStrings("srcs")
 		for _, oldRule := range f.Rules {
-			oldSrcs := oldRule.AttrStrings("srcs")
-			if oldRule.Name() == newRule.Name() || cmp.Equal(oldSrcs, newSrcs) {
+			if oldRule.Name() == newRule.Name() {
 				oldToNew[oldRule] = newRule
 				matched = true
 				break
@@ -380,6 +377,13 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	result.Gen = make([]*rule.Rule, 0)
 
 	erlangApp := newErlangApp()
+	for dep := range erlangConfig.Deps {
+		erlangApp.Deps.Add(dep)
+	}
+
+	for app := range erlangConfig.ExtraApps {
+		erlangApp.ExtraApps.Add(app)
+	}
 
 	sourcePrefix := filepath.Join(args.Config.RepoRoot, args.Rel)
 
@@ -447,7 +451,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	beamFilesRules, testBeamFilesRules := erlangApp.beamFilesRules(args, erlParser, sourcePrefix)
 
-	all_srcs := erlangApp.allSrcsRule()
+	allSrcsRules := erlangApp.allSrcsRules()
 
 	testDirBeamFilesRules := erlangApp.testDirBeamFilesRules(args, erlParser, sourcePrefix)
 
@@ -511,7 +515,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		updateRules(args.Config, allSrcsMacro, []*rule.Rule{all_srcs}, appBzlFile)
+		updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
 		addNameArg(allSrcsMacro)
 		allSrcsMacro.Save(appBzlFile)
 
@@ -537,9 +541,11 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 				result.Imports = append(result.Imports, r.PrivateAttr(config.GazelleImportsKey))
 			}
 		}
-		if !erlangConfig.GenerateSkipRules.Contains(all_srcs.Kind()) {
-			result.Gen = append(result.Gen, all_srcs)
-			result.Imports = append(result.Imports, all_srcs.PrivateAttr(config.GazelleImportsKey))
+		for _, r := range allSrcsRules {
+			if !erlangConfig.GenerateSkipRules.Contains(r.Kind()) {
+				result.Gen = append(result.Gen, r)
+				result.Imports = append(result.Imports, r.PrivateAttr(config.GazelleImportsKey))
+			}
 		}
 	}
 

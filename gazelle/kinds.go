@@ -31,16 +31,14 @@ var erlangAppKindInfo = rule.KindInfo{
 		"app_name":        true,
 		"app_version":     true,
 		"app_description": true,
-		"extra_apps":      true,
 		"visibility":      true,
 	},
 	SubstituteAttrs: map[string]bool{},
 	MergeableAttrs: map[string]bool{
-		"beam_files":          true,
-		"public_hdrs":         true,
-		"all_srcs":            true,
-		"extra_priv":          true,
-		"extra_license_files": true,
+		"beam_files": true,
+		"hdrs":       true,
+		"srcs":       true,
+		"extra_apps": true,
 	},
 	ResolveAttrs: map[string]bool{
 		"deps": true,
@@ -53,7 +51,6 @@ var erlangKinds = map[string]rule.KindInfo{
 		MergeableAttrs: map[string]bool{"actual": true},
 	},
 	"filegroup": {
-		MatchAttrs: []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{
 			"srcs":       true,
 			"visibility": true,

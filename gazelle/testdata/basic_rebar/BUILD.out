@@ -139,7 +139,7 @@ erlang_bytecode(
 )
 
 filegroup(
-    name = "all_srcs",
+    name = "srcs",
     srcs = [
         "src/seshat.app.src",
         "src/seshat.erl",
@@ -149,28 +149,66 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "private_hdrs",
+    srcs = [],
+)
+
+filegroup(
+    name = "public_hdrs",
+    srcs = [],
+)
+
+filegroup(
+    name = "priv",
+    srcs = [],
+)
+
+filegroup(
+    name = "licenses",
+    srcs = [
+        "LICENSE",
+        "LICENSE-APACHE2",
+        "LICENSE-MPL-RabbitMQ",
+    ],
+)
+
+filegroup(
+    name = "public_and_private_hdrs",
+    srcs = [
+        ":private_hdrs",
+        ":public_hdrs",
+    ],
+)
+
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        ":public_and_private_hdrs",
+        ":srcs",
+    ],
+)
+
 erlang_app(
     name = "erlang_app",
-    all_srcs = [":all_srcs"],
+    srcs = [":all_srcs"],
     app_name = "seshat",
     beam_files = [":beam_files"],
     extra_apps = [
         "crypto",
         "sasl",
     ],
-    public_hdrs = [],
 )
 
 test_erlang_app(
     name = "test_erlang_app",
-    all_srcs = [":all_srcs"],
+    srcs = [":all_srcs"],
     app_name = "seshat",
     beam_files = [":test_beam_files"],
     extra_apps = [
         "crypto",
         "sasl",
     ],
-    public_hdrs = [],
 )
 
 alias(

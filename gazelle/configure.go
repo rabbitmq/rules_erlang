@@ -15,6 +15,8 @@ const (
 	generateBeamFilesMacroDirective      = "erlang_generate_beam_files_macro"
 	generateSkipRules                    = "erlang_skip_rules"
 	localAppsDirsDirective               = "erlang_apps_dirs"
+	erlangAppDepDirective                = "erlang_app_dep"
+	erlangAppExtraAppDirective           = "erlang_app_extra_app"
 )
 
 var (
@@ -76,6 +78,8 @@ type ErlangConfig struct {
 	IgnoredDeps                 MutableSet[string]
 	GenerateBeamFilesMacro      bool
 	GenerateSkipRules           MutableSet[string]
+	Deps                        MutableSet[string]
+	ExtraApps                   MutableSet[string]
 }
 
 type ErlangConfigs map[string]*ErlangConfig
@@ -90,6 +94,8 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		IgnoredDeps:                 defaultIgnoredDeps,
 		GenerateBeamFilesMacro:      false,
 		GenerateSkipRules:           NewMutableSet[string](),
+		Deps:                        NewMutableSet[string](),
+		ExtraApps:                   NewMutableSet[string](),
 	}
 }
 
@@ -111,6 +117,8 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			IgnoredDeps:                 Copy(parentConfig.IgnoredDeps),
 			GenerateBeamFilesMacro:      parentConfig.GenerateBeamFilesMacro,
 			GenerateSkipRules:           Copy(parentConfig.GenerateSkipRules),
+			Deps:                        NewMutableSet[string](),
+			ExtraApps:                   NewMutableSet[string](),
 		}
 	}
 	return configs[rel]
@@ -140,6 +148,8 @@ func (erlang *Configurer) KnownDirectives() []string {
 		generateBeamFilesMacroDirective,
 		generateSkipRules,
 		localAppsDirsDirective,
+		erlangAppDepDirective,
+		erlangAppExtraAppDirective,
 	}
 }
 
@@ -167,8 +177,14 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				rules := strings.Split(d.Value, ",")
 				erlangConfig.GenerateSkipRules.Add(rules...)
 			case localAppsDirsDirective:
-				dirs := filepath.SplitList(d.Value)
+				dirs := Map(func(d string) string {
+					return filepath.Join(rel, d)
+				}, filepath.SplitList(d.Value))
 				erlangConfig.AppsDirs.Add(dirs...)
+			case erlangAppDepDirective:
+				erlangConfig.Deps.Add(d.Value)
+			case erlangAppExtraAppDirective:
+				erlangConfig.ExtraApps.Add(d.Value)
 			}
 		}
 		// Log(c, "    ", erlangConfig)

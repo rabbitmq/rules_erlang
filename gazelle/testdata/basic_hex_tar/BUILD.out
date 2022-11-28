@@ -117,7 +117,7 @@ filegroup(
 )
 
 filegroup(
-    name = "all_srcs",
+    name = "srcs",
     srcs = [
         "src/aten.app.src",
         "src/aten.erl",
@@ -130,9 +130,49 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "private_hdrs",
+    srcs = [],
+)
+
+filegroup(
+    name = "public_hdrs",
+    srcs = [],
+)
+
+filegroup(
+    name = "priv",
+    srcs = [],
+)
+
+filegroup(
+    name = "licenses",
+    srcs = [
+        "LICENSE",
+        "LICENSE-APACHE2",
+        "LICENSE-MPL-RabbitMQ",
+    ],
+)
+
+filegroup(
+    name = "public_and_private_hdrs",
+    srcs = [
+        ":private_hdrs",
+        ":public_hdrs",
+    ],
+)
+
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        ":public_and_private_hdrs",
+        ":srcs",
+    ],
+)
+
 erlang_app(
     name = "erlang_app",
-    all_srcs = [":all_srcs"],
+    srcs = [":all_srcs"],
     app_description = "Erlang node failure detector",
     app_name = "aten",
     app_version = "0.5.8",
@@ -142,7 +182,6 @@ erlang_app(
         "LICENSE-APACHE2",
         "LICENSE-MPL-RabbitMQ",
     ],
-    public_hdrs = [],
 )
 
 alias(

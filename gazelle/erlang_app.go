@@ -20,6 +20,7 @@ type erlangApp struct {
 	AppSrc       MutableSet[string]
 	TestSrcs     MutableSet[string]
 	TestHdrs     MutableSet[string]
+	Priv         MutableSet[string]
 	LicenseFiles MutableSet[string]
 	ErlcOpts     []string
 	TestErlcOpts []string
@@ -35,6 +36,7 @@ func newErlangApp() *erlangApp {
 		AppSrc:       NewMutableSet[string](),
 		TestSrcs:     NewMutableSet[string](),
 		TestHdrs:     NewMutableSet[string](),
+		Priv:         NewMutableSet[string](),
 		LicenseFiles: NewMutableSet[string](),
 		ErlcOpts:     []string{"+debug_info"},
 		TestErlcOpts: []string{"+debug_info", "-DTEST=1"},
@@ -62,6 +64,8 @@ func (erlangApp *erlangApp) addFile(f string) {
 		} else if strings.HasSuffix(f, ".hrl") {
 			erlangApp.TestHdrs.Add(f)
 		}
+	} else if strings.HasPrefix(f, "priv/") {
+		erlangApp.Priv.Add(f)
 	} else if strings.HasPrefix(f, "LICENSE") {
 		erlangApp.LicenseFiles.Add(f)
 	}
@@ -233,10 +237,45 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 	return
 }
 
-func (erlangApp *erlangApp) allSrcsRule() *rule.Rule {
+func (erlangApp *erlangApp) allSrcsRules() []*rule.Rule {
+	var rules []*rule.Rule
+
+	srcs := rule.NewRule("filegroup", "srcs")
+	srcs.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare))
+	rules = append(rules, srcs)
+
+	private_hdrs := rule.NewRule("filegroup", "private_hdrs")
+	private_hdrs.SetAttr("srcs", erlangApp.PrivateHdrs.Values(strings.Compare))
+	rules = append(rules, private_hdrs)
+
+	public_hdrs := rule.NewRule("filegroup", "public_hdrs")
+	public_hdrs.SetAttr("srcs", erlangApp.PublicHdrs.Values(strings.Compare))
+	rules = append(rules, public_hdrs)
+
+	priv := rule.NewRule("filegroup", "priv")
+	priv.SetAttr("srcs", erlangApp.Priv.Values(strings.Compare))
+	rules = append(rules, priv)
+
+	licenses := rule.NewRule("filegroup", "licenses")
+	licenses.SetAttr("srcs", erlangApp.LicenseFiles.Values(strings.Compare))
+	rules = append(rules, licenses)
+
+	hdrs := rule.NewRule("filegroup", "public_and_private_hdrs")
+	hdrs.SetAttr("srcs", []string{
+		":private_hdrs",
+		":public_hdrs",
+	})
+	rules = append(rules, hdrs)
+
 	all_srcs := rule.NewRule("filegroup", "all_srcs")
-	all_srcs.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.PrivateHdrs, erlangApp.PublicHdrs, erlangApp.AppSrc).Values(strings.Compare))
-	return all_srcs
+	all_srcs.SetAttr("srcs", []string{
+		":srcs",
+		":public_and_private_hdrs",
+		// ":priv",
+	})
+	rules = append(rules, all_srcs)
+
+	return rules
 }
 
 func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
@@ -253,8 +292,10 @@ func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	}
 
 	r.SetAttr("beam_files", []string{":beam_files"})
-	r.SetAttr("public_hdrs", erlangApp.PublicHdrs.Values(strings.Compare))
-	r.SetAttr("all_srcs", []string{":all_srcs"})
+	if !erlangApp.PublicHdrs.IsEmpty() {
+		r.SetAttr("hdrs", []string{":public_hdrs"})
+	}
+	r.SetAttr("srcs", []string{":all_srcs"})
 
 	if explicitFiles && !erlangApp.LicenseFiles.IsEmpty() {
 		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
@@ -280,8 +321,10 @@ func (erlangApp *erlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 	}
 
 	r.SetAttr("beam_files", []string{":test_beam_files"})
-	r.SetAttr("public_hdrs", Union(erlangApp.PublicHdrs, erlangApp.PrivateHdrs).Values(strings.Compare))
-	r.SetAttr("all_srcs", []string{":all_srcs"})
+	if !erlangApp.PublicHdrs.IsEmpty() || !erlangApp.PrivateHdrs.IsEmpty() {
+		r.SetAttr("hdrs", []string{":public_and_private_hdrs"})
+	}
+	r.SetAttr("srcs", []string{":all_srcs"})
 
 	if explicitFiles && !erlangApp.LicenseFiles.IsEmpty() {
 		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))

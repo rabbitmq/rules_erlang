@@ -51,16 +51,16 @@ def _erlang_app(
         stamp = None,
         # new attrs for gazelle extension
         beam_files = None,
-        public_hdrs = None,
-        all_srcs = None,
+        hdrs = None,
+        srcs = None,
         test = False):
-    if beam_files != None or public_hdrs != None or all_srcs != None:
+    if beam_files != None or hdrs != None or srcs != None:
         if erlc_opts != None:
-            fail("Cannot set beam_files, public_hdrs or all_srcs AND erlc_opts")
+            fail("Cannot set beam_files, hdrs or srcs AND erlc_opts")
         if len(extra_hdrs) > 0:
-            fail("Cannot set beam_files, public_hdrs or all_srcs AND extra_hdrs")
+            fail("Cannot set beam_files, hdrs or srcs AND extra_hdrs")
         if len(extra_srcs) > 0:
-            fail("Cannot set beam_files, public_hdrs or all_srcs AND extra_srcs")
+            fail("Cannot set beam_files, hdrs or srcs AND extra_srcs")
         if len(build_deps) > 0:
             print("Warning: build_deps are ignored when beam_files is set")
         if len(runtime_deps) > 0:
@@ -85,25 +85,27 @@ def _erlang_app(
             })
 
     if beam_files == None:
-        srcs = native.glob(
+        only_srcs = native.glob(
             ["src/**/*.erl"],
             exclude = extra_srcs,
         ) + extra_srcs
-        hdrs = native.glob(
-            ["include/**/*.hrl", "src/**/*.hrl"],
+        private_hdrs = native.glob(
+            ["src/**/*.hrl"],
             exclude = extra_hdrs,
-        ) + extra_hdrs
+        )
         public_hdrs = native.glob(
             ["include/**/*.hrl"],
             exclude = extra_hdrs,
         ) + extra_hdrs
-        all_srcs = hdrs + srcs
+
+        srcs = only_srcs + private_hdrs + public_hdrs
+        hdrs = public_hdrs if not test else private_hdrs + public_hdrs
 
         erlang_bytecode(
             name = "beam_files" if not test else "test_beam_files",
             app_name = app_name,
-            hdrs = hdrs,
-            srcs = srcs,
+            hdrs = private_hdrs + public_hdrs,
+            srcs = only_srcs,
             erlc_opts = erlc_opts,
             dest = "ebin" if not test else "test",
             deps = build_deps + deps,
@@ -137,7 +139,7 @@ def _erlang_app(
     erlang_app_info(
         name = name,
         app_name = app_name,
-        hdrs = public_hdrs,
+        hdrs = hdrs,
         app = app,
         beam = beam_files,
         priv = native.glob(["priv/**/*"]) + extra_priv,
@@ -145,7 +147,7 @@ def _erlang_app(
             ["LICENSE*"],
             exclude = extra_license_files,
         ) + extra_license_files,
-        srcs = all_srcs,
+        srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
         testonly = test,
