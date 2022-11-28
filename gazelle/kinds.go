@@ -117,7 +117,6 @@ var erlangKinds = map[string]rule.KindInfo{
 		MergeableAttrs: map[string]bool{
 			"compiled_suites": true,
 			"eunit_mods":      true,
-			"data":            true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,

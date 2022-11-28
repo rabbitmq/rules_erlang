@@ -444,10 +444,13 @@ func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 		tm := moduleName(testSrc)
 		if !strings.HasSuffix(tm, "_SUITE") {
 			label := ":" + ruleNameForTestSrc(strings.TrimSuffix(testSrc, ".erl")+".beam")
-			if !strings.HasSuffix(tm, "_tests") {
-				modMap[tm] = label
-			}
-			if _, present := modMap[strings.TrimSuffix(tm, "_tests")]; !present {
+			if strings.HasSuffix(tm, "_tests") {
+				if _, ok := modMap[strings.TrimSuffix(tm, "_tests")]; ok {
+					modMap[strings.TrimSuffix(tm, "_tests")] = label
+				} else {
+					modMap[tm] = label
+				}
+			} else {
 				modMap[tm] = label
 			}
 		}
