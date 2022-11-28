@@ -13,6 +13,7 @@ const (
 	behaviourSourceDirective             = "erlang_behaviour_source_lib"
 	excludeWhenRuleOfKindExistsDirective = "erlang_exclude_when_rule_of_kind_exists"
 	generateBeamFilesMacroDirective      = "erlang_generate_beam_files_macro"
+	generateTestBeamUnconditionally      = "erlang_always_generate_test_beam_files"
 	generateSkipRules                    = "erlang_skip_rules"
 	localAppsDirsDirective               = "erlang_apps_dirs"
 	erlangAppDepDirective                = "erlang_app_dep"
@@ -70,32 +71,34 @@ var (
 )
 
 type ErlangConfig struct {
-	Rel                         string
-	Verbose                     bool
-	AppsDirs                    MutableSet[string]
-	BehaviourMappings           map[string]string
-	ExcludeWhenRuleOfKindExists MutableSet[string]
-	IgnoredDeps                 MutableSet[string]
-	GenerateBeamFilesMacro      bool
-	GenerateSkipRules           MutableSet[string]
-	Deps                        MutableSet[string]
-	ExtraApps                   MutableSet[string]
+	Rel                             string
+	Verbose                         bool
+	AppsDirs                        MutableSet[string]
+	BehaviourMappings               map[string]string
+	ExcludeWhenRuleOfKindExists     MutableSet[string]
+	IgnoredDeps                     MutableSet[string]
+	GenerateBeamFilesMacro          bool
+	GenerateTestBeamUnconditionally bool
+	GenerateSkipRules               MutableSet[string]
+	Deps                            MutableSet[string]
+	ExtraApps                       MutableSet[string]
 }
 
 type ErlangConfigs map[string]*ErlangConfig
 
 func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 	return &ErlangConfig{
-		Rel:                         rel,
-		Verbose:                     erlang.verbose,
-		AppsDirs:                    NewMutableSet(erlang.appsDir),
-		BehaviourMappings:           make(map[string]string),
-		ExcludeWhenRuleOfKindExists: NewMutableSet[string](),
-		IgnoredDeps:                 defaultIgnoredDeps,
-		GenerateBeamFilesMacro:      false,
-		GenerateSkipRules:           NewMutableSet[string](),
-		Deps:                        NewMutableSet[string](),
-		ExtraApps:                   NewMutableSet[string](),
+		Rel:                             rel,
+		Verbose:                         erlang.verbose,
+		AppsDirs:                        NewMutableSet(erlang.appsDir),
+		BehaviourMappings:               make(map[string]string),
+		ExcludeWhenRuleOfKindExists:     NewMutableSet[string](),
+		IgnoredDeps:                     defaultIgnoredDeps,
+		GenerateBeamFilesMacro:          false,
+		GenerateTestBeamUnconditionally: false,
+		GenerateSkipRules:               NewMutableSet[string](),
+		Deps:                            NewMutableSet[string](),
+		ExtraApps:                       NewMutableSet[string](),
 	}
 }
 
@@ -109,16 +112,17 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 		}
 		parentConfig := configs[parentRel]
 		configs[rel] = &ErlangConfig{
-			Rel:                         rel,
-			Verbose:                     parentConfig.Verbose,
-			AppsDirs:                    Copy(parentConfig.AppsDirs),
-			BehaviourMappings:           CopyMap(parentConfig.BehaviourMappings),
-			ExcludeWhenRuleOfKindExists: Copy(parentConfig.ExcludeWhenRuleOfKindExists),
-			IgnoredDeps:                 Copy(parentConfig.IgnoredDeps),
-			GenerateBeamFilesMacro:      parentConfig.GenerateBeamFilesMacro,
-			GenerateSkipRules:           Copy(parentConfig.GenerateSkipRules),
-			Deps:                        NewMutableSet[string](),
-			ExtraApps:                   NewMutableSet[string](),
+			Rel:                             rel,
+			Verbose:                         parentConfig.Verbose,
+			AppsDirs:                        Copy(parentConfig.AppsDirs),
+			BehaviourMappings:               CopyMap(parentConfig.BehaviourMappings),
+			ExcludeWhenRuleOfKindExists:     Copy(parentConfig.ExcludeWhenRuleOfKindExists),
+			IgnoredDeps:                     Copy(parentConfig.IgnoredDeps),
+			GenerateBeamFilesMacro:          parentConfig.GenerateBeamFilesMacro,
+			GenerateTestBeamUnconditionally: parentConfig.GenerateTestBeamUnconditionally,
+			GenerateSkipRules:               Copy(parentConfig.GenerateSkipRules),
+			Deps:                            NewMutableSet[string](),
+			ExtraApps:                       NewMutableSet[string](),
 		}
 	}
 	return configs[rel]
@@ -147,6 +151,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		excludeWhenRuleOfKindExistsDirective,
 		generateBeamFilesMacroDirective,
 		generateSkipRules,
+		generateTestBeamUnconditionally,
 		localAppsDirsDirective,
 		erlangAppDepDirective,
 		erlangAppExtraAppDirective,
@@ -173,6 +178,9 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 			case generateBeamFilesMacroDirective:
 				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
 				erlangConfig.GenerateBeamFilesMacro = enabled
+			case generateTestBeamUnconditionally:
+				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
+				erlangConfig.GenerateTestBeamUnconditionally = enabled
 			case generateSkipRules:
 				rules := strings.Split(d.Value, ",")
 				erlangConfig.GenerateSkipRules.Add(rules...)
