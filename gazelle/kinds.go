@@ -84,7 +84,10 @@ var erlangKinds = map[string]rule.KindInfo{
 		ResolveAttrs:    map[string]bool{},
 	},
 	erlangBytecodeKind: {
-		MatchAttrs: []string{"srcs"},
+		MatchAttrs: []string{
+			"srcs",
+			"outs",
+		},
 		NonEmptyAttrs: map[string]bool{
 			"beam":       true,
 			"deps":       true,
