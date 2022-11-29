@@ -227,8 +227,12 @@ jobs:
         otp-version: 25
     - name: TEST GAZELLE PACKAGE
       run: |
+        cat << EOF >> user.bazelrc
+          build --color=yes
+        EOF
+
         bazelisk test //gazelle:all \
-          --color=yes
+          || bazelisk test //gazelle:all
     - name: RESOVLE TEST LOGS PATH
       if: always()
       run: |
