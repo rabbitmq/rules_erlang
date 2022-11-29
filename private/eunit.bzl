@@ -11,6 +11,20 @@ load(
     "maybe_install_erlang",
 )
 
+def short_dirname(f):
+    if f.is_directory:
+        return f.short_path
+    else:
+        return f.short_path.rpartition("/")[0]
+
+def package_relative_dirnames(package, files):
+    dirs = []
+    for f in files:
+        rel = short_dirname(f).removeprefix(package + "/")
+        if rel not in dirs:
+            dirs.append(rel)
+    return dirs
+
 def _to_atom_list(l):
     return "[" + ",".join(["'{}'".format(i) for i in l]) + "]"
 
@@ -22,6 +36,10 @@ def _impl(ctx):
     package = ctx.label.package
 
     erl_libs_path = path_join(package, erl_libs_dir)
+
+    pa_args = []
+    for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
+        pa_args.extend(["-pa", dir])
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
@@ -48,13 +66,14 @@ fi
 
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
-    -pa test \\
+    {pa_args} \\
     -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()"
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
             erl_libs_path = erl_libs_path,
             package = package,
+            pa_args = " ".join(pa_args),
             eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
@@ -76,12 +95,13 @@ if NOT [{package}] == [] cd {package}
 
 echo on
 "{erlang_home}\\bin\\erl" +A1 -noinput -boot no_dot_erlang ^
-    -pa test ^
+    {pa_args} ^
     -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
 """.format(
             package = package,
             erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path,
+            pa_args = " ".join(pa_args),
             eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
