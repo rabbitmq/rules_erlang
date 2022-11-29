@@ -67,21 +67,10 @@ func init() {
 	}()
 }
 
-type erlParser struct {
-	// The value of language.GenerateArgs.Config.RepoRoot.
-	repoRoot string
-	// The value of language.GenerateArgs.Rel.
-	relPackagePath string
-}
+type erlParser struct{}
 
-func newErlParser(
-	repoRoot string,
-	relPackagePath string,
-) *erlParser {
-	return &erlParser{
-		repoRoot:       repoRoot,
-		relPackagePath: relPackagePath,
-	}
+func newErlParser() *erlParser {
+	return &erlParser{}
 }
 
 func (p *erlParser) parseErl(erlFilePath string) (*erlAttrs, error) {
@@ -115,7 +104,7 @@ type erlAttrs struct {
 }
 
 func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
-	hrlFilePath := filepath.Join(p.repoRoot, p.relPackagePath, hrlFile)
+	hrlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, hrlFile)
 	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -126,7 +115,7 @@ func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erl
 	}
 	for _, include := range hrlAttrs.Include {
 		erlAttrs.Include = append(erlAttrs.Include, include)
-		path := erlangApp.pathFor(include)
+		path := erlangApp.pathFor(hrlFile, include)
 		if path != "" {
 			err := p.parseHrl(path, erlangApp, erlAttrs)
 			if err != nil {
@@ -138,7 +127,8 @@ func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erl
 	return nil
 }
 
-func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erlAttrs, error) {
+func (p *erlParser) deepParseErl(erlFile string, erlangApp *erlangApp) (*erlAttrs, error) {
+	erlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, erlFile)
 	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
 		return &erlAttrs{}, nil
 	}
@@ -149,7 +139,7 @@ func (p *erlParser) deepParseErl(erlFilePath string, erlangApp *erlangApp) (*erl
 	}
 
 	for _, include := range rootAttrs.Include {
-		path := erlangApp.pathFor(include)
+		path := erlangApp.pathFor(erlFile, include)
 		if path != "" {
 			err := p.parseHrl(path, erlangApp, rootAttrs)
 			if err != nil {

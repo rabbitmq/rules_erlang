@@ -94,14 +94,14 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	return false
 }
 
-func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) (string, error) {
+func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) error {
 	Log(args.Config, "    Importing Hex.pm archive from", filepath.Join(args.Config.RepoRoot, args.Rel))
 
 	hexMetadataParser := newHexMetadataParser(args.Config.RepoRoot, args.Rel)
 
 	hexMetadata, err := hexMetadataParser.parseHexMetadata(hexMetadataFilename)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	Log(args.Config, "    hexMetadata:", hexMetadata)
@@ -133,31 +133,34 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	// extract to a temporary directory
 	extractedContentsDir, err := ioutil.TempDir("", hexMetadata.Name)
 	if err != nil {
-		return "", err
+		return err
 	}
 	Log(args.Config, "    tempDir:", extractedContentsDir)
+	erlangApp.RepoRoot = extractedContentsDir
 
 	hexContentsArchivePath := filepath.Join(args.Config.RepoRoot, args.Rel, hexContentsArchiveFilename)
 	Log(args.Config, "    hexContentsArchivePath:", hexContentsArchivePath)
 	err = ExtractTarGz(hexContentsArchivePath, extractedContentsDir)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if Contains(hexMetadata.BuildTools, "rebar3") {
-		err = importRebar(args, extractedContentsDir, erlangApp)
+		err = importRebar(args, erlangApp)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	return extractedContentsDir, nil
+	return nil
 }
 
-func importRebar(args language.GenerateArgs, rebarAppPath string, erlangApp *erlangApp) error {
-	Log(args.Config, "    Importing Rebar from", filepath.Join(rebarAppPath, rebarConfigFilename))
+func importRebar(args language.GenerateArgs, erlangApp *erlangApp) error {
+	rebarAppPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel)
+	Log(args.Config, "    Importing Rebar from",
+		filepath.Join(rebarAppPath, rebarConfigFilename))
 
-	rebarConfigParser := newRebarConfigParser(rebarAppPath, "")
+	rebarConfigParser := newRebarConfigParser(erlangApp.RepoRoot, erlangApp.Rel)
 	rebarConfig, err := rebarConfigParser.parseRebarConfig(rebarConfigFilename)
 	if err != nil {
 		return err
@@ -376,7 +379,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	var result language.GenerateResult
 	result.Gen = make([]*rule.Rule, 0)
 
-	erlangApp := newErlangApp()
+	erlangApp := newErlangApp(args.Config.RepoRoot, args.Rel)
 	for dep := range erlangConfig.Deps {
 		erlangApp.Deps.Add(dep)
 	}
@@ -385,17 +388,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlangApp.ExtraApps.Add(app)
 	}
 
-	sourcePrefix := filepath.Join(args.Config.RepoRoot, args.Rel)
-
 	if isHexPmTar(args.RegularFiles) {
-		prefix, err := importHexPmTar(args, &result, erlangApp)
+		err := importHexPmTar(args, &result, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
-		defer os.RemoveAll(prefix)
-		sourcePrefix = prefix
+		defer os.RemoveAll(erlangApp.RepoRoot)
 	} else if isRebar(args.RegularFiles) {
-		err := importRebar(args, sourcePrefix, erlangApp)
+		err := importRebar(args, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -423,7 +423,8 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 			erlangApp.ExtraApps.Subtract(erlangApp.Deps)
 		} else {
-			erlangApp.Name = filepath.Base(sourcePrefix)
+			erlangApp.Name = filepath.Base(filepath.Join(
+				erlangApp.RepoRoot, erlangApp.Rel))
 		}
 	}
 
@@ -447,13 +448,13 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	Log(args.Config, "    Analyzing sources...")
 
-	erlParser := newErlParser(args.Config.RepoRoot, args.Rel)
+	erlParser := newErlParser()
 
-	beamFilesRules, testBeamFilesRules := erlangApp.beamFilesRules(args, erlParser, sourcePrefix)
+	beamFilesRules, testBeamFilesRules := erlangApp.beamFilesRules(args, erlParser)
 
 	allSrcsRules := erlangApp.allSrcsRules()
 
-	testDirBeamFilesRules := erlangApp.testDirBeamFilesRules(args, erlParser, sourcePrefix)
+	testDirBeamFilesRules := erlangApp.testDirBeamFilesRules(args, erlParser)
 
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
@@ -549,7 +550,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	explicitFiles := sourcePrefix != filepath.Join(args.Config.RepoRoot, args.Rel)
+	explicitFiles := erlangApp.RepoRoot != args.Config.RepoRoot
 	erlang_app := erlangApp.erlangAppRule(explicitFiles)
 	if !erlangConfig.GenerateSkipRules.Contains(erlang_app.Kind()) {
 		result.Gen = append(result.Gen, erlang_app)

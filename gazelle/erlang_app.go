@@ -11,6 +11,8 @@ import (
 )
 
 type erlangApp struct {
+	RepoRoot     string
+	Rel          string
 	Name         string
 	Description  string
 	Version      string
@@ -28,8 +30,10 @@ type erlangApp struct {
 	ExtraApps    MutableSet[string]
 }
 
-func newErlangApp() *erlangApp {
+func newErlangApp(repoRoot, rel string) *erlangApp {
 	return &erlangApp{
+		RepoRoot:     repoRoot,
+		Rel:          rel,
 		Srcs:         NewMutableSet[string](),
 		PrivateHdrs:  NewMutableSet[string](),
 		PublicHdrs:   NewMutableSet[string](),
@@ -94,7 +98,12 @@ func ruleName(f string) string {
 	return strings.ReplaceAll(r, ".", "_")
 }
 
-func (erlangApp *erlangApp) pathFor(include string) string {
+func (erlangApp *erlangApp) pathFor(from, include string) string {
+	directPath := filepath.Join(filepath.Dir(from), include)
+	if erlangApp.PrivateHdrs.Contains(directPath) || erlangApp.PublicHdrs.Contains(directPath) {
+		return directPath
+	}
+
 	privatePath := filepath.Join("src", include)
 	if erlangApp.PrivateHdrs.Contains(privatePath) {
 		return privatePath
@@ -133,13 +142,13 @@ func (erlangApp *erlangApp) testErlcOptsRule() *rule.Rule {
 	return test_erlc_opts
 }
 
-func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser, sourcePrefix string) (beamFilesRules, testBeamFilesRules []*rule.Rule) {
+func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules, testBeamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	outs := NewMutableSet[string]()
 	testOuts := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		actualPath := filepath.Join(sourcePrefix, src)
+		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
 		erlAttrs, err := erlParser.deepParseErl(actualPath, erlangApp)
@@ -149,10 +158,13 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 
 		theseHdrs := NewMutableSet[string]()
 		for _, include := range erlAttrs.Include {
-			path := erlangApp.pathFor(include)
+			path := erlangApp.pathFor(src, include)
 			if path != "" {
 				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
+			} else {
+				Log(args.Config, "            ignoring include",
+					include, "as it cannot be found")
 			}
 		}
 
@@ -345,10 +357,14 @@ func ruleNameForTestSrc(f string) string {
 	}
 }
 
-func (erlangApp *erlangApp) testPathFor(include string) string {
-	standardPath := erlangApp.pathFor(include)
+func (erlangApp *erlangApp) testPathFor(from, include string) string {
+	standardPath := erlangApp.pathFor(from, include)
 	if standardPath != "" {
 		return standardPath
+	}
+	directPath := filepath.Join(filepath.Dir(from), include)
+	if erlangApp.TestHdrs.Contains(directPath) {
+		return directPath
 	}
 	testPath := filepath.Join("test", include)
 	if erlangApp.PrivateHdrs.Contains(testPath) {
@@ -357,13 +373,13 @@ func (erlangApp *erlangApp) testPathFor(include string) string {
 	return ""
 }
 
-func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser *erlParser, sourcePrefix string) []*rule.Rule {
+func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	var beamFilesRules []*rule.Rule
 	outs := NewMutableSet[string]()
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
-		actualPath := filepath.Join(sourcePrefix, src)
+		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
 		erlAttrs, err := erlParser.deepParseErl(actualPath, erlangApp)
 		if err != nil {
@@ -372,10 +388,13 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 
 		theseHdrs := NewMutableSet[string]()
 		for _, include := range erlAttrs.Include {
-			path := erlangApp.testPathFor(include)
+			path := erlangApp.testPathFor(src, include)
 			if path != "" {
 				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
+			} else {
+				Log(args.Config, "            ignoring include",
+					include, "as it cannot be found")
 			}
 		}
 
