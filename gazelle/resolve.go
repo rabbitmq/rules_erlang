@@ -71,6 +71,8 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 	}
 }
 
+var resolveableKinds = NewMutableSet(erlangBytecodeKind, erlangAppKind, testErlangAppKind, pltKind)
+
 func (erlang *Resolver) Resolve(
 	c *config.Config,
 	ix *resolve.RuleIndex,
@@ -80,7 +82,7 @@ func (erlang *Resolver) Resolve(
 	from label.Label,
 ) {
 	// Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name))
-	if r.Kind() == erlangBytecodeKind || r.Kind() == erlangAppKind || r.Kind() == testErlangAppKind {
+	if resolveableKinds.Contains(r.Kind()) {
 		resolveErlangDeps(c, from.Pkg, r)
 	}
 }

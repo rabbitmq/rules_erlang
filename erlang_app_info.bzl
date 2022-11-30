@@ -2,6 +2,7 @@ ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",
     fields = {
         "app_name": "Name of the erlang application",
+        "extra_apps": "Extra applications in the applications key of the .app file",
         "include": "Public header files",
         "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
@@ -40,6 +41,7 @@ def _impl(ctx):
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
+            extra_apps = ctx.attr.extra_apps,
             include = ctx.files.hdrs,
             beam = compiled_files,
             priv = ctx.files.priv,
@@ -57,6 +59,7 @@ erlang_app_info = rule(
     implementation = _impl,
     attrs = {
         "app_name": attr.string(mandatory = True),
+        "extra_apps": attr.string_list(),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(allow_files = [".beam", ".appup"]),

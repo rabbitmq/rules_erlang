@@ -139,6 +139,7 @@ def _erlang_app(
     erlang_app_info(
         name = name,
         app_name = app_name,
+        extra_apps = extra_apps,
         hdrs = hdrs,
         app = app,
         beam = beam_files,

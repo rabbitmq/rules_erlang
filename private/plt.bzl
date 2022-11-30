@@ -12,17 +12,28 @@ def _impl(ctx):
     logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
     home_dir = ctx.actions.declare_directory(ctx.label.name + "_home")
 
-    apps_args = ""
-    if len(ctx.attr.apps) > 0:
-        apps_args = "--apps " + " ".join(ctx.attr.apps)
-
     if ctx.file.plt == None:
         source_plt_arg = "--build_plt"
     else:
         source_plt_arg = "--plt " + ctx.file.plt.path + " --no_check_plt --add_to_plt"
 
+    apps = []
+    if ctx.attr.for_target != None:
+        apps.extend(ctx.attr.for_target[ErlangAppInfo].extra_apps)
+    if ctx.attr.for_target == None or ctx.attr.apps != DEFAULT_PLT_APPS:
+        apps.extend(ctx.attr.apps)
+    apps_args = ""
+    if len(apps) > 0:
+        apps_args = "--apps " + " ".join(apps)
+
+    deps = []
+    if ctx.attr.for_target != None:
+        deps.extend(flat_deps(ctx.attr.for_target[ErlangAppInfo].deps + ctx.attr.deps))
+    else:
+        deps.extend(flat_deps(ctx.attr.deps))
+
     files = []
-    for dep in flat_deps(ctx.attr.deps):
+    for dep in deps:
         lib_info = dep[ErlangAppInfo]
         files.extend(lib_info.beam)
 
@@ -86,6 +97,9 @@ plt = rule(
             default = DEFAULT_PLT_APPS,
         ),
         "deps": attr.label_list(
+            providers = [ErlangAppInfo],
+        ),
+        "for_target": attr.label(
             providers = [ErlangAppInfo],
         ),
     },

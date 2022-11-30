@@ -231,10 +231,7 @@ xref(
 
 plt(
     name = "deps_plt",
-    apps = [
-        "crypto",
-        "sasl",
-    ],
+    for_target = ":erlang_app",
     plt = "//:base_plt",
 )
 

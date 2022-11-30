@@ -124,14 +124,14 @@ var erlangKinds = map[string]rule.KindInfo{
 		},
 	},
 	pltKind: {
-		MatchAttrs: []string{},
+		MatchAttrs: []string{"for_target"},
 		NonEmptyAttrs: map[string]bool{
-			"plt": true,
+			"plt":        true,
+			"for_target": true,
 		},
 		SubstituteAttrs: map[string]bool{},
 		MergeableAttrs: map[string]bool{
 			"apps": true,
-			"deps": true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
@@ -145,8 +145,10 @@ var erlangKinds = map[string]rule.KindInfo{
 			"plt_apps": true,
 		},
 		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs:  map[string]bool{},
-		ResolveAttrs:    map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"plt": true,
+		},
+		ResolveAttrs: map[string]bool{},
 	},
 	eunitKind: {
 		MatchAny: true,

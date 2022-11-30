@@ -467,12 +467,7 @@ func (erlangApp *erlangApp) xrefRule() *rule.Rule {
 func (erlangApp *erlangApp) appPltRule() *rule.Rule {
 	r := rule.NewRule(pltKind, "deps_plt")
 	r.SetAttr("plt", "//:base_plt")
-	if !erlangApp.ExtraApps.IsEmpty() {
-		r.SetAttr("apps", erlangApp.ExtraApps.Values(strings.Compare))
-	}
-	if !erlangApp.Deps.IsEmpty() {
-		r.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
-	}
+	r.SetAttr("for_target", ":erlang_app")
 	return r
 }
 
