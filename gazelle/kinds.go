@@ -10,6 +10,8 @@ const (
 	erlangAppKind          = "erlang_app"
 	testErlangAppKind      = "test_erlang_app"
 	xrefKind               = "xref"
+	pltKind                = "plt"
+	dialyzeKind            = "dialyze"
 	eunitKind              = "eunit"
 	ctTestKind             = "ct_test"
 	assertSuitesKind       = "assert_suites2"
@@ -121,6 +123,31 @@ var erlangKinds = map[string]rule.KindInfo{
 			"additional_libs": true,
 		},
 	},
+	pltKind: {
+		MatchAttrs: []string{},
+		NonEmptyAttrs: map[string]bool{
+			"plt": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs: map[string]bool{
+			"apps": true,
+			"deps": true,
+		},
+		ResolveAttrs: map[string]bool{
+			"deps": true,
+		},
+	},
+	dialyzeKind: {
+		MatchAttrs: []string{"target"},
+		NonEmptyAttrs: map[string]bool{
+			"plt":      true,
+			"target":   true,
+			"plt_apps": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs:  map[string]bool{},
+		ResolveAttrs:    map[string]bool{},
+	},
 	eunitKind: {
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{
@@ -221,6 +248,13 @@ var erlangLoads = []rule.LoadInfo{
 		Name: "@rules_erlang//:xref2.bzl",
 		Symbols: []string{
 			xrefKind,
+		},
+	},
+	{
+		Name: "@rules_erlang//:dialyze.bzl",
+		Symbols: []string{
+			pltKind,
+			dialyzeKind,
 		},
 	},
 	{

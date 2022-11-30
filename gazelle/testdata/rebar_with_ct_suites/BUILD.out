@@ -1,6 +1,7 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
 load("@rules_erlang//:xref2.bzl", "xref")
+load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
 load("@rules_erlang//:eunit2.bzl", "eunit")
 load("@rules_erlang//:ct.bzl", "assert_suites2", "ct_test")
 load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files", "test_suite_beam_files")
@@ -37,6 +38,11 @@ erlc_opts(
     visibility = [":__subpackages__"],
 )
 
+plt(
+    name = "base_plt",
+    visibility = [":__subpackages__"],
+)
+
 all_beam_files(name = "all_beam_files")
 
 all_test_beam_files(name = "all_test_beam_files")
@@ -68,6 +74,17 @@ alias(
 
 xref(
     name = "xref",
+    target = ":erlang_app",
+)
+
+plt(
+    name = "deps_plt",
+    plt = "//:base_plt",
+)
+
+dialyze(
+    name = "dialyze",
+    plt = ":deps_plt",
     target = ":erlang_app",
 )
 

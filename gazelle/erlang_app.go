@@ -129,17 +129,23 @@ func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
 }
 
 func (erlangApp *erlangApp) erlcOptsRule() *rule.Rule {
-	erlc_opts := rule.NewRule("erlc_opts", erlcOptsRuleName)
+	erlc_opts := rule.NewRule(erlcOptsKind, erlcOptsRuleName)
 	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
 	erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return erlc_opts
 }
 
 func (erlangApp *erlangApp) testErlcOptsRule() *rule.Rule {
-	test_erlc_opts := rule.NewRule("erlc_opts", testErlcOptsRuleName)
+	test_erlc_opts := rule.NewRule(erlcOptsKind, testErlcOptsRuleName)
 	test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
 	test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return test_erlc_opts
+}
+
+func (erlangApp *erlangApp) basePltRule() *rule.Rule {
+	plt := rule.NewRule(pltKind, "base_plt")
+	plt.SetAttr("visibility", []string{":__subpackages__"})
+	return plt
 }
 
 func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules, testBeamFilesRules []*rule.Rule) {
@@ -455,6 +461,25 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 func (erlangApp *erlangApp) xrefRule() *rule.Rule {
 	r := rule.NewRule(xrefKind, "xref")
 	r.SetAttr("target", ":erlang_app")
+	return r
+}
+
+func (erlangApp *erlangApp) appPltRule() *rule.Rule {
+	r := rule.NewRule(pltKind, "deps_plt")
+	r.SetAttr("plt", "//:base_plt")
+	if !erlangApp.ExtraApps.IsEmpty() {
+		r.SetAttr("apps", erlangApp.ExtraApps.Values(strings.Compare))
+	}
+	if !erlangApp.Deps.IsEmpty() {
+		r.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
+	}
+	return r
+}
+
+func (erlangApp *erlangApp) dialyzeRule() *rule.Rule {
+	r := rule.NewRule(dialyzeKind, "dialyze")
+	r.SetAttr("target", ":erlang_app")
+	r.SetAttr("plt", ":deps_plt")
 	return r
 }
 
