@@ -9,6 +9,7 @@ const (
 	erlangBytecodeKind     = "erlang_bytecode"
 	erlangAppKind          = "erlang_app"
 	testErlangAppKind      = "test_erlang_app"
+	xrefKind               = "xref"
 	eunitKind              = "eunit"
 	ctTestKind             = "ct_test"
 	assertSuitesKind       = "assert_suites2"
@@ -109,6 +110,17 @@ var erlangKinds = map[string]rule.KindInfo{
 	},
 	erlangAppKind:     erlangAppKindInfo,
 	testErlangAppKind: erlangAppKindInfo,
+	xrefKind: {
+		MatchAttrs: []string{"target"},
+		NonEmptyAttrs: map[string]bool{
+			"target": true,
+		},
+		SubstituteAttrs: map[string]bool{},
+		MergeableAttrs:  map[string]bool{},
+		ResolveAttrs: map[string]bool{
+			"additional_libs": true,
+		},
+	},
 	eunitKind: {
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{
@@ -203,6 +215,12 @@ var erlangLoads = []rule.LoadInfo{
 		Symbols: []string{
 			erlangAppKind,
 			testErlangAppKind,
+		},
+	},
+	{
+		Name: "@rules_erlang//:xref2.bzl",
+		Symbols: []string{
+			xrefKind,
 		},
 	},
 	{

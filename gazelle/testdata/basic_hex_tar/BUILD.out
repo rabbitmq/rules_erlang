@@ -1,5 +1,6 @@
 load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+load("@rules_erlang//:xref2.bzl", "xref")
 load("@rules_erlang//:ct.bzl", "assert_suites2")
 load("@rules_erlang//:untar.bzl", "untar")
 
@@ -188,6 +189,11 @@ alias(
     name = "aten",
     actual = ":erlang_app",
     visibility = ["//visibility:public"],
+)
+
+xref(
+    name = "xref",
+    target = ":erlang_app",
 )
 
 assert_suites2()

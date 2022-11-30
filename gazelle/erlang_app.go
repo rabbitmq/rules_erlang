@@ -452,6 +452,12 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	return beamFilesRules
 }
 
+func (erlangApp *erlangApp) xrefRule() *rule.Rule {
+	r := rule.NewRule(xrefKind, "xref")
+	r.SetAttr("target", ":erlang_app")
+	return r
+}
+
 func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 	// eunit_mods is the list of source modules, plus any test module which is
 	// not among the source modules with a "_tests" suffix appended

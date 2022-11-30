@@ -574,6 +574,12 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		result.Imports = append(result.Imports, alias.PrivateAttr(config.GazelleImportsKey))
 	}
 
+	xrefRule := erlangApp.xrefRule()
+	if !erlangConfig.GenerateSkipRules.Contains(xrefRule.Kind()) {
+		result.Gen = append(result.Gen, xrefRule)
+		result.Imports = append(result.Imports, xrefRule.PrivateAttr(config.GazelleImportsKey))
+	}
+
 	if erlangApp.hasTestSuites() {
 		eunitRule := erlangApp.eunitRule()
 		if !erlangConfig.GenerateSkipRules.Contains(eunitRule.Kind()) {
