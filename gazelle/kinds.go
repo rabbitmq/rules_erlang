@@ -34,6 +34,7 @@ var erlangAppKindInfo = rule.KindInfo{
 		"app_name":        true,
 		"app_version":     true,
 		"app_description": true,
+		"app_env":         true,
 		"visibility":      true,
 	},
 	SubstituteAttrs: map[string]bool{},
