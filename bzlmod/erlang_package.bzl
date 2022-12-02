@@ -15,6 +15,7 @@ load(
 HexPackage = provider(fields = [
     "module",
     "name",
+    "pkg",
     "version",
     "sha256",
     "build_file_content",
@@ -45,6 +46,7 @@ def hex_tree(
         ctx,
         module = None,
         name = None,
+        pkg = None,
         version = None):
     log(ctx, "Fetching release info for {}@{} from hex.pm".format(name, version))
     release_info = hex_release_info(ctx, name, version)
@@ -61,6 +63,7 @@ def hex_tree(
     return HexPackage(
         module = module,
         name = name,
+        pkg = pkg,
         version = version,
         sha256 = sha256,
         build_file_content = "",
@@ -74,6 +77,7 @@ def hex_package(
         ctx,
         module = None,
         name = None,
+        pkg = None,
         version = None,
         sha256 = None,
         build_file_content = None,
@@ -81,6 +85,7 @@ def hex_package(
     return HexPackage(
         module = module,
         name = name,
+        pkg = pkg,
         version = version,
         sha256 = sha256,
         build_file_content = build_file_content,
@@ -165,7 +170,7 @@ def _hex_package_repo(ctx, hex_package):
     if hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
-            package_name = hex_package.name,
+            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = hex_package.build_file_content,
@@ -179,7 +184,7 @@ def _hex_package_repo(ctx, hex_package):
 
         hex_archive(
             name = hex_package.name,
-            package_name = hex_package.name,
+            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(

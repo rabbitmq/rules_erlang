@@ -239,6 +239,7 @@ def _erlang_package(ctx):
                 ctx,
                 module = mod,
                 name = dep.name,
+                pkg = dep.pkg,
                 version = dep.version,
             ))
         for dep in mod.tags.hex_package:
@@ -246,6 +247,7 @@ def _erlang_package(ctx):
                 ctx,
                 module = mod,
                 name = dep.name,
+                pkg = dep.pkg,
                 version = dep.version,
                 sha256 = dep.sha256,
                 build_file_content = dep.build_file_content,
@@ -272,11 +274,13 @@ def _erlang_package(ctx):
 
 hex_package_tree_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
+    "pkg": attr.string(),
     "version": attr.string(mandatory = True),
 })
 
 hex_package_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
+    "pkg": attr.string(),
     "version": attr.string(mandatory = True),
     "sha256": attr.string(),
     "build_file_content": attr.string(),
