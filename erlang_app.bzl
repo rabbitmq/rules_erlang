@@ -62,6 +62,7 @@ def erlang_app(
 
     erlang_bytecode(
         name = "beam_files",
+        app_name = app_name,
         hdrs = hdrs,
         srcs = srcs,
         erlc_opts = erlc_opts,
@@ -143,6 +144,7 @@ def test_erlang_app(
 
     erlang_bytecode(
         name = "test_beam_files",
+        app_name = app_name,
         hdrs = hdrs,
         srcs = srcs,
         erlc_opts = erlc_opts,

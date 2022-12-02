@@ -21,8 +21,14 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def erl_libs_contents2(ctx, deps = [], headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
+def erl_libs_contents2(ctx, target_info = None, deps = [], headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
+    if headers and target_info != None:
+        dep_path = path_join(dir, target_info.app_name)
+        for hdr in target_info.include:
+            dest = ctx.actions.declare_file(path_join(dep_path, hdr.path))
+            ctx.actions.symlink(output = dest, target_file = hdr)
+            erl_libs_files.append(dest)
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
         dep_path = path_join(dir, lib_info.app_name)
