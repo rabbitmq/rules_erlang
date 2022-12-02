@@ -25,8 +25,16 @@ def _dirname(path):
 def _impl(ctx):
     erl_libs_dir = ctx.label.name + "_deps"
 
+    target = None
+    if ctx.attr.app_name != "":
+        target = ErlangAppInfo(
+            app_name = ctx.attr.app_name,
+            include = ctx.files.hdrs,
+        )
+
     erl_libs_files = erl_libs_contents(
         ctx,
+        target_info = target,
         transitive = False,
         headers = True,
         dir = erl_libs_dir,
@@ -49,6 +57,8 @@ def _impl(ctx):
     dest_dir = beam_files[0].dirname
 
     include_args = []
+    if erl_libs_path != "":
+        include_args.extend(["-I", erl_libs_path])
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 
@@ -86,14 +96,17 @@ fi
 
 if [ -n "$FIRST" ]; then
     "{erlang_home}"/bin/erlc \\
-        -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
+        -v {include_args} {pa_args} \\
+        -o {out_dir} {erlc_opts} \\
         $FIRST
     "{erlang_home}"/bin/erlc \\
-        -v {include_args} {pa_args} -pa {out_dir} -o {out_dir} {erlc_opts} \\
+        -v {include_args} {pa_args} -pa {out_dir} \\
+        -o {out_dir} {erlc_opts} \\
         $@
 else
     "{erlang_home}"/bin/erlc \\
-        -v {include_args} {pa_args} -o {out_dir} {erlc_opts} \\
+        -v {include_args} {pa_args} \\
+        -o {out_dir} {erlc_opts} \\
         $@
 fi
     """.format(
@@ -136,6 +149,7 @@ erlang_bytecode = rule(
             # rule.
             cfg = "target",
         ),
+        "app_name": attr.string(),
         "hdrs": attr.label_list(
             allow_files = [".hrl"],
         ),
