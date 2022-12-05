@@ -255,6 +255,10 @@ func mergeRule(src, dst *rule.Rule) {
 			dst.SetAttr("erlc_opts", src.Attr("erlc_opts"))
 		}
 
+		if src.Attr("app_name") != nil {
+			dst.SetAttr("app_name", src.Attr("app_name"))
+		}
+
 		mergeAttr(src, dst, "hdrs")
 		mergeAttr(src, dst, "beam")
 		mergeAttr(src, dst, "deps")
@@ -419,6 +423,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 
 			erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.AppSrc.Any()), ".app.src")
+			// TODO handle when the filename does not match the contents
 			props := (*dotApp)[erlangApp.Name]
 			for _, app := range props.Applications {
 				if !Contains([]string{"kernel", "stdlib"}, app) {

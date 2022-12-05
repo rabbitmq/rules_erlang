@@ -52,6 +52,7 @@ erlang_bytecode(
     name = "ebin_seshat_beam",
     srcs = ["src/seshat.erl"],
     outs = ["ebin/seshat.beam"],
+    app_name = "seshat",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -60,6 +61,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["src/seshat.erl"],
     outs = ["test/seshat.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 
@@ -67,6 +69,7 @@ erlang_bytecode(
     name = "ebin_seshat_app_beam",
     srcs = ["src/seshat_app.erl"],
     outs = ["ebin/seshat_app.beam"],
+    app_name = "seshat",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -75,6 +78,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["src/seshat_app.erl"],
     outs = ["test/seshat_app.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 
@@ -82,6 +86,7 @@ erlang_bytecode(
     name = "ebin_seshat_counters_server_beam",
     srcs = ["src/seshat_counters_server.erl"],
     outs = ["ebin/seshat_counters_server.beam"],
+    app_name = "seshat",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -90,6 +95,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["src/seshat_counters_server.erl"],
     outs = ["test/seshat_counters_server.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 
@@ -97,6 +103,7 @@ erlang_bytecode(
     name = "ebin_seshat_sup_beam",
     srcs = ["src/seshat_sup.erl"],
     outs = ["ebin/seshat_sup.beam"],
+    app_name = "seshat",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -105,6 +112,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["src/seshat_sup.erl"],
     outs = ["test/seshat_sup.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 

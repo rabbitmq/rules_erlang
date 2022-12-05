@@ -23,11 +23,19 @@ def _impl(ctx):
 
     erl_libs_dir = ctx.label.name + "_deps"
 
+    target = None
+    if ctx.attr.app_name != "":
+        target = ErlangAppInfo(
+            app_name = ctx.attr.app_name,
+            include = ctx.files.hdrs,
+        )
+
     # this actually just needs to be headers and behaviours, in the context of compiling,
     # though it must include the transitive headers and behaviors. Therefore this file
     # could have it's own optimized version of `erl_libs_contents`
     erl_libs_files = erl_libs_contents(
         ctx,
+        target_info = target,
         transitive = True,
         headers = True,
         dir = erl_libs_dir,
@@ -51,6 +59,8 @@ def _impl(ctx):
     out_dir = out_dirs[0]
 
     include_args = []
+    if erl_libs_path != "":
+        include_args.extend(["-I", erl_libs_path])
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 
@@ -110,6 +120,7 @@ mkdir -p {out_dir}
 erlang_bytecode = rule(
     implementation = _impl,
     attrs = {
+        "app_name": attr.string(),
         "hdrs": attr.label_list(
             allow_files = [".hrl"],
         ),

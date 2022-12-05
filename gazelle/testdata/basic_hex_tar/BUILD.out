@@ -65,6 +65,7 @@ erlang_bytecode(
     name = "ebin_aten_beam",
     srcs = ["src/aten.erl"],
     outs = ["ebin/aten.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -72,6 +73,7 @@ erlang_bytecode(
     name = "ebin_aten_app_beam",
     srcs = ["src/aten_app.erl"],
     outs = ["ebin/aten_app.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -79,6 +81,7 @@ erlang_bytecode(
     name = "ebin_aten_detect_beam",
     srcs = ["src/aten_detect.erl"],
     outs = ["ebin/aten_detect.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -86,6 +89,7 @@ erlang_bytecode(
     name = "ebin_aten_detector_beam",
     srcs = ["src/aten_detector.erl"],
     outs = ["ebin/aten_detector.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -93,6 +97,7 @@ erlang_bytecode(
     name = "ebin_aten_emitter_beam",
     srcs = ["src/aten_emitter.erl"],
     outs = ["ebin/aten_emitter.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -100,6 +105,7 @@ erlang_bytecode(
     name = "ebin_aten_sink_beam",
     srcs = ["src/aten_sink.erl"],
     outs = ["ebin/aten_sink.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -107,6 +113,7 @@ erlang_bytecode(
     name = "ebin_aten_sup_beam",
     srcs = ["src/aten_sup.erl"],
     outs = ["ebin/aten_sup.beam"],
+    app_name = "aten",
     erlc_opts = "//:erlc_opts",
 )
 

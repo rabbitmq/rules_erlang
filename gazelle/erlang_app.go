@@ -99,6 +99,10 @@ func ruleName(f string) string {
 }
 
 func (erlangApp *erlangApp) pathFor(from, include string) string {
+	if erlangApp.PrivateHdrs.Contains(include) || erlangApp.PublicHdrs.Contains(include) {
+		return include
+	}
+
 	directPath := filepath.Join(filepath.Dir(from), include)
 	if erlangApp.PrivateHdrs.Contains(directPath) || erlangApp.PublicHdrs.Contains(directPath) {
 		return directPath
@@ -157,7 +161,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(actualPath, erlangApp)
+		erlAttrs, err := erlParser.deepParseErl(src, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -178,9 +182,21 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		for _, include := range erlAttrs.IncludeLib {
 			parts := strings.Split(include, string(os.PathSeparator))
 			if len(parts) > 0 {
-				if !erlangConfig.IgnoredDeps[parts[0]] {
+				if parts[0] == erlangApp.Name {
+					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
+					if path != "" {
+						Log(args.Config, "            include_lib (self)", path)
+						theseHdrs.Add(path)
+					} else {
+						Log(args.Config, "            ignoring include_lib (self)",
+							include, "as it cannot be found")
+					}
+				} else if !erlangConfig.IgnoredDeps[parts[0]] {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
+				} else {
+					Log(args.Config, "            ignoring include_lib",
+						include, "as it is an ignorned (for deps) application")
 				}
 			}
 		}
@@ -208,6 +224,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		outs.Add(out)
 
 		erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(out))
+		erlang_bytecode.SetAttr("app_name", erlangApp.Name)
 		erlang_bytecode.SetAttr("srcs", []interface{}{src})
 		if !theseHdrs.IsEmpty() {
 			erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
@@ -227,6 +244,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		testOuts.Add(test_out)
 
 		test_erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(test_out))
+		test_erlang_bytecode.SetAttr("app_name", erlangApp.Name)
 		test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
 		if !theseHdrs.IsEmpty() {
 			test_erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))

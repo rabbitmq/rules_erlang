@@ -102,10 +102,11 @@ var erlangKinds = map[string]rule.KindInfo{
 		},
 		SubstituteAttrs: map[string]bool{},
 		MergeableAttrs: map[string]bool{
-			"srcs": true,
-			"hdrs": true,
-			"beam": true,
-			"outs": true,
+			"app_name": true,
+			"srcs":     true,
+			"hdrs":     true,
+			"beam":     true,
+			"outs":     true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
