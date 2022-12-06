@@ -211,6 +211,7 @@ var erlangKinds = map[string]rule.KindInfo{
 		},
 		SubstituteAttrs: map[string]bool{},
 		MergeableAttrs: map[string]bool{
+			"pkg":     true,
 			"version": true,
 		},
 	},

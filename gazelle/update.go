@@ -2,8 +2,6 @@ package erlang
 
 import (
 	"log"
-	"net/url"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -14,7 +12,7 @@ import (
 
 var importFuncs = map[string]func(args language.ImportReposArgs) language.ImportReposResult{
 	"metadata.config": importReposFromHexMetadata,
-	"rebar.config":    importReposFromRebarConfig,
+	"rebar.lock":      importReposFromRebarLock,
 }
 
 func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateReposResult {
@@ -51,35 +49,26 @@ func importReposFromHexMetadata(args language.ImportReposArgs) language.ImportRe
 	return language.ImportReposResult{Gen: gen}
 }
 
-func importReposFromRebarConfig(args language.ImportReposArgs) language.ImportReposResult {
+func importReposFromRebarLock(args language.ImportReposArgs) language.ImportReposResult {
 	dir, f := filepath.Split(args.Path)
 	parser := newRebarConfigParser(dir, "")
-	rebarConfig, err := parser.parseRebarConfig(f)
+	rebarLock, err := parser.parseRebarLock(f)
 	if err != nil {
 		log.Fatalf("ERROR: %v\n", err)
 	}
 
 	gen := []*rule.Rule{}
 
-	for _, dep := range rebarConfig.Deps {
-		u, err := url.Parse(dep["remote"])
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+	for _, pkg := range rebarLock.Pkgs {
+		// Should we pull the package somewhere, and run
+		// gazelle on the temp dir?
+
+		r := rule.NewRule(hexPmErlangAppKind, pkg.Name)
+		if pkg.Name != pkg.Pkg {
+			r.SetAttr("pkg", pkg.Pkg)
 		}
-		if dep["kind"] == "git" && u.Host == "github.com" {
-			org := path.Base(path.Dir(u.Path))
-			r := rule.NewRule(githubErlangAppKind, dep["name"])
-			r.SetAttr("org", org)
-			r.SetAttr("ref", dep["ref"])
-			r.SetAttr("version", dep["ref"])
-			r.SetAttr("erlc_opts", []string{
-				"+deterministic",
-				"+debug_info",
-			})
-			gen = append(gen, r)
-		} else {
-			Log(args.Config, "    Skipping", dep)
-		}
+		r.SetAttr("version", pkg.Version)
+		gen = append(gen, r)
 	}
 
 	return language.ImportReposResult{Gen: gen}

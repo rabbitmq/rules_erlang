@@ -113,3 +113,40 @@ type rebarConfig struct {
 	Deps    []map[string]string `json:"deps"`
 	ErlOpts *[]string           `json:"erl_opts"`
 }
+
+func (p *rebarConfigParser) parseRebarLock(lockFilename string) (*rebarLock, error) {
+	parserMutex.Lock()
+	defer parserMutex.Unlock()
+
+	lockFilePath := filepath.Join(p.repoRoot, p.relPackagePath, lockFilename)
+
+	encoder := json.NewEncoder(parserStdin)
+	if err := encoder.Encode(&lockFilePath); err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", err)
+	}
+
+	reader := bufio.NewReader(parserStdout)
+	data, err := reader.ReadBytes(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", err)
+	}
+
+	data = data[:len(data)-1]
+	var metadata rebarLock
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", err)
+	}
+
+	return &metadata, nil
+}
+
+type rebarLockPkg struct {
+	Name    string `json:"name"`
+	Pkg     string `json:"pkg"`
+	Version string `json:"version"`
+}
+
+type rebarLock struct {
+	Version string         `json:"version"`
+	Pkgs    []rebarLockPkg `json:"pkgs"`
+}

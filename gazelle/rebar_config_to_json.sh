@@ -37,7 +37,7 @@ mapify_dep({Name, Version}) ->
       kind => hex,
       version => Version}.
 
-conform(List) ->
+conformConfig(List) ->
     maps:map(
         fun
             (erl_opts, Opts) ->
@@ -49,9 +49,21 @@ conform(List) ->
         end,
         proplists:to_map(List)).
 
+mapify_pkg({Name, {pkg, Pkg, Version}, _}) ->
+    #{name => Name,
+      pkg => Pkg,
+      version => Version}.
+
+conformLock([{V, Pkgs} | _]) when is_list(Pkgs) ->
+    #{version => V,
+      pkgs => [mapify_pkg(P) || P <- Pkgs]}.
+
 parse(MetadataFile) ->
     {ok, Metadata} = file:consult(MetadataFile),
-    Map = conform(Metadata),
+    Map = case filename:basename(MetadataFile) of
+        "rebar.config" -> conformConfig(Metadata);
+        "rebar.lock" -> conformLock(Metadata)
+    end,
     %% io:format(standard_error, "Map: ~p~n", [Map]),
     to_json(Map).
 
