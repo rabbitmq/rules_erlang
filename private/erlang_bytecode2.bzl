@@ -78,8 +78,6 @@ if [ -n "{erl_libs_path}" ]; then
     export ERL_LIBS={erl_libs_path}
 fi
 
-mkdir -p {out_dir}
-
 "{erlang_home}"/bin/erlc \\
     -v {include_args} {pa_args} \\
     -o {out_dir} {erlc_opts} \\
