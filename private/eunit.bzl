@@ -17,10 +17,18 @@ def short_dirname(f):
     else:
         return f.short_path.rpartition("/")[0]
 
+def invert_package(package):
+    parts = package.split("/")
+    return "/".join([".." for p in parts])
+
 def package_relative_dirnames(package, files):
     dirs = []
     for f in files:
-        rel = short_dirname(f).removeprefix(package + "/")
+        sd = short_dirname(f)
+        if sd.startswith(package + "/"):
+            rel = sd.removeprefix(package + "/")
+        else:
+            rel = path_join(invert_package(package), sd)
         if rel not in dirs:
             dirs.append(rel)
     return dirs
