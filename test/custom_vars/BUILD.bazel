@@ -3,12 +3,7 @@ genrule(
     srcs = [],
     outs = ["custom_var"],
     cmd = 'echo "OTP_VERSION: $(OTP_VERSION)" > $@',
-    # genrule toolchains are not resolved in the same manner of
-    # custom rules, so we simulate it with select in this case
-    toolchains = select({
-        "@erlang_config//:erlang_external": ["@erlang_config//external:erlang"],
-        "@erlang_config//:erlang_internal": ["@erlang_config//internal:erlang"],
-    }),
+    toolchains = ["@rules_erlang//tools:erlang_vars"],
 )
 
 sh_test(

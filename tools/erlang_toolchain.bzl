@@ -27,6 +27,10 @@ erlang_toolchain = rule(
     },
     provides = [
         platform_common.ToolchainInfo,
+        # Instead of using this toolchain for a genrule,
+        # since toolchain resolution won't yet have applied,
+        # use @rules_erlang//tools:erlang_vars as a
+        # toolchain for genrule rules
         platform_common.TemplateVariableInfo,
     ],
 )
