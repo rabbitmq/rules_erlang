@@ -182,6 +182,10 @@ jobs:
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: "25.0"
     - name: BUILD
       working-directory: test
       id: before
