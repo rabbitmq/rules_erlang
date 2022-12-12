@@ -16,7 +16,7 @@ jobs:
         - "25.1"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -48,7 +48,7 @@ jobs:
         - "25.1"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -94,7 +94,7 @@ jobs:
         - "25.1"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -122,7 +122,7 @@ jobs:
         - "25.1"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE BAZEL
       working-directory: test
       run: |
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
