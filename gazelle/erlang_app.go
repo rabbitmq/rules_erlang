@@ -405,7 +405,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(actualPath, erlangApp)
+		erlAttrs, err := erlParser.deepParseErl(src, erlangApp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -429,6 +429,9 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 				if !erlangConfig.IgnoredDeps[parts[0]] {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
+				} else {
+					Log(args.Config, "            ignoring include_lib",
+						include, "as it is an ignorned (for deps) application")
 				}
 			}
 		}
