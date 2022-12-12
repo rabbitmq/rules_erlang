@@ -18,6 +18,8 @@ def short_dirname(f):
         return f.short_path.rpartition("/")[0]
 
 def invert_package(package):
+    if package == "":
+        return package
     parts = package.split("/")
     return "/".join([".." for p in parts])
 
