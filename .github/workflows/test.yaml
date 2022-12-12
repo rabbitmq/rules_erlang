@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +85,7 @@ jobs:
     #!     name: bazel-testlogs-${{matrix.otp}}
     #!     path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}
   test-bzlmod:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -142,7 +142,7 @@ jobs:
       run: |
         bazelisk test //...
   test-bzlmod-internal-erlang:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
@@ -178,7 +178,7 @@ jobs:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-host-erlang-change-detected:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
