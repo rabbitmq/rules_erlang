@@ -34,7 +34,7 @@ jobs:
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
@@ -80,7 +80,7 @@ jobs:
     #!     Write-Output "::set-output name=LOGS_PATH::$logs_path"
     #!   id: resolve-test-logs-path
     #! - name: CAPTURE TEST LOGS
-    #!   uses: actions/upload-artifact@v2
+    #!   uses: actions/upload-artifact@v3
     #!   with:
     #!     name: bazel-testlogs-${{matrix.otp}}
     #!     path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}
@@ -109,7 +109,7 @@ jobs:
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
@@ -173,7 +173,7 @@ jobs:
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
