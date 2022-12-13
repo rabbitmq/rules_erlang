@@ -108,9 +108,10 @@ func (p *erlParser) parseErl(erlFilePath string, test bool) (*erlAttrs, error) {
 }
 
 type erlAttrs struct {
-	IncludeLib []string `json:"include_lib"`
-	Include    []string `json:"include"`
-	Behaviour  []string `json:"behaviour"`
+	IncludeLib []string            `json:"include_lib"`
+	Include    []string            `json:"include"`
+	Behaviour  []string            `json:"behaviour"`
+	Call       map[string][]string `json:"call"`
 }
 
 func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, test bool, erlAttrs *erlAttrs) error {

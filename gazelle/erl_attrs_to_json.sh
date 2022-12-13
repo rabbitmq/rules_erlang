@@ -80,6 +80,34 @@ record_attr(E, _, include_lib, Path) ->
 record_attr(_, _, _, _) ->
     ok.
 
+record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, _Args}) ->
+    %% TODO: handle anonymous functions in _Args
+    ets:insert(E, {call, M, F});
+record_expression(_, {call, _, _, _} = _Call) ->
+    %% io:format(standard_error, "Ignoring Call: ~p~n", [Call]),
+    ok;
+record_expression(_, _) ->
+    ok.
+
+record_clause(_, {clause, _, [], _, []}) ->
+    ok;
+record_clause(E, {clause, N, [Arg | Rest], O, Expressions}) ->
+    case Arg of
+        {'fun' = Name, _, Clauses} ->
+            record_function(E, Name, Clauses);
+        _ ->
+            record_clause(E, {clause, N, Rest, O, Expressions})
+    end;
+record_clause(E, {clause, N, [], O, [Expression | Rest]}) ->
+    record_expression(E, Expression),
+    record_clause(E, {clause, N, [], O, Rest}).
+
+record_function(_, _, []) ->
+    ok;
+record_function(E, Name, [Clause | Rest]) ->
+    record_clause(E, Clause),
+    record_function(E, Name, Rest).
+
 note_form(_, _, {eof, _}) ->
     ok;
 note_form(E, File, {error, {_, epp, {include, lib, Dep}}}) ->
@@ -92,6 +120,9 @@ note_form(_, _, {error, _Reason}) ->
 note_form(E, File, {attribute, _, Key, Value} = _AbsData) ->
     %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
     record_attr(E, File, Key, Value);
+note_form(E, _, {function, _, Name, _, Clauses} = _AbsData) ->
+    %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
+    record_function(E, Name, Clauses);
 note_form(_, _, _AbsData) ->
     %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
     ok.
@@ -105,13 +136,27 @@ deps(E) ->
               Acc#{include := [Path | Include]};
           ({behaviour, Dep}, #{behaviour := Behaviours} = Acc) ->
               Acc#{behaviour := [Dep | Behaviours]};
+          ({call, M, F}, #{call := Calls0} = Acc) ->
+              Calls = maps:update_with(M,
+                                       fun(Fs) ->
+                                               case lists:member(F, Fs) of
+                                                   false ->
+                                                       [F | Fs];
+                                                   _ ->
+                                                       Fs
+                                               end
+                                       end,
+                                       [F],
+                                       Calls0),
+              Acc#{call := Calls};
           (_, Acc) ->
               Acc
       end,
       #{
         include_lib => [],
         include => [],
-        behaviour => []
+        behaviour => [],
+        call => #{}
        },
       E).
 
