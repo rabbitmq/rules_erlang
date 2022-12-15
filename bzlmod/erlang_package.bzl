@@ -217,7 +217,6 @@ def _git_package_repo(ctx, git_package):
                 name = git_package.name,
                 version = "",
                 deps = [],
-                make = ctx.which("make"),
             )],
         )
 
@@ -231,7 +230,7 @@ echo "Generating BUILD.bazel for {name}..."
 if [ ! -f BUILD.bazel ]; then
     if [ -f Makefile ]; then
         if [ -f erlang.mk ]; then
-            if [ -n "{make}" ]; then
+            if [ -n "${{MAKE:=make}}" ]; then
                 echo "\tAttempting auto-configure from erlang.mk files..."
 
                 cat << 'MK' > bazel-autobuild.mk
@@ -265,7 +264,7 @@ BUILD.bazel:
 	echo "$$BUILD_FILE_CONTENT" >> $@
 MK
                 cat bazel-autobuild.mk
-                {make} -f Makefile -f bazel-autobuild.mk BUILD.bazel
+                ${{MAKE}} -f Makefile -f bazel-autobuild.mk BUILD.bazel
             else
                 echo "Skipping erlang.mk import as make is unavailable"
             fi
