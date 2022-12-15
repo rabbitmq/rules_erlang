@@ -18,6 +18,7 @@ const (
 	localAppsDirsDirective               = "erlang_apps_dirs"
 	erlangAppDepDirective                = "erlang_app_dep"
 	erlangAppExtraAppDirective           = "erlang_app_extra_app"
+	erlangNoTestsDirective               = "erlang_no_tests"
 )
 
 var (
@@ -73,6 +74,7 @@ var (
 type ErlangConfig struct {
 	Rel                             string
 	Verbose                         bool
+	NoTests                         bool
 	AppsDirs                        MutableSet[string]
 	BehaviourMappings               map[string]string
 	ExcludeWhenRuleOfKindExists     MutableSet[string]
@@ -90,6 +92,7 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 	return &ErlangConfig{
 		Rel:                             rel,
 		Verbose:                         erlang.verbose,
+		NoTests:                         erlang.noTests,
 		AppsDirs:                        NewMutableSet(erlang.appsDir),
 		BehaviourMappings:               make(map[string]string),
 		ExcludeWhenRuleOfKindExists:     NewMutableSet[string](),
@@ -114,6 +117,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 		configs[rel] = &ErlangConfig{
 			Rel:                             rel,
 			Verbose:                         parentConfig.Verbose,
+			NoTests:                         parentConfig.NoTests,
 			AppsDirs:                        Copy(parentConfig.AppsDirs),
 			BehaviourMappings:               CopyMap(parentConfig.BehaviourMappings),
 			ExcludeWhenRuleOfKindExists:     Copy(parentConfig.ExcludeWhenRuleOfKindExists),
@@ -130,11 +134,13 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 
 type Configurer struct {
 	verbose bool
+	noTests bool
 	appsDir string
 }
 
 func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.BoolVar(&erlang.verbose, "verbose", false, "when true, the erlang extension will log additional output")
+	fs.BoolVar(&erlang.noTests, "no_tests", false, "when true, generates no rules associated with testing")
 	fs.StringVar(&erlang.appsDir, "default_apps_dir", "apps", "directory containing embedded applications in an umbrella project")
 }
 
@@ -155,6 +161,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		localAppsDirsDirective,
 		erlangAppDepDirective,
 		erlangAppExtraAppDirective,
+		erlangNoTestsDirective,
 	}
 }
 
@@ -193,6 +200,9 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				erlangConfig.Deps.Add(d.Value)
 			case erlangAppExtraAppDirective:
 				erlangConfig.ExtraApps.Add(d.Value)
+			case erlangNoTestsDirective:
+				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
+				erlangConfig.NoTests = enabled
 			}
 		}
 		// Log(c, "    ", erlangConfig)

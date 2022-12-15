@@ -9,7 +9,7 @@ def rules_erlang_internal_setup(
     bazel_skylib_workspace()
 
     go_rules_dependencies()
-    go_register_toolchains(version = "1.19.2")
+    go_register_toolchains(version = "1.19.3")
 
     gazelle_dependencies(
         go_repository_default_config = go_repository_default_config,

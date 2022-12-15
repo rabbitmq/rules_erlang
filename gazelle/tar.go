@@ -9,6 +9,15 @@ import (
 	"path/filepath"
 )
 
+func ExtractTar(archive string, dest string) error {
+	reader, err := os.Open(archive)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	return extractTar(reader, dest)
+}
+
 func ExtractTarGz(archive string, dest string) error {
 	reader, err := os.Open(archive)
 	if err != nil {
@@ -21,9 +30,13 @@ func ExtractTarGz(archive string, dest string) error {
 		return err
 	}
 	defer uncompressedStream.Close()
+	return extractTar(uncompressedStream, dest)
+}
 
-	tarReader := tar.NewReader(uncompressedStream)
+func extractTar(reader io.Reader, dest string) error {
+	tarReader := tar.NewReader(reader)
 	var header *tar.Header
+	var err error
 	for header, err = tarReader.Next(); err == nil; header, err = tarReader.Next() {
 		destPath := filepath.Join(dest, header.Name)
 		switch header.Typeflag {
@@ -50,7 +63,7 @@ func ExtractTarGz(archive string, dest string) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("ExtractTarGz: uknown type: %b in %s", header.Typeflag, header.Name)
+			return fmt.Errorf("ExtractTar: uknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
 	if err != io.EOF {

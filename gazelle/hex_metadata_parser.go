@@ -84,8 +84,8 @@ func newHexMetadataParser(
 }
 
 func (p *hexMetadataParser) parseHexMetadata(configFilename string) (*hexMetadata, error) {
-	parserMutex.Lock()
-	defer parserMutex.Unlock()
+	hexParserMutex.Lock()
+	defer hexParserMutex.Unlock()
 
 	configFilePath := filepath.Join(p.repoRoot, p.relPackagePath, configFilename)
 

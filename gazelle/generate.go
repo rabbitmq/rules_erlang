@@ -359,6 +359,16 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		Log(args.Config, "GenerateRules:", args.Rel, args.File)
 	}
 
+	// Log(args.Config, "   Config.Repos:", MapCat(
+	// 	func(r *rule.Rule) []string {
+	// 		if r.Kind() == "hex_pm_erlang_app" {
+	// 			return []string{r.Name()}
+	// 		}
+	// 		return []string{}
+	// 	},
+	// 	args.Config.Repos,
+	// ))
+
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 	// Log(args.Config, "    ", erlangConfig)
 

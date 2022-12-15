@@ -74,8 +74,8 @@ func newErlParser() *erlParser {
 }
 
 func (p *erlParser) parseErl(erlFilePath string) (*erlAttrs, error) {
-	parserMutex.Lock()
-	defer parserMutex.Unlock()
+	erlParserMutex.Lock()
+	defer erlParserMutex.Unlock()
 
 	encoder := json.NewEncoder(erlParserStdin)
 	if err := encoder.Encode(&erlFilePath); err != nil {

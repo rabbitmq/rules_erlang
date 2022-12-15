@@ -1,6 +1,6 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -sname dot_app_to_json -nocookie
+%%! -nocookie
 -mode(compile).
 
 -export([main/1]).

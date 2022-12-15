@@ -195,8 +195,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				} else {
-					Log(args.Config, "            ignoring include_lib",
-						include, "as it is an ignorned (for deps) application")
+					Log(args.Config, "            ignoring include_lib", include)
 				}
 			}
 		}
@@ -430,8 +429,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				} else {
-					Log(args.Config, "            ignoring include_lib",
-						include, "as it is an ignorned (for deps) application")
+					Log(args.Config, "            ignoring include_lib", include)
 				}
 			}
 		}

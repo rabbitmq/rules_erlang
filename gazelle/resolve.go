@@ -17,11 +17,27 @@ import (
 
 const languageName = "erlang"
 
+var resolveableKinds = NewMutableSet(erlangBytecodeKind, erlangAppKind, testErlangAppKind, pltKind)
+
 type Resolver struct{}
 
+// This won't get called for rules in the app.bzl macro file, at least
+// no automatically...
 func (erlang *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	// Log(c, "Imports:", f.Path)
-	return nil
+	Log(c, "Imports:", f.Path, r.Name(), "/", r.Kind())
+	var specs []resolve.ImportSpec
+	if resolveableKinds.Contains(r.Kind()) {
+		for _, dep := range r.AttrStrings("deps") {
+			if !strings.Contains(dep, ":") {
+				specs = append(specs, resolve.ImportSpec{
+					Lang: languageName,
+					Imp:  dep,
+				})
+			}
+		}
+	}
+	Log(c, "    Specs:", specs)
+	return specs
 }
 
 func (erlang *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
@@ -71,18 +87,17 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 	}
 }
 
-var resolveableKinds = NewMutableSet(erlangBytecodeKind, erlangAppKind, testErlangAppKind, pltKind)
-
 func (erlang *Resolver) Resolve(
 	c *config.Config,
 	ix *resolve.RuleIndex,
 	rc *repo.RemoteCache,
 	r *rule.Rule,
-	modulesRaw interface{},
+	imports interface{},
 	from label.Label,
 ) {
 	// Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name))
 	if resolveableKinds.Contains(r.Kind()) {
+		Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name), imports)
 		resolveErlangDeps(c, from.Pkg, r)
 	}
 }

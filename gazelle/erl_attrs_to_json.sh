@@ -1,6 +1,6 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -sname erl_attrs_to_json -nocookie
+%%! -nocookie
 -mode(compile).
 
 -export([main/1]).
