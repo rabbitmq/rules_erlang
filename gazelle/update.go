@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -28,7 +30,23 @@ var importFuncs = map[string]func(args language.ImportReposArgs) language.Import
 	"rebar.lock":      importReposFromRebarLock,
 }
 
-func ruleForHexPackage(config *config.Config, pkg, version string) (*rule.Rule, error) {
+func copyFile(src, dest string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+	_, err = io.Copy(destination, source)
+	return err
+}
+
+func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.Rule, error) {
 	nameDashVersion := pkg + "-" + version
 	downloadDir, err := ioutil.TempDir("", nameDashVersion)
 	if err != nil {
@@ -76,16 +94,39 @@ func ruleForHexPackage(config *config.Config, pkg, version string) (*rule.Rule, 
 		return nil, err
 	}
 
-	// Copy the BUILD.bazel from the project to this repo and reference
-	// it in the rule
+	buildFileName := "BUILD." + name
+	copyFile(
+		filepath.Join(extractedPackageDir, "BUILD.bazel"),
+		filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), buildFileName),
+	)
 
 	r := rule.NewRule(hexPmErlangAppKind, pkg)
-	// if pkg.Name != pkg.Pkg {
-	// 	r.SetAttr("pkg", pkg.Pkg)
-	// }
+	if name != pkg {
+		r.SetAttr("pkg", pkg)
+	}
 	r.SetAttr("version", version)
+	r.SetAttr("build_file", "@//:"+buildFileName)
 
 	return r, nil
+}
+
+func parseHexImportArg(imp string) (name, pkg, version string, err error) {
+	r := regexp.MustCompile(`(?P<Name>.*)=?hex\.pm/(?P<Pkg>[^@]+)@?(?P<Version>.*)`)
+	match := r.FindStringSubmatch(imp)
+	if len(match) == 4 {
+		name = match[1]
+		pkg = match[2]
+		version = match[3]
+		if name == "" {
+			name = pkg
+		}
+		if version == "" {
+			version = "latest"
+		}
+	} else {
+		err = fmt.Errorf("not a valid import string: %s", imp)
+	}
+	return
 }
 
 func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateReposResult {
@@ -94,52 +135,46 @@ func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateRep
 	result := language.UpdateReposResult{}
 
 	for _, imp := range args.Imports {
-		// TODO: allow name=hex.pm/pkg@version as well
-		if strings.HasPrefix(imp, "hex.pm/") {
-			pkg := strings.TrimPrefix(imp, "hex.pm/")
-			var version string
-			if strings.Contains(pkg, "@") {
-				parts := strings.SplitN(pkg, "@", 2)
-				pkg = parts[0]
-				version = parts[1]
-			} else {
-				Log(args.Config, "    will fetch latest", pkg, "from hex.pm")
-				var err error
-				version, err = LatestRelease(pkg)
-				if err != nil {
-					log.Fatalf("ERROR: %v\n", err)
-					continue
-				}
-			}
-			Log(args.Config, "    will fetch", pkg, version, "from hex.pm")
-			release, err := GetRelease(pkg, version)
+		name, pkg, version, err := parseHexImportArg(imp)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			continue
+		}
+		if version == "latest" {
+			Log(args.Config, "    checking latest", pkg)
+			var err error
+			version, err = LatestRelease(pkg)
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 				continue
 			}
+		}
 
-			r, err := ruleForHexPackage(args.Config, pkg, version)
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-				continue
-			}
-			result.Gen = append(result.Gen, r)
+		Log(args.Config, "    will fetch", pkg, version, "from hex.pm")
+		release, err := GetRelease(pkg, version)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			continue
+		}
 
-			if len(release.Requirements) > 0 {
-				fmt.Printf("%s@%s requirements:\n", pkg, version)
-				for _, req := range release.Requirements {
-					var optPart string
-					if req.Optional {
-						optPart = " (Optional)"
-					}
-					fmt.Printf("    %s %s%s\n", req.App, req.Requirement, optPart)
-					fmt.Println()
+		r, err := ruleForHexPackage(args.Config, name, pkg, version)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			continue
+		}
+		result.Gen = append(result.Gen, r)
+
+		if len(release.Requirements) > 0 {
+			fmt.Printf("%s@%s requirements:\n", pkg, version)
+			for _, req := range release.Requirements {
+				var optPart string
+				if req.Optional {
+					optPart = " (Optional)"
 				}
-				fmt.Println("If these requirements are not in the workspace, re-run 'gazelle update-repos hex.pm/[dep]@[version]' to add them.")	
+				fmt.Printf("    %s %s%s\n", req.App, req.Requirement, optPart)
+				fmt.Println()
 			}
-		} else {
-			Log(args.Config, "    ignoring", imp, "as its prefix is not recognized.")
-			Log(args.Config, "    only hex.pm/ is currently supported.")
+			fmt.Println("If these requirements are not in the workspace, re-run 'gazelle update-repos hex.pm/[dep]@[version]' to add them.")
 		}
 	}
 

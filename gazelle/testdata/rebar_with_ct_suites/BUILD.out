@@ -58,18 +58,18 @@ erlang_app(
     beam_files = [":beam_files"],
 )
 
+alias(
+    name = "rebar_with_ct_suites",
+    actual = ":erlang_app",
+    visibility = ["//visibility:public"],
+)
+
 test_erlang_app(
     name = "test_erlang_app",
     srcs = [":all_srcs"],
     hdrs = [":public_and_private_hdrs"],
     app_name = "rebar_with_ct_suites",
     beam_files = [":test_beam_files"],
-)
-
-alias(
-    name = "rebar_with_ct_suites",
-    actual = ":erlang_app",
-    visibility = ["//visibility:public"],
 )
 
 xref(

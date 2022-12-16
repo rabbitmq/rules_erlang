@@ -70,6 +70,12 @@ erlang_app(
     ],
 )
 
+alias(
+    name = "seshat",
+    actual = ":erlang_app",
+    visibility = ["//visibility:public"],
+)
+
 test_erlang_app(
     name = "test_erlang_app",
     srcs = [":all_srcs"],
@@ -79,12 +85,6 @@ test_erlang_app(
         "crypto",
         "sasl",
     ],
-)
-
-alias(
-    name = "seshat",
-    actual = ":erlang_app",
-    visibility = ["//visibility:public"],
 )
 
 xref(

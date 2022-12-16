@@ -452,10 +452,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		maybeAppendRule(erlangConfig, erlc_opts, &result)
 
 		test_erlc_opts := erlangApp.testErlcOptsRule()
-		maybeAppendRule(erlangConfig, test_erlc_opts, &result)
+		if !erlangConfig.NoTests {
+			maybeAppendRule(erlangConfig, test_erlc_opts, &result)
+		}
 
 		basePltRule := erlangApp.basePltRule()
-		maybeAppendRule(erlangConfig, basePltRule, &result)
+		if !erlangConfig.NoTests {
+			maybeAppendRule(erlangConfig, basePltRule, &result)
+		}
 	}
 
 	if erlangApp.Srcs.IsEmpty() {
@@ -512,10 +516,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
 			testBeamFilesCall := rule.NewRule(allTestBeamFilesKind, allTestBeamFilesKind)
-			maybeAppendRule(erlangConfig, testBeamFilesCall, &result)
+			if !erlangConfig.NoTests {
+				maybeAppendRule(erlangConfig, testBeamFilesCall, &result)
+			}
 
 			testSuitesBeamFilesCall := rule.NewRule(testSuiteBeamFilesKind, testSuiteBeamFilesKind)
-			maybeAppendRule(erlangConfig, testSuitesBeamFilesCall, &result)
+			if !erlangConfig.NoTests {
+				maybeAppendRule(erlangConfig, testSuitesBeamFilesCall, &result)
+			}
 		}
 
 		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
@@ -532,12 +540,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	} else {
 		for i := range beamFilesRules {
 			maybeAppendRule(erlangConfig, beamFilesRules[i], &result)
-			if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
+			if !erlangConfig.NoTests && (erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally) {
 				maybeAppendRule(erlangConfig, testBeamFilesRules[i], &result)
 			}
 		}
-		for _, r := range testDirBeamFilesRules {
-			maybeAppendRule(erlangConfig, r, &result)
+		if !erlangConfig.NoTests {
+			for _, r := range testDirBeamFilesRules {
+				maybeAppendRule(erlangConfig, r, &result)
+			}
 		}
 		for _, r := range allSrcsRules {
 			maybeAppendRule(erlangConfig, r, &result)
@@ -548,37 +558,38 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	erlang_app := erlangApp.erlangAppRule(explicitFiles)
 	maybeAppendRule(erlangConfig, erlang_app, &result)
 
-	if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
-		test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
-		maybeAppendRule(erlangConfig, test_erlang_app, &result)
-	}
-
 	alias := rule.NewRule("alias", erlangApp.Name)
 	alias.SetAttr("actual", ":erlang_app")
 	alias.SetAttr("visibility", []string{"//visibility:public"})
 	maybeAppendRule(erlangConfig, alias, &result)
 
-	xrefRule := erlangApp.xrefRule()
-	maybeAppendRule(erlangConfig, xrefRule, &result)
-
-	pltRule := erlangApp.appPltRule()
-	maybeAppendRule(erlangConfig, pltRule, &result)
-
-	dialyzeRule := erlangApp.dialyzeRule()
-	maybeAppendRule(erlangConfig, dialyzeRule, &result)
-
-	if erlangApp.hasTestSuites() {
-		eunitRule := erlangApp.eunitRule()
-		maybeAppendRule(erlangConfig, eunitRule, &result)
-
-		ctSuiteRules := erlangApp.ctSuiteRules()
-		for _, r := range ctSuiteRules {
-			maybeAppendRule(erlangConfig, r, &result)
+	if !erlangConfig.NoTests {
+		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
+			test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
+			maybeAppendRule(erlangConfig, test_erlang_app, &result)
 		}
-	}
 
-	assert_suites := rule.NewRule(assertSuitesKind, "")
-	maybeAppendRule(erlangConfig, assert_suites, &result)
+		xrefRule := erlangApp.xrefRule()
+		maybeAppendRule(erlangConfig, xrefRule, &result)
+
+		pltRule := erlangApp.appPltRule()
+		maybeAppendRule(erlangConfig, pltRule, &result)
+
+		dialyzeRule := erlangApp.dialyzeRule()
+		maybeAppendRule(erlangConfig, dialyzeRule, &result)
+
+		if erlangApp.hasTestSuites() {
+			eunitRule := erlangApp.eunitRule()
+			maybeAppendRule(erlangConfig, eunitRule, &result)
+
+			ctSuiteRules := erlangApp.ctSuiteRules()
+			for _, r := range ctSuiteRules {
+				maybeAppendRule(erlangConfig, r, &result)
+			}
+		}
+		assert_suites := rule.NewRule(assertSuitesKind, "")
+		maybeAppendRule(erlangConfig, assert_suites, &result)
+	}
 
 	// Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
 	// 	return r.Kind() + "/" + r.Name()

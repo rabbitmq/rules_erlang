@@ -2,6 +2,8 @@ load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app")
 load("@rules_erlang//:untar.bzl", "untar")
 
+# gazelle:erlang_no_tests
+
 untar(
     name = "contents",
     outs = [

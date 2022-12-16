@@ -22,7 +22,7 @@ var resolveableKinds = NewMutableSet(erlangBytecodeKind, erlangAppKind, testErla
 type Resolver struct{}
 
 // This won't get called for rules in the app.bzl macro file, at least
-// no automatically...
+// not automatically...
 func (erlang *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	Log(c, "Imports:", f.Path, r.Name(), "/", r.Kind())
 	var specs []resolve.ImportSpec
