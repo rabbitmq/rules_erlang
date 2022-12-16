@@ -51,7 +51,6 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	if err != nil {
 		return nil, err
 	}
-	// defer os.RemoveAll(downloadDir)
 
 	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar")
 	err = DownloadRelease(pkg, version, archivePath)
@@ -105,6 +104,8 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	}
 	r.SetAttr("version", version)
 	r.SetAttr("build_file", "@//:"+buildFileName)
+
+	defer os.RemoveAll(downloadDir)
 
 	return r, nil
 }
@@ -215,9 +216,6 @@ func importReposFromRebarLock(args language.ImportReposArgs) language.ImportRepo
 	gen := []*rule.Rule{}
 
 	for _, pkg := range rebarLock.Pkgs {
-		// Should we pull the package somewhere, and run
-		// gazelle on the temp dir?
-
 		r := rule.NewRule(hexPmErlangAppKind, pkg.Name)
 		if pkg.Name != pkg.Pkg {
 			r.SetAttr("pkg", pkg.Pkg)
