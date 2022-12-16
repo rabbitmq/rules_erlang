@@ -74,6 +74,10 @@ to_json(S) when is_binary(S) ->
     "\"" ++ binary_to_list(S) ++ "\"";
 to_json(A) when is_atom(A) ->
     "\"" ++ atom_to_list(A) ++ "\"";
+to_json(T) when is_tuple(T) ->
+    "\"" ++ string:replace(
+              lists:flatten(io_lib:format("~p", [T])),
+              "\"", "\\\"", all) ++ "\"";
 to_json([]) ->
     "[]";
 to_json(L) when is_list(L) ->
