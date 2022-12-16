@@ -142,6 +142,7 @@ set -x
     ${{FILTER}} \\
     -dir test {pa_args} \\
     -logdir "{log_dir}" \\
+    -hidden \\
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
@@ -219,6 +220,7 @@ echo on
     %FILTER% ^
     -dir test {pa_args} ^
     -logdir b: ^
+    -hidden ^
     {ct_hooks_args} ^
     -sname {sname}
 set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
