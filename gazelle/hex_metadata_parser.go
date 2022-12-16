@@ -118,13 +118,13 @@ type hexRequirement struct {
 }
 
 type hexMetadata struct {
-	App          string            `json:"app"`
-	BuildTools   []string          `json:"build_tools"`
-	Description  string            `json:"description"`
-	Files        []string          `json:"files"`
-	Licenses     []string          `json:"licenses"`
-	Links        map[string]string `json:"links"`
-	Name         string            `json:"name"`
-	Requirements []hexRequirement  `json:"requirements"`
-	Version      string            `json:"version"`
+	App          string           `json:"app"`
+	BuildTools   []string         `json:"build_tools"`
+	Description  string           `json:"description"`
+	Files        []string         `json:"files"`
+	Licenses     []string         `json:"licenses"`
+	Links        interface{}      `json:"links"`
+	Name         string           `json:"name"`
+	Requirements []hexRequirement `json:"requirements"`
+	Version      string           `json:"version"`
 }
