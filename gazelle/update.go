@@ -26,8 +26,7 @@ const (
 )
 
 var importFuncs = map[string]func(args language.ImportReposArgs) language.ImportReposResult{
-	"metadata.config": importReposFromHexMetadata,
-	"rebar.lock":      importReposFromRebarLock,
+	"rebar.lock": importReposFromRebarLock,
 }
 
 func copyFile(src, dest string) error {
@@ -129,53 +128,73 @@ func parseHexImportArg(imp string) (name, pkg, version string, err error) {
 	return
 }
 
+func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
+	name, pkg, version, err := parseHexImportArg(imp)
+	if err != nil {
+		// This is a soft error, where this importer just does not match
+		return nil, nil
+	}
+	if version == "latest" {
+		Log(config, "    checking latest", pkg)
+		var err error
+		version, err = LatestRelease(pkg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	Log(config, "    will fetch", pkg, version, "from hex.pm")
+	release, err := GetRelease(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := ruleForHexPackage(config, name, pkg, version)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(release.Requirements) > 0 {
+		fmt.Printf("%s@%s requirements:\n", pkg, version)
+		for _, req := range release.Requirements {
+			var optPart string
+			if req.Optional {
+				optPart = " (Optional)"
+			}
+			fmt.Printf("    %s %s%s\n", req.App, req.Requirement, optPart)
+			fmt.Println()
+		}
+		fmt.Println("If these requirements are not in the workspace, re-run 'gazelle update-repos hex.pm/[dep]@[version]' to add them.")
+	}
+
+	return r, nil
+}
+
 func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateReposResult {
 	Log(args.Config, "UpdateRepos:", args.Imports)
 
 	result := language.UpdateReposResult{}
 
 	for _, imp := range args.Imports {
-		name, pkg, version, err := parseHexImportArg(imp)
+		r, err := tryImportHex(args.Config, imp)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 			continue
 		}
-		if version == "latest" {
-			Log(args.Config, "    checking latest", pkg)
-			var err error
-			version, err = LatestRelease(pkg)
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-				continue
-			}
-		}
-
-		Log(args.Config, "    will fetch", pkg, version, "from hex.pm")
-		release, err := GetRelease(pkg, version)
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		if r != nil {
+			result.Gen = append(result.Gen, r)
 			continue
 		}
 
-		r, err := ruleForHexPackage(args.Config, name, pkg, version)
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
-			continue
-		}
-		result.Gen = append(result.Gen, r)
+		// TODO: support for github
 
-		if len(release.Requirements) > 0 {
-			fmt.Printf("%s@%s requirements:\n", pkg, version)
-			for _, req := range release.Requirements {
-				var optPart string
-				if req.Optional {
-					optPart = " (Optional)"
-				}
-				fmt.Printf("    %s %s%s\n", req.App, req.Requirement, optPart)
-				fmt.Println()
-			}
-			fmt.Println("If these requirements are not in the workspace, re-run 'gazelle update-repos hex.pm/[dep]@[version]' to add them.")
-		}
+		fmt.Println(string(colorRed))
+		fmt.Println("Invalid repository reference:", imp)
+		fmt.Println(string(colorReset))
+		fmt.Println("Allowed formats:")
+		fmt.Println("    hex.pm/pkg")
+		fmt.Println("    hex.pm/pkg@version")
+		fmt.Println("    name=hex.pm/pkg@version")
 	}
 
 	return result
@@ -183,31 +202,6 @@ func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateRep
 
 func (*erlangLang) CanImport(path string) bool {
 	return importFuncs[filepath.Base(path)] != nil
-}
-
-func importReposFromHexMetadata(args language.ImportReposArgs) language.ImportReposResult {
-	dir, f := filepath.Split(args.Path)
-	parser := newHexMetadataParser(dir, "")
-	hexMetadata, err := parser.parseHexMetadata(f)
-	if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
-	}
-
-	gen := []*rule.Rule{}
-
-	for _, req := range hexMetadata.Requirements {
-		if req.Repository == "hexpm" {
-			r := rule.NewRule(hexPmErlangAppKind, req.Name)
-			r.SetAttr("version", minVersion(req.Requirement))
-			r.SetAttr("erlc_opts", []string{
-				"+deterministic",
-				"+debug_info",
-			})
-			gen = append(gen, r)
-		}
-	}
-
-	return language.ImportReposResult{Gen: gen}
 }
 
 func importReposFromRebarLock(args language.ImportReposArgs) language.ImportReposResult {
