@@ -117,6 +117,7 @@ set -x
     ${{FILTER}} \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
     -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
+    -hidden \\
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
@@ -191,6 +192,7 @@ echo on
     %FILTER% ^
     -dir %dir% ^
     -logdir b: ^
+    -hidden ^
     {ct_hooks_args} ^
     -sname {sname}
 set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
