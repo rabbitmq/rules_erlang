@@ -1,3 +1,7 @@
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "BuildSettingInfo",
+)
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(":util.bzl", "erl_libs_contents")
 load(
@@ -49,6 +53,8 @@ def _impl(ctx):
 
     erl_libs_path = path_join(package, erl_libs_dir)
 
+    ct_logdir = ctx.attr._ct_logdir[BuildSettingInfo].value
+
     ct_hooks_args = ""
     if len(ctx.attr.ct_hooks) > 0:
         ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
@@ -62,6 +68,8 @@ def _impl(ctx):
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
             test_env_commands.append("export {}=\"{}\"".format(k, v))
+
+        log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
 
         output = ctx.actions.declare_file(ctx.label.name)
         script = """set -eo pipefail
@@ -110,13 +118,15 @@ if [ -n "{package}" ]; then
     cd {package}
 fi
 
+mkdir -p "{log_dir}"
+
 set -x
 "{erlang_home}"/bin/ct_run \\
     -no_auto_compile \\
     -noinput \\
     ${{FILTER}} \\
     -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
-    -logdir ${{TEST_UNDECLARED_OUTPUTS_DIR}} \\
+    -logdir "{log_dir}" \\
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
@@ -128,6 +138,7 @@ set -x
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
             dir = short_dirname(ctx.files.compiled_suites[0]),
+            log_dir = log_dir,
             ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
             test_env = "\n".join(test_env_commands),
@@ -136,6 +147,8 @@ set -x
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
             test_env_commands.append("set {}={}".format(k, v))
+
+        log_dir = ct_logdir if ct_logdir != "" else "%TEST_UNDECLARED_OUTPUTS_DIR%"
 
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
@@ -147,7 +160,7 @@ REM TEST_SRCDIR is provided by bazel but with unix directory separators
 set dir=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
 set dir=%dir:/=\\%
 
-set logdir=%TEST_UNDECLARED_OUTPUTS_DIR%
+set logdir={log_dir}
 set logdir=%logdir:/=\\%
 subst b: %logdir%
 
@@ -184,6 +197,8 @@ set FILTER=-suite {suite_name}
 
 if NOT [{package}] == [] cd {package}
 
+if not exist "b:" mkdir b:
+
 echo on
 "{erlang_home}\\bin\\ct_run" ^
     -no_auto_compile ^
@@ -205,6 +220,7 @@ exit /b %CT_RUN_ERRORLEVEL%
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
             dir = short_dirname(ctx.files.compiled_suites[0]),
+            log_dir = log_dir,
             ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
             test_env = "\n".join(test_env_commands),
@@ -234,6 +250,9 @@ exit /b %CT_RUN_ERRORLEVEL%
 ct_test = rule(
     implementation = _impl,
     attrs = {
+        "_ct_logdir": attr.label(
+            default = Label("//:ct_logdir"),
+        ),
         "shard_suite": attr.label(
             executable = True,
             cfg = "target",
