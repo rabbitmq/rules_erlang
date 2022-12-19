@@ -21,3 +21,9 @@ string_flag(
     build_setting_default = "",
     visibility = ["//visibility:public"],
 )
+
+string_flag(
+    name = "ct_logdir",
+    build_setting_default = "",
+    visibility = ["//visibility:public"],
+)
