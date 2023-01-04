@@ -38,6 +38,17 @@ def code_paths(dep):
         for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)
     ]
 
+# Calling ctx.expand_location with short_paths=True gives
+# "Error in expand_location: Rule in 'private' cannot use private API"
+def _expand_locations_short_paths(ctx, s):
+    expanded = ctx.expand_location(s, [])
+    if expanded != s:
+        if not ctx.attr.is_windows:
+            return expanded.replace(ctx.bin_dir.path, "$TEST_SRCDIR/$TEST_WORKSPACE")
+        else:
+            return expanded.replace(ctx.bin_dir.path, "%TEST_SRCDIR%/%TEST_WORKSPACE%")
+    return s
+
 def sname(ctx):
     return sanitize_sname("ct-{}-{}".format(
         ctx.label.package.rpartition("/")[-1],
@@ -67,7 +78,7 @@ def _impl(ctx):
     if not ctx.attr.is_windows:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("export {}=\"{}\"".format(k, v))
+            test_env_commands.append("export {}=\"{}\"".format(k, _expand_locations_short_paths(ctx, v)))
 
         log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
 
@@ -146,7 +157,7 @@ set -x
     else:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("set {}={}".format(k, v))
+            test_env_commands.append("set {}={}".format(k, _expand_locations_short_paths(ctx, v)))
 
         log_dir = ct_logdir if ct_logdir != "" else "%TEST_UNDECLARED_OUTPUTS_DIR%"
 
