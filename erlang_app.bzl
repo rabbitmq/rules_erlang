@@ -100,10 +100,7 @@ def erlang_app(
         ) + extra_hdrs,
         app = app,
         beam = [":beam_files"],
-        priv = native.glob(
-            ["priv/**/*"],
-            exclude = extra_priv,
-        ) + extra_priv,
+        priv = native.glob(["priv/**/*"]) + extra_priv,
         license_files = native.glob(
             ["LICENSE*"],
             exclude = extra_license_files,
