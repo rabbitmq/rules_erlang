@@ -425,6 +425,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	if erlangApp.Name == "" {
+		// TODO: add parsing of pre-built .app file
 		if !erlangApp.AppSrc.IsEmpty() {
 			dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
 			dotApp, err := dotAppParser.parseAppSrc(erlangApp.AppSrc.Any())

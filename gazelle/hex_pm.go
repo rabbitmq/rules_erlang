@@ -2,11 +2,8 @@ package erlang
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 )
 
@@ -72,26 +69,5 @@ func DownloadRelease(pkg, version, filepath string) error {
 		Path:   path.Join("tarballs", pkg+"-"+version+".tar"),
 	}
 
-	resp, err := http.Get(url.String())
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
-	}
-
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return Download(&url, filepath)
 }

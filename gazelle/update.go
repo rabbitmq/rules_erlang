@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -78,6 +79,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
 	cmd.Args = append(cmd.Args,
+		"--verbose",
 		"--no_tests",
 		"-repo_root", extractedPackageDir,
 		extractedPackageDir)
@@ -91,6 +93,10 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		}
 		return nil, err
 	}
+	err = ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
+	if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
 
 	buildFileName := "BUILD." + name
 	copyFile(
@@ -98,8 +104,8 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), buildFileName),
 	)
 
-	r := rule.NewRule(hexPmErlangAppKind, pkg)
-	if name != pkg {
+	r := rule.NewRule(hexPmErlangAppKind, name)
+	if pkg != name {
 		r.SetAttr("pkg", pkg)
 	}
 	r.SetAttr("version", version)
@@ -171,13 +177,122 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 	return r, nil
 }
 
+func parseGithubImportArg(imp string) (name, owner, repo, ref string, err error) {
+	r := regexp.MustCompile(`(?P<Name>.*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
+	match := r.FindStringSubmatch(imp)
+	if len(match) == 5 {
+		name = match[1]
+		owner = match[2]
+		repo = match[3]
+		ref = match[4]
+		if name == "" {
+			name = repo
+		}
+		if ref == "" {
+			ref = "main"
+		}
+	} else {
+		err = fmt.Errorf("not a valid import string: %s", imp)
+	}
+	return
+}
+
+func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
+	name, owner, repo, ref, err := parseGithubImportArg(imp)
+	if err != nil {
+		// This is a soft error, where this importer just does not match
+		return nil, nil
+	}
+	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
+	version := strings.TrimPrefix(path.Base(ref), "v")
+	nameDashVersion := repo + "-" + version
+	downloadDir, err := ioutil.TempDir("", nameDashVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar.gz")
+	err = DownloadRef(owner, repo, ref, archivePath)
+	if err != nil {
+		return nil, err
+	}
+
+	extractedPackageDir := filepath.Join(downloadDir, nameDashVersion)
+	Log(config, "    extracting to", extractedPackageDir)
+	// extract to downloadDir since the github archive will have a {name}-{version}
+	// folder in it already
+	err = ExtractTarGz(archivePath, downloadDir)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: add an optional flag to tell update-repos what to recurse with
+	gazelleRunfile, err := bazel.Runfile("gazelle")
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	cmd := exec.CommandContext(ctx, gazelleRunfile)
+
+	cmd.Args = append(cmd.Args,
+		"--verbose",
+		"--no_tests",
+		"-repo_root", extractedPackageDir,
+		extractedPackageDir)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("gazelle failed for", repo, "in", extractedPackageDir)
+		if err != nil {
+			fmt.Println(string(colorRed))
+			fmt.Println(bytes.NewBuffer(output).String())
+			fmt.Println(string(colorReset))
+		}
+		return nil, err
+	}
+	err = ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
+	if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
+
+	buildFileName := "BUILD." + name
+	copyFile(
+		filepath.Join(extractedPackageDir, "BUILD.bazel"),
+		filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), buildFileName),
+	)
+
+	r := rule.NewRule(githubErlangAppKind, name)
+	r.SetAttr("org", owner)
+	if repo != name {
+		r.SetAttr("repo", repo)
+	}
+	r.SetAttr("ref", ref)
+	r.SetAttr("version", version)
+	r.SetAttr("build_file", "@//:"+buildFileName)
+
+	defer os.RemoveAll(downloadDir)
+
+	return r, nil
+}
+
+func chain(config *config.Config, imp string, funcs ...func(*config.Config, string) (*rule.Rule, error)) (*rule.Rule, error) {
+	if len(funcs) == 0 {
+		return nil, nil
+	}
+	r, err := funcs[0](config, imp)
+	if r != nil || err != nil {
+		return r, err
+	}
+	return chain(config, imp, funcs[1:]...)
+}
+
 func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateReposResult {
 	Log(args.Config, "UpdateRepos:", args.Imports)
 
 	result := language.UpdateReposResult{}
 
 	for _, imp := range args.Imports {
-		r, err := tryImportHex(args.Config, imp)
+		r, err := chain(args.Config, imp, tryImportHex, tryImportGithub)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 			continue
@@ -187,15 +302,18 @@ func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateRep
 			continue
 		}
 
-		// TODO: support for github
-
 		fmt.Println(string(colorRed))
 		fmt.Println("Invalid repository reference:", imp)
 		fmt.Println(string(colorReset))
 		fmt.Println("Allowed formats:")
+
 		fmt.Println("    hex.pm/pkg")
 		fmt.Println("    hex.pm/pkg@version")
 		fmt.Println("    name=hex.pm/pkg@version")
+
+		fmt.Println("    github.com/owner/repo")
+		fmt.Println("    github.com/owner/repo@ref")
+		fmt.Println("    name=github.com/owner/repo@ref")
 	}
 
 	return result

@@ -50,6 +50,7 @@ func newErlangApp(repoRoot, rel string) *erlangApp {
 }
 
 func (erlangApp *erlangApp) addFile(f string) {
+	// TODO: handle pre-built ebin/ files, such as .app
 	if strings.HasPrefix(f, "src/") {
 		if strings.HasSuffix(f, ".erl") {
 			erlangApp.Srcs.Add(f)
