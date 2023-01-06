@@ -330,13 +330,13 @@ func macroFile(path string, defName string) (*rule.File, error) {
 	return macroFile, nil
 }
 
-func addNameArg(macroFile *rule.File) {
-	for _, s := range macroFile.File.Stmt {
+func addNameArg(file *rule.File, defName string) {
+	for _, s := range file.File.Stmt {
 		if defStmt, ok := s.(*build.DefStmt); ok {
-			if defStmt.Name == macroFile.DefName {
+			if defStmt.Name == defName {
 				nameAttr := &build.AssignExpr{
 					LHS: &build.Ident{Name: "name"},
-					RHS: &build.StringExpr{Value: macroFile.DefName},
+					RHS: &build.StringExpr{Value: defName},
 					Op:  "=",
 				}
 				defStmt.Params = []build.Expr{nameAttr}
@@ -490,7 +490,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		//       present in the macro. Therefore, we use our own "alias" of the
 		//       macro so that updates to the macro are stable
 		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", 1, beamFilesMacro)
-		addNameArg(beamFilesMacro)
 		beamFilesMacro.Save(appBzlFile)
 
 		beamFilesCall := rule.NewRule(allBeamFilesKind, allBeamFilesKind)
@@ -502,7 +501,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
-		addNameArg(testBeamFilesMacro)
 		testBeamFilesMacro.Save(appBzlFile)
 
 		testDirBeamFilesMacro, err := macroFile(appBzlFile, testSuiteBeamFilesKind)
@@ -511,7 +509,6 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, testDirBeamFilesMacro, testDirBeamFilesRules, appBzlFile)
-		addNameArg(testDirBeamFilesMacro)
 		testDirBeamFilesMacro.Save(appBzlFile)
 
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
@@ -532,8 +529,17 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
-		addNameArg(allSrcsMacro)
 		allSrcsMacro.Save(appBzlFile)
+
+		appBzl, err := rule.LoadFile(appBzlFile, "")
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+		addNameArg(appBzl, allBeamFilesKind)
+		addNameArg(appBzl, allTestBeamFilesKind)
+		addNameArg(appBzl, testSuiteBeamFilesKind)
+		addNameArg(appBzl, allSrcsKind)
+		appBzl.Save(appBzlFile)
 
 		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
 		maybeAppendRule(erlangConfig, allSrcsCall, &result)
