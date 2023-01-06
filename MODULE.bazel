@@ -37,6 +37,7 @@ use_repo(
     "com_github_google_go_cmp",
     "com_github_pelletier_go_toml",
     "com_github_pmezard_go_difflib",
+    "in_gopkg_yaml_v2",
     "org_golang_x_mod",
     "org_golang_x_sync",
     "org_golang_x_tools",

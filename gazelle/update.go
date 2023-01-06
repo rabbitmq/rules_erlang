@@ -48,7 +48,7 @@ func copyFile(src, dest string) error {
 
 func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.Rule, error) {
 	nameDashVersion := pkg + "-" + version
-	downloadDir, err := ioutil.TempDir("", nameDashVersion)
+	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +118,18 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	}
 	r.SetAttr("version", version)
 	r.SetAttr("build_file", "@//:"+buildFileName)
+
+	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
+	moduleindex, err := ReadModuleindex(moduleindexPath)
+	if err != nil {
+		return nil, err
+	}
+
+	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
+	err = MergeToModuleindex(rootIndexPath, moduleindex)
+	if err != nil {
+		return nil, err
+	}
 
 	defer os.RemoveAll(downloadDir)
 
@@ -214,7 +226,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
 	version := strings.TrimPrefix(path.Base(ref), "v")
 	nameDashVersion := repo + "-" + version
-	downloadDir, err := ioutil.TempDir("", nameDashVersion)
+	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +289,18 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	r.SetAttr("ref", ref)
 	r.SetAttr("version", version)
 	r.SetAttr("build_file", "@//:"+buildFileName)
+
+	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
+	moduleindex, err := ReadModuleindex(moduleindexPath)
+	if err != nil {
+		return nil, err
+	}
+
+	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
+	err = MergeToModuleindex(rootIndexPath, moduleindex)
+	if err != nil {
+		return nil, err
+	}
 
 	defer os.RemoveAll(downloadDir)
 

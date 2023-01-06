@@ -635,3 +635,11 @@ func (erlangApp *erlangApp) ctSuiteRules() []*rule.Rule {
 func (erlangApp *erlangApp) hasTestSuites() bool {
 	return !erlangApp.TestSrcs.IsEmpty()
 }
+
+func (erlangApp *erlangApp) modules() []string {
+	modules := make([]string, len(erlangApp.Srcs))
+	for i, src := range erlangApp.Srcs.Values(strings.Compare) {
+		modules[i] = strings.TrimSuffix(filepath.Base(src), ".erl")
+	}
+	return modules
+}

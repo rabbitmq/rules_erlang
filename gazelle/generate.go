@@ -2,7 +2,6 @@ package erlang
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -128,7 +127,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	}
 
 	// extract to a temporary directory
-	extractedContentsDir, err := ioutil.TempDir("", hexMetadata.Name)
+	extractedContentsDir, err := os.MkdirTemp("", hexMetadata.Name)
 	if err != nil {
 		return err
 	}
@@ -359,12 +358,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		Log(args.Config, "GenerateRules:", args.Rel, args.File)
 	}
 
-	// Log(args.Config, "   Config.Repos:", MapCat(
-	// 	func(r *rule.Rule) []string {
-	// 		if r.Kind() == "hex_pm_erlang_app" {
-	// 			return []string{r.Name()}
-	// 		}
-	// 		return []string{}
+	// Log(args.Config, "   Config.Repos:", Map(
+	// 	func(r *rule.Rule) string {
+	// 		return r.Name() + "(" + r.Kind() + ")"
 	// 	},
 	// 	args.Config.Repos,
 	// ))
@@ -613,6 +609,13 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 		assert_suites := rule.NewRule(assertSuitesKind, "")
 		maybeAppendRule(erlangConfig, assert_suites, &result)
+	}
+
+	Log(args.Config, "    Updating moduleindex.yaml")
+	moduleindexPath := filepath.Join(args.Config.RepoRoot, "moduleindex.yaml")
+	err := MergeAppToModuleindex(moduleindexPath, erlangApp)
+	if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
 	}
 
 	// Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
