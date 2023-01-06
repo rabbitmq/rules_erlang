@@ -10,7 +10,7 @@ main(Args) ->
         eof ->
             ok;
         Line ->
-            Filename = parse_json_string(Line),
+            Filename = parse_json_string(string:trim(Line, trailing, "\n")),
             Json = parse(Filename),
             io:format("~s", [Json]),
             % signal to hex_metadata.go that the json is written
@@ -18,13 +18,10 @@ main(Args) ->
             main(Args)
     end.
 
-parse_json_string(Line) ->
-    case string:trim(Line, trailing, "\n") of
-        "\"" ++ Tail ->
-            case string:reverse(Tail) of
-                "\"" ++ Middle ->
-                    string:reverse(Middle)
-            end
+parse_json_string("\"" ++ Tail) ->
+    case string:reverse(Tail) of
+        "\"" ++ Middle ->
+            string:reverse(Middle)
     end.
 
 deep_mapify(List) ->

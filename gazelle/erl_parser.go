@@ -73,12 +73,22 @@ func newErlParser() *erlParser {
 	return &erlParser{}
 }
 
-func (p *erlParser) parseErl(erlFilePath string) (*erlAttrs, error) {
+type parseCmd struct {
+	Path string `json:"path"`
+	Test bool   `json:"test"`
+}
+
+func (p *erlParser) parseErl(erlFilePath string, test bool) (*erlAttrs, error) {
 	erlParserMutex.Lock()
 	defer erlParserMutex.Unlock()
 
+	command := parseCmd{
+		Path: erlFilePath,
+		Test: test,
+	}
+
 	encoder := json.NewEncoder(erlParserStdin)
-	if err := encoder.Encode(&erlFilePath); err != nil {
+	if err := encoder.Encode(&command); err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
@@ -103,13 +113,13 @@ type erlAttrs struct {
 	Behaviour  []string `json:"behaviour"`
 }
 
-func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erlAttrs) error {
+func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, test bool, erlAttrs *erlAttrs) error {
 	hrlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, hrlFile)
 	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 
-	hrlAttrs, err := p.parseErl(hrlFilePath)
+	hrlAttrs, err := p.parseErl(hrlFilePath, test)
 	if err != nil {
 		return err
 	}
@@ -117,7 +127,7 @@ func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erl
 		erlAttrs.Include = append(erlAttrs.Include, include)
 		path := erlangApp.pathFor(hrlFile, include)
 		if path != "" {
-			err := p.parseHrl(path, erlangApp, erlAttrs)
+			err := p.parseHrl(path, erlangApp, test, erlAttrs)
 			if err != nil {
 				return err
 			}
@@ -127,13 +137,13 @@ func (p *erlParser) parseHrl(hrlFile string, erlangApp *erlangApp, erlAttrs *erl
 	return nil
 }
 
-func (p *erlParser) deepParseErl(erlFile string, erlangApp *erlangApp) (*erlAttrs, error) {
+func (p *erlParser) deepParseErl(erlFile string, erlangApp *erlangApp, test bool) (*erlAttrs, error) {
 	erlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, erlFile)
 	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
 		return &erlAttrs{}, nil
 	}
 
-	rootAttrs, err := p.parseErl(erlFilePath)
+	rootAttrs, err := p.parseErl(erlFilePath, test)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +151,7 @@ func (p *erlParser) deepParseErl(erlFile string, erlangApp *erlangApp) (*erlAttr
 	for _, include := range rootAttrs.Include {
 		path := erlangApp.pathFor(erlFile, include)
 		if path != "" {
-			err := p.parseHrl(path, erlangApp, rootAttrs)
+			err := p.parseHrl(path, erlangApp, test, rootAttrs)
 			if err != nil {
 				return nil, err
 			}

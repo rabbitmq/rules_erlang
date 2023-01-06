@@ -153,16 +153,15 @@ func (erlangApp *erlangApp) basePltRule() *rule.Rule {
 	return plt
 }
 
-func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules, testBeamFilesRules []*rule.Rule) {
+func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	outs := NewMutableSet[string]()
-	testOuts := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp)
+		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -239,6 +238,79 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		}
 
 		beamFilesRules = append(beamFilesRules, erlang_bytecode)
+	}
+
+	beam_files := rule.NewRule("filegroup", "beam_files")
+	beam_files.SetAttr("srcs", outs.Values(strings.Compare))
+	beamFilesRules = append(beamFilesRules, beam_files)
+	return
+}
+
+func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) (testBeamFilesRules []*rule.Rule) {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+
+	testOuts := NewMutableSet[string]()
+	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
+		// TODO: not print Parsing when the file does not exist
+		Log(args.Config, "        Parsing (for tests)", src, "->", actualPath)
+		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		theseHdrs := NewMutableSet[string]()
+		for _, include := range erlAttrs.Include {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(args.Config, "            include", path)
+				theseHdrs.Add(path)
+			} else {
+				Log(args.Config, "            ignoring include",
+					include, "as it cannot be found")
+			}
+		}
+
+		theseDeps := NewMutableSet[string]()
+		for _, include := range erlAttrs.IncludeLib {
+			parts := strings.Split(include, string(os.PathSeparator))
+			if len(parts) > 0 {
+				if parts[0] == erlangApp.Name {
+					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
+					if path != "" {
+						Log(args.Config, "            include_lib (self)", path)
+						theseHdrs.Add(path)
+					} else {
+						Log(args.Config, "            ignoring include_lib (self)",
+							include, "as it cannot be found")
+					}
+				} else if !erlangConfig.IgnoredDeps[parts[0]] {
+					Log(args.Config, "            include_lib", include, "->", parts[0])
+					theseDeps.Add(parts[0])
+				} else {
+					Log(args.Config, "            ignoring include_lib", include)
+				}
+			}
+		}
+
+		theseBeam := NewMutableSet[string]()
+		for _, behaviour := range erlAttrs.Behaviour {
+			found := false
+			for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+				if moduleName(src) == behaviour {
+					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
+					theseBeam.Add(beamFile(src))
+					found = true
+					break
+				}
+			}
+			if !found {
+				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+					Log(args.Config, "            behaviour", behaviour, "->", dep)
+					theseDeps.Add(dep)
+				}
+			}
+		}
 
 		test_out := testBeamFile(src)
 		testOuts.Add(test_out)
@@ -261,10 +333,6 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 
 		testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
 	}
-
-	beam_files := rule.NewRule("filegroup", "beam_files")
-	beam_files.SetAttr("srcs", outs.Values(strings.Compare))
-	beamFilesRules = append(beamFilesRules, beam_files)
 
 	test_beam_files := rule.NewRule("filegroup", "test_beam_files")
 	test_beam_files.SetAttr("srcs", testOuts.Values(strings.Compare))
@@ -405,7 +473,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp)
+		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}

@@ -471,7 +471,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	erlParser := newErlParser()
 
-	beamFilesRules, testBeamFilesRules := erlangApp.beamFilesRules(args, erlParser)
+	beamFilesRules := erlangApp.beamFilesRules(args, erlParser)
+
+	testBeamFilesRules := erlangApp.testBeamFilesRules(args, erlParser)
 
 	allSrcsRules := erlangApp.allSrcsRules()
 
