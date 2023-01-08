@@ -16,6 +16,7 @@ type erlangApp struct {
 	Name         string
 	Description  string
 	Version      string
+	Ebin         MutableSet[string]
 	Srcs         MutableSet[string]
 	PrivateHdrs  MutableSet[string]
 	PublicHdrs   MutableSet[string]
@@ -34,6 +35,7 @@ func newErlangApp(repoRoot, rel string) *erlangApp {
 	return &erlangApp{
 		RepoRoot:     repoRoot,
 		Rel:          rel,
+		Ebin:         NewMutableSet[string](),
 		Srcs:         NewMutableSet[string](),
 		PrivateHdrs:  NewMutableSet[string](),
 		PublicHdrs:   NewMutableSet[string](),
@@ -50,8 +52,12 @@ func newErlangApp(repoRoot, rel string) *erlangApp {
 }
 
 func (erlangApp *erlangApp) addFile(f string) {
-	// TODO: handle pre-built ebin/ files, such as .app
-	if strings.HasPrefix(f, "src/") {
+	if strings.HasPrefix(f, "ebin/") {
+		if strings.HasSuffix(f, ".app") {
+			erlangApp.Ebin.Add(f)
+		}
+		// TODO: handle .appup files
+	} else if strings.HasPrefix(f, "src/") {
 		if strings.HasSuffix(f, ".erl") {
 			erlangApp.Srcs.Add(f)
 		} else if strings.HasSuffix(f, ".hrl") {
