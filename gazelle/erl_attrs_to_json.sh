@@ -5,13 +5,20 @@
 
 -export([main/1]).
 
+-ifdef(TEST).
+-export([parse/2]).
+-endif.
+
+-spec main([string()]) -> no_return().
 main(Args) ->
     case io:get_line("") of
         eof ->
             ok;
         Line ->
             #{path := Filename, test := Test} = parse_command(string:trim(Line, trailing, "\n")),
-            Json = parse(Filename, Test),
+            Map = parse(Filename, Test),
+            %% io:format(standard_error, "Map: ~p~n", [Map]),
+            Json = to_json(Map),
             io:format("~s", [Json]),
             % signal to hex_metadata.go that the json is written
             io:format(<<0>>),
@@ -171,9 +178,7 @@ parse(File, Test) ->
         {ok, Forms} ->
             E = ets:new(makedep, [bag]),
             lists:foreach(fun (Form) -> note_form(E, File, Form) end, Forms),
-            Map = deps(E),
-            %% io:format(standard_error, "Map: ~p~n", [Map]),
-            to_json(Map);
+            deps(E);
         {error, Reason} ->
             io:format(standard_error, "~s: error opening ~s: ~p~n",
                       [filename:basename(escript:script_name()), File, Reason]),

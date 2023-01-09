@@ -1,6 +1,8 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+exports_files(["erl_attrs_to_json.sh"])
+
 go_library(
     name = "gazelle",
     srcs = [
