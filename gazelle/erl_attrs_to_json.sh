@@ -25,6 +25,7 @@ main(Args) ->
             main(Args)
     end.
 
+-spec parse_command(string()) -> map().
 parse_command("{" ++ Tail) ->
     case string:reverse(Tail) of
         "}" ++ Middle ->
@@ -167,6 +168,7 @@ deps(E) ->
        },
       E).
 
+-spec parse(filename:any(), boolean()) -> map() | 'null'.
 parse(File, Test) ->
     Opts = case Test of
         true ->
@@ -185,6 +187,7 @@ parse(File, Test) ->
             null
     end.
 
+-spec to_json(term()) -> string().
 to_json(null) ->
     "null";
 to_json(M) when is_map(M) ->
