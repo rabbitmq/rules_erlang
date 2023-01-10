@@ -509,6 +509,16 @@ func (erlangApp *erlangApp) testPathFor(from, include string) string {
 func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
+	ownModules := NewMutableSet[string]()
+	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+		ownModules.Add(moduleName(src))
+	}
+
+	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
+	if err != nil {
+		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
+	}
+
 	var beamFilesRules []*rule.Rule
 	outs := NewMutableSet[string]()
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
@@ -535,7 +545,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		for _, include := range erlAttrs.IncludeLib {
 			parts := strings.Split(include, string(os.PathSeparator))
 			if len(parts) > 0 {
-				if !erlangConfig.IgnoredDeps[parts[0]] {
+				if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				} else {
@@ -547,19 +557,27 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		theseBeam := NewMutableSet[string]()
 		for _, behaviour := range erlAttrs.Behaviour {
 			found := false
-			for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(src) == behaviour {
-					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
-					theseBeam.Add(beamFile(src))
+			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
+				if moduleName(other_src) == behaviour {
+					Log(args.Config, "            behaviour", behaviour, "->", beamFile(other_src))
+					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", dep)
-					theseDeps.Add(dep)
+				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
+					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
+					theseDeps.Add(app)
 				}
+			}
+		}
+
+		theseRuntimeDeps := NewMutableSet[string]()
+		for module := range erlAttrs.Call {
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            call", module, "->", app)
+				theseRuntimeDeps.Add(app)
 			}
 		}
 
@@ -579,6 +597,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		if !theseDeps.IsEmpty() {
 			erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
 		}
+		erlang_bytecode.SetPrivateAttr("runtime_deps", theseRuntimeDeps.Values(strings.Compare))
 		erlang_bytecode.SetAttr("testonly", true)
 
 		beamFilesRules = append(beamFilesRules, erlang_bytecode)
@@ -647,18 +666,26 @@ func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 	return eunit
 }
 
-func (erlangApp *erlangApp) ctSuiteRules() []*rule.Rule {
-	var rules []*rule.Rule
+func (erlangApp *erlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*rule.Rule {
+	rulesByName := make(map[string]*rule.Rule, len(testDirBeamFilesRules))
+	for _, r := range testDirBeamFilesRules {
+		name := strings.TrimSuffix(r.Name(), "_beam_files")
+		rulesByName[name] = r
+	}
 
+	var rules []*rule.Rule
 	for _, testSrc := range erlangApp.TestSrcs.Values(strings.Compare) {
 		modName := moduleName(testSrc)
 		if strings.HasSuffix(modName, "_SUITE") {
+			beamFilesRule := rulesByName[modName]
 			r := rule.NewRule(ctTestKind, modName)
-			r.SetAttr("compiled_suites", []string{":" + modName + "_beam_files"})
+			r.SetAttr("compiled_suites", []string{":" + beamFilesRule.Name()})
 			r.SetAttr("data", rule.GlobValue{
 				Patterns: []string{"test/" + modName + "_data/**/*"},
 			})
-			r.SetAttr("deps", []string{":test_erlang_app"})
+			deps := []string{":test_erlang_app"}
+			deps = append(deps, runtimeDeps(beamFilesRule)...)
+			r.SetAttr("deps", deps)
 
 			rules = append(rules, r)
 		}
@@ -677,4 +704,8 @@ func (erlangApp *erlangApp) modules() []string {
 		modules[i] = strings.TrimSuffix(filepath.Base(src), ".erl")
 	}
 	return modules
+}
+
+func runtimeDeps(r *rule.Rule) []string {
+	return r.PrivateAttr("runtime_deps").([]string)
 }

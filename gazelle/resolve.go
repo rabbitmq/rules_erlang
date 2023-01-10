@@ -17,7 +17,13 @@ import (
 
 const languageName = "erlang"
 
-var resolveableKinds = NewMutableSet(erlangBytecodeKind, erlangAppKind, testErlangAppKind, pltKind)
+var resolveableKinds = NewMutableSet(
+	erlangBytecodeKind,
+	erlangAppKind,
+	testErlangAppKind,
+	pltKind,
+	ctTestKind,
+)
 
 type Resolver struct{}
 
