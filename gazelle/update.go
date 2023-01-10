@@ -69,6 +69,15 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		return nil, err
 	}
 
+	buildFileName := "BUILD." + name
+	buildFile := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), buildFileName)
+	if _, err := os.Stat(buildFile); !os.IsNotExist(err) {
+		copyFile(
+			buildFile,
+			filepath.Join(extractedPackageDir, "BUILD.bazel"),
+		)
+	}
+
 	// TODO: add an optional flag to tell update-repos what to recurse with
 	gazelleRunfile, err := bazel.Runfile("gazelle")
 	if err != nil {
@@ -98,10 +107,9 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		log.Fatalf("ERROR: %v\n", err)
 	}
 
-	buildFileName := "BUILD." + name
 	copyFile(
 		filepath.Join(extractedPackageDir, "BUILD.bazel"),
-		filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), buildFileName),
+		buildFile,
 	)
 
 	r := rule.NewRule(hexPmErlangAppKind, name)
