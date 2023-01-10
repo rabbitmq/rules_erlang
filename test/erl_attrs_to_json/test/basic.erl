@@ -8,5 +8,9 @@
 -include_lib("some_lib/include/some_header.hrl").
 -endif.
 
+myfunc() ->
+    io:format("Hello~n", []).
+
 main(_) ->
-    ok.
+    myfunc(),
+    other_lib:foo(1).

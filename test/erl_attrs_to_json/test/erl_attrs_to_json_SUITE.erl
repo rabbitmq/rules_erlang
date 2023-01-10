@@ -15,7 +15,10 @@ basic(_) ->
          include_lib => [],
          include => ["my_header.hrl"],
          behaviour => [],
-         call => #{}
+         call => #{
+                   io => [format],
+                   other_lib => [foo]
+                  }
         },
        erl_attrs_to_json:parse(fixture_path("test/basic.erl"), false)),
     ?assertEqual(
@@ -23,7 +26,10 @@ basic(_) ->
          include_lib => ["some_lib/include/some_header.hrl"],
          include => ["my_header.hrl"],
          behaviour => [],
-         call => #{}
+         call => #{
+                   io => [format],
+                   other_lib => [foo]
+                  }
         },
        erl_attrs_to_json:parse(fixture_path("test/basic.erl"), true)).
 
