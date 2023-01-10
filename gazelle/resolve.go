@@ -103,7 +103,7 @@ func (erlang *Resolver) Resolve(
 ) {
 	// Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name))
 	if resolveableKinds.Contains(r.Kind()) {
-		Log(c, fmt.Sprintf("Resolve: %s:%s", from.Pkg, from.Name), imports)
+		Log(c, fmt.Sprintf("Resolve: //%s:%s", from.Pkg, from.Name), imports)
 		resolveErlangDeps(c, from.Pkg, r)
 	}
 }
