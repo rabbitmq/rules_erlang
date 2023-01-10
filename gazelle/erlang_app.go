@@ -1,6 +1,7 @@
 package erlang
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -162,6 +163,16 @@ func (erlangApp *erlangApp) basePltRule() *rule.Rule {
 func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
+	ownModules := NewMutableSet[string]()
+	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+		ownModules.Add(moduleName(src))
+	}
+
+	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
+	if err != nil {
+		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
+	}
+
 	outs := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
@@ -197,7 +208,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 						Log(args.Config, "            ignoring include_lib (self)",
 							include, "as it cannot be found")
 					}
-				} else if !erlangConfig.IgnoredDeps[parts[0]] {
+				} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				} else {
@@ -209,19 +220,26 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		theseBeam := NewMutableSet[string]()
 		for _, behaviour := range erlAttrs.Behaviour {
 			found := false
-			for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(src) == behaviour {
-					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
-					theseBeam.Add(beamFile(src))
+			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
+				if moduleName(other_src) == behaviour {
+					Log(args.Config, "            behaviour", behaviour, "->", beamFile(other_src))
+					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", dep)
-					theseDeps.Add(dep)
+				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
+					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
+					theseDeps.Add(app)
 				}
+			}
+		}
+
+		for module := range erlAttrs.Call {
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            call", module, "->", app)
+				erlangApp.Deps.Add(app)
 			}
 		}
 
@@ -254,6 +272,16 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 
 func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) (testBeamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+
+	ownModules := NewMutableSet[string]()
+	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+		ownModules.Add(moduleName(src))
+	}
+
+	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
+	if err != nil {
+		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
+	}
 
 	testOuts := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
@@ -290,7 +318,7 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 						Log(args.Config, "            ignoring include_lib (self)",
 							include, "as it cannot be found")
 					}
-				} else if !erlangConfig.IgnoredDeps[parts[0]] {
+				} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
 				} else {
@@ -302,19 +330,26 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		theseBeam := NewMutableSet[string]()
 		for _, behaviour := range erlAttrs.Behaviour {
 			found := false
-			for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(src) == behaviour {
+			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
+				if moduleName(other_src) == behaviour {
 					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
-					theseBeam.Add(beamFile(src))
+					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", dep)
-					theseDeps.Add(dep)
+				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
+					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
+					theseDeps.Add(app)
 				}
+			}
+		}
+
+		for module := range erlAttrs.Call {
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            call", module, "->", app)
+				erlangApp.Deps.Add(app)
 			}
 		}
 

@@ -58,3 +58,12 @@ func ReadModuleindex(file string) (map[string][]string, error) {
 	}
 	return moduleindex, nil
 }
+
+func FindModule(moduleindex map[string][]string, module string) string {
+	for app, modules := range moduleindex {
+		if Contains(modules, module) {
+			return app
+		}
+	}
+	return ""
+}
