@@ -3,6 +3,7 @@ package erlang
 import (
 	"flag"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -17,6 +18,7 @@ const (
 	generateSkipRules                    = "erlang_skip_rules"
 	localAppsDirsDirective               = "erlang_apps_dirs"
 	erlangAppDepDirective                = "erlang_app_dep"
+	erlangAppDepIgnoreDirective          = "erlang_app_dep_ignore"
 	erlangAppExtraAppDirective           = "erlang_app_extra_app"
 	erlangNoTestsDirective               = "erlang_no_tests"
 )
@@ -160,9 +162,18 @@ func (erlang *Configurer) KnownDirectives() []string {
 		generateTestBeamUnconditionally,
 		localAppsDirsDirective,
 		erlangAppDepDirective,
+		erlangAppDepIgnoreDirective,
 		erlangAppExtraAppDirective,
 		erlangNoTestsDirective,
 	}
+}
+
+func boolValue(d rule.Directive) bool {
+	if d.Value == "" {
+		return true
+	}
+	v, _ := strconv.ParseBool(d.Value)
+	return v
 }
 
 func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
@@ -183,11 +194,9 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 			case excludeWhenRuleOfKindExistsDirective:
 				erlangConfig.ExcludeWhenRuleOfKindExists[d.Value] = true
 			case generateBeamFilesMacroDirective:
-				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
-				erlangConfig.GenerateBeamFilesMacro = enabled
+				erlangConfig.GenerateBeamFilesMacro = boolValue(d)
 			case generateTestBeamUnconditionally:
-				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
-				erlangConfig.GenerateTestBeamUnconditionally = enabled
+				erlangConfig.GenerateTestBeamUnconditionally = boolValue(d)
 			case generateSkipRules:
 				rules := strings.Split(d.Value, ",")
 				erlangConfig.GenerateSkipRules.Add(rules...)
@@ -198,11 +207,12 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				erlangConfig.AppsDirs.Add(dirs...)
 			case erlangAppDepDirective:
 				erlangConfig.Deps.Add(d.Value)
+			case erlangAppDepIgnoreDirective:
+				erlangConfig.IgnoredDeps.Add(d.Value)
 			case erlangAppExtraAppDirective:
 				erlangConfig.ExtraApps.Add(d.Value)
 			case erlangNoTestsDirective:
-				enabled := (d.Value == "" || strings.ToLower(d.Value) == "true")
-				erlangConfig.NoTests = enabled
+				erlangConfig.NoTests = boolValue(d)
 			}
 		}
 		// Log(c, "    ", erlangConfig)

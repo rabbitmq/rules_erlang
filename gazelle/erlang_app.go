@@ -241,8 +241,12 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 
 		for module := range erlAttrs.Call {
 			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            call", module, "->", app)
-				erlangApp.Deps.Add(app)
+				if !erlangConfig.IgnoredDeps.Contains(app) {
+					Log(args.Config, "            call", module, "->", app)
+					erlangApp.Deps.Add(app)
+				} else {
+					Log(args.Config, "            ignoring call", module, "->", app)
+				}
 			}
 		}
 
@@ -351,8 +355,12 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 
 		for module := range erlAttrs.Call {
 			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            call", module, "->", app)
-				erlangApp.Deps.Add(app)
+				if !erlangConfig.IgnoredDeps.Contains(app) {
+					Log(args.Config, "            call", module, "->", app)
+					erlangApp.Deps.Add(app)
+				} else {
+					Log(args.Config, "            ignoring call", module, "->", app)
+				}
 			}
 		}
 
