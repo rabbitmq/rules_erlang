@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -31,6 +32,8 @@ type erlangApp struct {
 	Deps         MutableSet[string]
 	ExtraApps    MutableSet[string]
 }
+
+var ignoredIncludeLoggingPattern = regexp.MustCompile(`/lib/[^-]+-[^/]+/include/`)
 
 func newErlangApp(repoRoot, rel string) *erlangApp {
 	return &erlangApp{
@@ -189,7 +192,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 			if path != "" {
 				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
-			} else {
+			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
 				Log(args.Config, "            ignoring include",
 					include, "as it cannot be found")
 			}
@@ -299,7 +302,7 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			if path != "" {
 				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
-			} else {
+			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
 				Log(args.Config, "            ignoring include",
 					include, "as it cannot be found")
 			}
@@ -535,7 +538,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 			if path != "" {
 				Log(args.Config, "            include", path)
 				theseHdrs.Add(path)
-			} else {
+			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
 				Log(args.Config, "            ignoring include",
 					include, "as it cannot be found")
 			}
