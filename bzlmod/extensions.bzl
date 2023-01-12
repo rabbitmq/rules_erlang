@@ -243,6 +243,8 @@ def _erlang_package(ctx):
                 version = dep.version,
             ))
         for dep in mod.tags.hex_package:
+            if dep.build_file != None and dep.build_file_content != "":
+                fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
             packages.append(hex_package(
                 ctx,
                 module = mod,
@@ -250,10 +252,13 @@ def _erlang_package(ctx):
                 pkg = dep.pkg,
                 version = dep.version,
                 sha256 = dep.sha256,
+                build_file = dep.build_file,
                 build_file_content = dep.build_file_content,
                 patch_cmds = dep.patch_cmds,
             ))
         for dep in mod.tags.git_package:
+            if dep.build_file != None and dep.build_file_content != "":
+                fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
             packages.append(git_package(
                 ctx,
                 module = mod,
@@ -270,7 +275,7 @@ def _erlang_package(ctx):
         log(ctx, "    {}@{}".format(p.name, p.version))
 
     for p in resolved:
-        p.f_fetch(ctx, p)
+        p.f_fetch(p)
 
 hex_package_tree_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
@@ -283,6 +288,7 @@ hex_package_tag = tag_class(attrs = {
     "pkg": attr.string(),
     "version": attr.string(mandatory = True),
     "sha256": attr.string(),
+    "build_file": attr.label(),
     "build_file_content": attr.string(),
     "patch_cmds": attr.string_list(),
 })
@@ -294,6 +300,7 @@ git_package_tag = tag_class(attrs = {
     "branch": attr.string(),
     "tag": attr.string(),
     "commit": attr.string(),
+    "build_file": attr.label(),
     "build_file_content": attr.string(),
     "patch_cmds": attr.string_list(),
 })
