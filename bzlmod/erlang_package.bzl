@@ -18,6 +18,7 @@ HexPackage = provider(fields = [
     "pkg",
     "version",
     "sha256",
+    "build_file",
     "build_file_content",
     "patch_cmds",
     "deps",
@@ -34,6 +35,7 @@ GitPackage = provider(fields = [
     "branch",
     "tag",
     "commit",
+    "build_file",
     "build_file_content",
     "patch_cmds",
     "f_fetch",
@@ -74,12 +76,13 @@ def hex_tree(
     )
 
 def hex_package(
-        ctx,
+        _ctx,
         module = None,
         name = None,
         pkg = None,
         version = None,
         sha256 = None,
+        build_file = None,
         build_file_content = None,
         patch_cmds = None):
     return HexPackage(
@@ -88,6 +91,7 @@ def hex_package(
         pkg = pkg,
         version = version,
         sha256 = sha256,
+        build_file = build_file,
         build_file_content = build_file_content,
         patch_cmds = patch_cmds,
         deps = None,
@@ -104,7 +108,7 @@ def _infer_app_name(remote):
     return repo[0:-4]
 
 def git_package(
-        ctx,
+        _ctx,
         module = None,
         dep = None):
     if dep.remote != "" and dep.repository != "":
@@ -137,6 +141,7 @@ def git_package(
         branch = dep.branch,
         tag = dep.tag,
         commit = dep.commit,
+        build_file = dep.build_file,
         build_file_content = dep.build_file_content,
         patch_cmds = dep.patch_cmds,
         f_fetch = _git_package_repo,
@@ -159,6 +164,7 @@ def without_requirement(name, package):
             name = package.name,
             version = package.version,
             sha256 = package.sha256,
+            build_file = package.build_file,
             build_file_content = package.build_file_content,
             patch_cmds = package.patch_cmds,
             deps = package.deps,
@@ -166,8 +172,17 @@ def without_requirement(name, package):
             f_fetch = package.f_fetch,
         )
 
-def _hex_package_repo(ctx, hex_package):
-    if hex_package.build_file_content != "":
+def _hex_package_repo(hex_package):
+    if hex_package.build_file != None:
+        hex_archive(
+            name = hex_package.name,
+            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
+            version = hex_package.version,
+            sha256 = hex_package.sha256,
+            build_file = hex_package.build_file,
+            patch_cmds = hex_package.patch_cmds,
+        )
+    elif hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
             package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
@@ -191,12 +206,21 @@ def _hex_package_repo(ctx, hex_package):
                 name = hex_package.name,
                 version = hex_package.version,
                 deps = deps,
-                make = ctx.which("make"),
             )],
         )
 
-def _git_package_repo(ctx, git_package):
-    if git_package.build_file_content != "":
+def _git_package_repo(git_package):
+    if git_package.build_file != None:
+        new_git_repository(
+            name = git_package.name,
+            remote = git_package.remote,
+            branch = git_package.branch,
+            tag = git_package.tag,
+            commit = git_package.commit,
+            build_file = git_package.build_file,
+            patch_cmds = git_package.patch_cmds,
+        )
+    elif git_package.build_file_content != "":
         new_git_repository(
             name = git_package.name,
             remote = git_package.remote,
