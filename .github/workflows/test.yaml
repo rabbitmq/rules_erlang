@@ -61,6 +61,7 @@ jobs:
           startup --windows_enable_symlinks
           build --enable_runfiles
           build --color=yes
+          build --@rules_erlang//:ct_test_windows_logdir_drive_letter=z
         EOF
     - name: TEST
       working-directory: test
@@ -135,6 +136,7 @@ jobs:
           startup --windows_enable_symlinks
           build --enable_runfiles
           build --color=yes
+          build --@rules_erlang//:ct_test_windows_logdir_drive_letter=z
         EOF
     - name: TEST
       working-directory: test
