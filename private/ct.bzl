@@ -173,7 +173,7 @@ set dir=%dir:/=\\%
 
 set logdir={log_dir}
 set logdir=%logdir:/=\\%
-subst b: %logdir%
+subst {drive_letter}: %logdir%
 
 set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
 set ERL_LIBS=%ERL_LIBS:/=\\%
@@ -208,7 +208,7 @@ set FILTER=-suite {suite_name}
 
 if NOT [{package}] == [] cd {package}
 
-if not exist "b:" mkdir b:
+if not exist "{drive_letter}:" mkdir {drive_letter}:
 
 echo on
 "{erlang_home}\\bin\\ct_run" ^
@@ -216,11 +216,11 @@ echo on
     -noinput ^
     %FILTER% ^
     -dir %dir% ^
-    -logdir b: ^
+    -logdir {drive_letter}: ^
     {ct_hooks_args} ^
     -sname {sname}
 set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
-subst b: /d
+subst {drive_letter}: /d
 exit /b %CT_RUN_ERRORLEVEL%
 :skip_test
 """.format(
@@ -232,6 +232,7 @@ exit /b %CT_RUN_ERRORLEVEL%
             suite_name = ctx.attr.suite_name,
             dir = short_dirname(ctx.files.compiled_suites[0]),
             log_dir = log_dir,
+            drive_letter = ctx.attr._windows_logdir_drive_letter,
             ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
             test_env = "\n".join(test_env_commands),
@@ -261,6 +262,9 @@ exit /b %CT_RUN_ERRORLEVEL%
 ct_test = rule(
     implementation = _impl,
     attrs = {
+        "_windows_logdir_drive_letter": attr.label(
+            default = Label("//:ct_test_windows_logdir_drive_letter"),
+        ),
         "_ct_logdir": attr.label(
             default = Label("//:ct_logdir"),
         ),

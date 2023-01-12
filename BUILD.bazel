@@ -27,3 +27,9 @@ string_flag(
     build_setting_default = "",
     visibility = ["//visibility:public"],
 )
+
+string_flag(
+    name = "ct_test_windows_logdir_drive_letter",
+    build_setting_default = "b",
+    visibility = ["//visibility:public"],
+)
