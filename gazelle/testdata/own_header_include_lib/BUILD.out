@@ -1,0 +1,131 @@
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
+load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+load("@rules_erlang//:xref2.bzl", "xref")
+load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
+load("@rules_erlang//:ct.bzl", "assert_suites2")
+
+erlc_opts(
+    name = "erlc_opts",
+    values = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "+deterministic",
+        ],
+    }),
+    visibility = [":__subpackages__"],
+)
+
+erlc_opts(
+    name = "test_erlc_opts",
+    values = select({
+        "@rules_erlang//:debug_build": [
+            "+debug_info",
+            "-DTEST=1",
+        ],
+        "//conditions:default": [
+            "+debug_info",
+            "-DTEST=1",
+            "+deterministic",
+        ],
+    }),
+    visibility = [":__subpackages__"],
+)
+
+plt(
+    name = "base_plt",
+    visibility = [":__subpackages__"],
+)
+
+erlang_bytecode(
+    name = "ebin_own_header_include_lib_beam",
+    srcs = ["src/own_header_include_lib.erl"],
+    outs = ["ebin/own_header_include_lib.beam"],
+    hdrs = ["include/own_header_include_lib.hrl"],
+    app_name = "own_header_include_lib",
+    erlc_opts = "//:erlc_opts",
+)
+
+filegroup(
+    name = "beam_files",
+    srcs = ["ebin/own_header_include_lib.beam"],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = [
+        "src/own_header_include_lib.app.src",
+        "src/own_header_include_lib.erl",
+    ],
+)
+
+filegroup(
+    name = "private_hdrs",
+    srcs = [],
+)
+
+filegroup(
+    name = "public_hdrs",
+    srcs = ["include/own_header_include_lib.hrl"],
+)
+
+filegroup(
+    name = "priv",
+    srcs = [],
+)
+
+filegroup(
+    name = "licenses",
+    srcs = [],
+)
+
+filegroup(
+    name = "public_and_private_hdrs",
+    srcs = [
+        ":private_hdrs",
+        ":public_hdrs",
+    ],
+)
+
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        ":public_and_private_hdrs",
+        ":srcs",
+    ],
+)
+
+erlang_app(
+    name = "erlang_app",
+    srcs = [":all_srcs"],
+    hdrs = [":public_hdrs"],
+    app_name = "own_header_include_lib",
+    beam_files = [":beam_files"],
+)
+
+alias(
+    name = "own_header_include_lib",
+    actual = ":erlang_app",
+    visibility = ["//visibility:public"],
+)
+
+xref(
+    name = "xref",
+    target = ":erlang_app",
+)
+
+plt(
+    name = "deps_plt",
+    for_target = ":erlang_app",
+    plt = "//:base_plt",
+)
+
+dialyze(
+    name = "dialyze",
+    plt = ":deps_plt",
+    target = ":erlang_app",
+)
+
+assert_suites2()

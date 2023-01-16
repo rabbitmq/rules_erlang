@@ -1,5 +1,4 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
-load("//:util.bzl", "path_join")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -10,9 +9,7 @@ def _module_name(f):
     return "'{}'".format(f.basename.replace(".beam", "", 1))
 
 def _impl(ctx):
-    app_file = ctx.actions.declare_file(
-        path_join(ctx.attr.dest, "{}.app".format(ctx.attr.app_name)),
-    )
+    app_file = ctx.actions.declare_file(ctx.attr.out.name)
 
     if len(ctx.files.app_src) > 1:
         fail("Multiple .app.src files ({}) are not supported".format(
@@ -183,9 +180,7 @@ app_file = rule(
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
-        "dest": attr.string(
-            default = "ebin",
-        ),
+        "out": attr.output(),
         "stamp": attr.int(default = -1),
         "stamp_version_key": attr.string(
             default = "GIT_COMMIT",

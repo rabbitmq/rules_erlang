@@ -5,6 +5,11 @@ load(
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(":util.bzl", "erl_libs_contents")
 load(
+    ":eunit.bzl",
+    "package_relative_dirnames",
+    "short_dirname",
+)
+load(
     "//:util.bzl",
     "path_join",
     "windows_path",
@@ -17,12 +22,6 @@ load(
 
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
-
-def short_dirname(f):
-    if f.is_directory:
-        return f.short_path
-    else:
-        return f.short_path.rpartition("/")[0]
 
 def _unique_short_dirnames(files):
     dirs = []
@@ -63,6 +62,11 @@ def _impl(ctx):
     package = ctx.label.package
 
     erl_libs_path = path_join(package, erl_libs_dir)
+
+    pa_args = []
+    for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
+        if dir != "test":
+            pa_args.extend(["-pa", dir])
 
     ct_logdir = ctx.attr._ct_logdir[BuildSettingInfo].value
 
@@ -136,8 +140,9 @@ set -x
     -no_auto_compile \\
     -noinput \\
     ${{FILTER}} \\
-    -dir $TEST_SRCDIR/$TEST_WORKSPACE/{dir} \\
+    -dir test {pa_args} \\
     -logdir "{log_dir}" \\
+    -hidden \\
     {ct_hooks_args} \\
     -sname {sname}
 """.format(
@@ -148,7 +153,8 @@ set -x
             shard_suite = shard_suite_path,
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
-            dir = short_dirname(ctx.files.compiled_suites[0]),
+            pa_args = " ".join(pa_args),
+            dir = path_join(package, "test"),
             log_dir = log_dir,
             ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
@@ -167,14 +173,11 @@ SETLOCAL EnableDelayedExpansion
 if [{shard_suite}] == [] set "TEST_SHARD_STATUS_FILE="
 if defined TEST_SHARD_STATUS_FILE type nul > !TEST_SHARD_STATUS_FILE!
 
-REM TEST_SRCDIR is provided by bazel but with unix directory separators
-set dir=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
-set dir=%dir:/=\\%
-
 set logdir={log_dir}
 set logdir=%logdir:/=\\%
 subst {drive_letter}: %logdir%
 
+REM TEST_SRCDIR is provided by bazel but with unix directory separators
 set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
 set ERL_LIBS=%ERL_LIBS:/=\\%
 
@@ -215,8 +218,9 @@ echo on
     -no_auto_compile ^
     -noinput ^
     %FILTER% ^
-    -dir %dir% ^
+    -dir test {pa_args} ^
     -logdir {drive_letter}: ^
+    -hidden ^
     {ct_hooks_args} ^
     -sname {sname}
 set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
@@ -230,7 +234,8 @@ exit /b %CT_RUN_ERRORLEVEL%
             shard_suite = shard_suite_path,
             sharding_method = ctx.attr.sharding_method,
             suite_name = ctx.attr.suite_name,
-            dir = short_dirname(ctx.files.compiled_suites[0]),
+            pa_args = " ".join(pa_args),
+            dir = path_join(package, "test"),
             log_dir = log_dir,
             drive_letter = ctx.attr._windows_logdir_drive_letter,
             ct_hooks_args = ct_hooks_args,
