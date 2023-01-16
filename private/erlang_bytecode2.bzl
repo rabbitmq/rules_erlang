@@ -41,17 +41,14 @@ def _impl(ctx):
         dir = erl_libs_dir,
     )
 
-    # it would be nice to properly compute the path, but ctx.bin_dir.path
-    # does not appear to be the whole prefix
+    erl_libs_path = ""
     if len(erl_libs_files) > 0:
-        (output_dir, _, path) = erl_libs_files[0].path.partition(erl_libs_dir)
-        if output_dir == "":
-            fail("Could not compute the ERL_LIBS relative path from {}".format(
-                erl_libs_files[0].path,
-            ))
-        erl_libs_path = path_join(output_dir.rstrip("/"), erl_libs_dir)
-    else:
-        erl_libs_path = ""
+        erl_libs_path = path_join(
+            ctx.bin_dir.path,
+            ctx.label.workspace_root,
+            ctx.label.package,
+            erl_libs_dir,
+        )
 
     out_dirs = unique_dirnames(outputs)
     if len(out_dirs) > 1:

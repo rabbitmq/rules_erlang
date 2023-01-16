@@ -21,7 +21,12 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def erl_libs_contents2(ctx, target_info = None, deps = [], headers = False, dir = _DEFAULT_ERL_LIBS_DIR):
+def erl_libs_contents2(
+        ctx,
+        target_info = None,
+        deps = [],
+        headers = False,
+        dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
     if headers and target_info != None:
         dep_path = path_join(dir, target_info.app_name)
