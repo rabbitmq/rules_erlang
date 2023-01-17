@@ -4,16 +4,24 @@ load(
 )
 load(
     "//private:plt.bzl",
-    _DEFAULT_PLT_APPS = "DEFAULT_PLT_APPS",
     _plt = "plt",
 )
 
-DEFAULT_PLT_APPS = _DEFAULT_PLT_APPS
+DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
 
 DIALYZE_TAG = "dialyze"
 
-def plt(**kwargs):
-    _plt(**kwargs)
+def plt(
+        for_target = None,
+        apps = None,
+        **kwargs):
+    if for_target == None and apps == None:
+        apps = DEFAULT_PLT_APPS
+    _plt(
+        for_target = for_target,
+        apps = apps,
+        **kwargs
+    )
 
 def dialyze(
         name = "dialyze",

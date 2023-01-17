@@ -1,30 +1,34 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
-load(":erlang_bytecode.bzl", "unique_dirnames")
+load("//:util.bzl", "path_join")
+load(":util.bzl", "erl_libs_contents2")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
 )
 
-DEFAULT_PLT_APPS = ["erts", "kernel", "stdlib"]
-
 def _impl(ctx):
     logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
     home_dir = ctx.actions.declare_directory(ctx.label.name + "_home")
 
-    if ctx.file.plt == None:
-        source_plt_arg = "--build_plt"
-    else:
-        source_plt_arg = "--plt " + ctx.file.plt.path + " --no_check_plt --add_to_plt"
+    erl_libs_dir = ctx.label.name + "_deps"
 
-    apps = []
-    if ctx.attr.for_target != None:
-        apps.extend(ctx.attr.for_target[ErlangAppInfo].extra_apps)
-    if ctx.attr.for_target == None or ctx.attr.apps != DEFAULT_PLT_APPS:
-        apps.extend(ctx.attr.apps)
-    apps_args = ""
-    if len(apps) > 0:
-        apps_args = "--apps " + " ".join(apps)
+    erl_libs_files = erl_libs_contents2(
+        ctx,
+        deps = ctx.attr.libs,
+        dir = erl_libs_dir,
+    )
+
+    erl_libs_path = ""
+    if len(erl_libs_files) > 0:
+        erl_libs_path = path_join(
+            ctx.bin_dir.path,
+            ctx.label.workspace_root,
+            ctx.label.package,
+            erl_libs_dir,
+        )
+
+    target_files_dir = ctx.label.name + "_files"
 
     deps = []
     if ctx.attr.for_target != None:
@@ -32,16 +36,47 @@ def _impl(ctx):
     else:
         deps.extend(flat_deps(ctx.attr.deps))
 
-    files = []
-    for dep in deps:
-        lib_info = dep[ErlangAppInfo]
-        files.extend(lib_info.beam)
+    target_files = erl_libs_contents2(
+        ctx,
+        deps = deps,
+        dir = target_files_dir,
+    )
 
-    dirs = unique_dirnames(files)
-    dirs_args = "".join([
-        "\n    {} \\".format(d)
-        for d in dirs
-    ])
+    target_files_path = ""
+    if len(target_files) > 0:
+        target_files_path = path_join(
+            ctx.bin_dir.path,
+            ctx.label.workspace_root,
+            ctx.label.package,
+            target_files_dir,
+        )
+
+    args = ctx.actions.args()
+
+    if ctx.file.plt == None:
+        args.add("--build_plt")
+    else:
+        args.add("--plt")
+        args.add(ctx.file.plt)
+        args.add("--no_check_plt")
+        args.add("--add_to_plt")
+
+    apps = []
+    apps.extend(ctx.attr.apps)
+    if ctx.attr.for_target != None:
+        apps.extend(ctx.attr.for_target[ErlangAppInfo].extra_apps)
+    if len(apps) > 0:
+        args.add("--apps")
+        args.add_all(apps)
+
+    if target_files_path != "":
+        args.add("-r")
+        args.add(target_files_path)
+
+    args.add_all(ctx.attr.extra_args)
+
+    args.add("--output_plt")
+    args.add(ctx.outputs.plt)
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
@@ -52,31 +87,30 @@ def _impl(ctx):
 # without HOME being set, dialyzer will error regarding a default plt
 export HOME={home}
 
+if [ -n "{erl_libs_path}" ]; then
+    export ERL_LIBS={erl_libs_path}
+fi
+
 set +e
 set -x
-"{erlang_home}"/bin/dialyzer {apps_args} \\
-    {source_plt_arg} \\{dirs_args}
-    --output_plt {output} > {logfile}
+"{erlang_home}"/bin/dialyzer $@ > {logfile}
 R=$?
 set +x
 set -e
 if [ ! $R -eq 0 ]; then
-    cat {logfile}
+    head {logfile}
 fi
 exit $R
 """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         home = home_dir.path,
-        apps_args = apps_args,
-        source_plt_arg = source_plt_arg,
-        dirs_args = dirs_args,
-        output = ctx.outputs.plt.path,
+        erl_libs_path = erl_libs_path,
         logfile = logfile.path,
     )
 
     inputs = depset(
-        direct = ctx.files.plt + files,
+        direct = ctx.files.plt + erl_libs_files + target_files,
         transitive = [runfiles.files],
     )
 
@@ -84,6 +118,7 @@ exit $R
         inputs = inputs,
         outputs = [ctx.outputs.plt, logfile, home_dir],
         command = script,
+        arguments = [args],
         mnemonic = "DIALYZER",
     )
 
@@ -93,8 +128,10 @@ plt = rule(
         "plt": attr.label(
             allow_single_file = [".plt"],
         ),
-        "apps": attr.string_list(
-            default = DEFAULT_PLT_APPS,
+        "apps": attr.string_list(),
+        "extra_args": attr.string_list(),
+        "libs": attr.label_list(
+            providers = [ErlangAppInfo],
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
