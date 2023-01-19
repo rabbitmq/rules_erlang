@@ -91,7 +91,9 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		)
 	}
 
-	// TODO: add an optional flag to tell update-repos what to recurse with
+	// TODO: Add an optional flag to tell update-repos what to recurse with.
+	//       Currently this only works if the rule that was used for update-repos
+	//       was called "gazelle" too
 	gazelleRunfile, err := bazel.Runfile("gazelle")
 	if err != nil {
 		return nil, err
@@ -209,8 +211,8 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 				optPart = " (Optional)"
 			}
 			fmt.Printf("    %s %s%s\n", req.App, req.Requirement, optPart)
-			fmt.Println()
 		}
+		fmt.Println()
 		fmt.Println("If these requirements are not in the workspace, re-run 'gazelle update-repos hex.pm/[dep]@[version]' to add them.")
 	}
 
