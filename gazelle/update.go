@@ -158,8 +158,6 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		return nil, err
 	}
 
-	defer os.RemoveAll(downloadDir)
-
 	return r, nil
 }
 
@@ -349,8 +347,6 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	defer os.RemoveAll(downloadDir)
 
 	return r, nil
 }
