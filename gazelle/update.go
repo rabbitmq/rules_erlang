@@ -91,6 +91,15 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		)
 	}
 
+	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
+	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
+	if _, err := os.Stat(rootIndexPath); !os.IsNotExist(err) {
+		copyFile(
+			rootIndexPath,
+			moduleindexPath,
+		)
+	}
+
 	// TODO: Add an optional flag to tell update-repos what to recurse with.
 	//       Currently this only works if the rule that was used for update-repos
 	//       was called "gazelle" too
@@ -141,19 +150,13 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	r.SetAttr("version", version)
 	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.BuildFilesDir, buildFileName))
 
-	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
-	moduleindex, err := ReadModuleindex(moduleindexPath)
+	err = copyFile(
+		moduleindexPath,
+		rootIndexPath,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
-	err = MergeToModuleindex(rootIndexPath, moduleindex)
-	if err != nil {
-		return nil, err
-	}
-
-	defer os.RemoveAll(downloadDir)
 
 	return r, nil
 }
@@ -278,6 +281,15 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 		)
 	}
 
+	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
+	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
+	if _, err := os.Stat(rootIndexPath); !os.IsNotExist(err) {
+		copyFile(
+			rootIndexPath,
+			moduleindexPath,
+		)
+	}
+
 	// TODO: add an optional flag to tell update-repos what to recurse with
 	gazelleRunfile, err := bazel.Runfile("gazelle")
 	if err != nil {
@@ -328,19 +340,13 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	r.SetAttr("version", version)
 	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.BuildFilesDir, buildFileName))
 
-	moduleindexPath := filepath.Join(extractedPackageDir, "moduleindex.yaml")
-	moduleindex, err := ReadModuleindex(moduleindexPath)
+	err = copyFile(
+		moduleindexPath,
+		rootIndexPath,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	rootIndexPath := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "moduleindex.yaml")
-	err = MergeToModuleindex(rootIndexPath, moduleindex)
-	if err != nil {
-		return nil, err
-	}
-
-	defer os.RemoveAll(downloadDir)
 
 	return r, nil
 }
