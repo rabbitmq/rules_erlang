@@ -24,6 +24,9 @@ parse_json_string("\"" ++ Tail) ->
             string:reverse(Middle)
     end.
 
+mapify_dep(Name) when is_atom(Name) ->
+    #{name => Name,
+      kind => hex};
 mapify_dep({Name, _, {git = Kind, Remote, Ref}}) ->
     #{name => Name,
       kind => Kind,
