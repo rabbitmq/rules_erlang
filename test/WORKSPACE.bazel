@@ -84,7 +84,7 @@ rules_erlang_internal_deps()
 
 load("@rules_erlang//:internal_setup.bzl", "rules_erlang_internal_setup")
 
-rules_erlang_internal_setup(go_repository_default_config = "//:WORKSPACE")
+rules_erlang_internal_setup()
 
 load("@rules_erlang//gazelle:deps.bzl", "gazelle_deps")
 
