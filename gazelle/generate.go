@@ -478,6 +478,13 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		return result
 	}
 
+	Log(args.Config, "    Application properties:")
+	Log(args.Config, "        name:", erlangApp.Name)
+	Log(args.Config, "        version:", erlangApp.Version)
+	Log(args.Config, "        description:", erlangApp.Description)
+	Log(args.Config, "        extra_apps:", erlangApp.ExtraApps.Values(strings.Compare))
+	Log(args.Config, "        deps:", erlangApp.Deps.Values(strings.Compare))
+
 	Log(args.Config, "    Analyzing sources...")
 
 	erlParser := newErlParser()
