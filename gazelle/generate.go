@@ -12,6 +12,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
 )
 
 const (
@@ -136,7 +137,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 
 	hexContentsArchivePath := filepath.Join(args.Config.RepoRoot, args.Rel, hexContentsArchiveFilename)
 	Log(args.Config, "    hexContentsArchivePath:", hexContentsArchivePath)
-	err = ExtractTarGz(hexContentsArchivePath, extractedContentsDir)
+	err = fetch.ExtractTarGz(hexContentsArchivePath, extractedContentsDir)
 	if err != nil {
 		return err
 	}

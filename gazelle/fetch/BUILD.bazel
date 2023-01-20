@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "hex_pm.go",
         "github.go",
+        "tar.go",
     ],
     importpath = "github.com/rabbitmq/rules_erlang/gazelle/fetch",
     visibility = ["//visibility:public"],

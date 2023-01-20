@@ -44,3 +44,12 @@ test_suite(
     ],
     tags = ["manual"],
 )
+
+test_suite(
+    name = "all_suites",
+    tests = [
+        "unit_suite",
+        "integration_suite",
+    ],
+    tags = ["manual"],
+)

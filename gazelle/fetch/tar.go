@@ -1,4 +1,4 @@
-package erlang
+package fetch
 
 import (
 	"archive/tar"
