@@ -21,7 +21,17 @@ alias(
 erl_eval(
     name = "otp_version",
     outs = ["otp_version.txt"],
-    expression = """{ok, Version} = file:read_file(filename:join([code:root_dir(), "releases", erlang:system_info(otp_release), "OTP_VERSION"])), file:write_file(os:getenv("OUTS"), Version), halt().""",
+    expression = """\
+{ok, Version} =\
+    file:read_file(\
+        filename:join([\
+            code:root_dir(),\
+            "releases",\
+            erlang:system_info(otp_release),\
+            "OTP_VERSION"])\
+    ),\
+file:write_file(os:getenv("OUTS"), Version),\
+halt().""",
 )
 
 shell(
