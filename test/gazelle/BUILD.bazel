@@ -7,7 +7,7 @@ gazelle_binary(
 )
 
 go_test(
-    name = "gazelle_test",
+    name = "integration_suite",
     srcs = ["erlang_test.go"],
     data = [
         ":gazelle_erlang_binary",
@@ -22,6 +22,7 @@ go_test(
         "@com_github_ghodss_yaml//:yaml",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
+    tags = ["manual"],
 )
 
 go_test(
@@ -31,5 +32,13 @@ go_test(
         "@com_github_onsi_ginkgo_v2//:go_default_library",
         "@com_github_onsi_gomega//:go_default_library",
         "@rules_erlang//gazelle/fetch",
+    ],
+    tags = ["manual"],
+)
+
+test_suite(
+    name = "unit_suite",
+    tests = [
+        "update_test",
     ],
 )
