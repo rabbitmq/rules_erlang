@@ -9,7 +9,7 @@ gazelle_binary(
 
 go_test(
     name = "integration_suite",
-    srcs = ["erlang_test.go"],
+    srcs = ["integration_test.go"],
     data = [
         ":gazelle_erlang_binary",
         "@rules_erlang//gazelle:dot_app_to_json",

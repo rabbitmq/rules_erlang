@@ -17,7 +17,7 @@ limitations under the License.
 // https://github.com/bazelbuild/bazel-skylib/blob/f80bc733d4b9f83d427ce3442be2e07427b2cc8d/gazelle/bzl/BUILD.
 // It was modified for the needs of this extension.
 
-package erlang_test
+package integration_test
 
 import (
 	"bytes"
