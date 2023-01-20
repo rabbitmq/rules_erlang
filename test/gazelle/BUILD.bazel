@@ -27,8 +27,8 @@ go_test(
 )
 
 go_test(
-    name = "update_test",
-    srcs = ["update_test.go"],
+    name = "fetch_test",
+    srcs = ["fetch_test.go"],
     deps = [
         "@com_github_onsi_ginkgo_v2//:go_default_library",
         "@com_github_onsi_gomega//:go_default_library",
@@ -40,7 +40,16 @@ go_test(
 test_suite(
     name = "unit_suite",
     tests = [
-        "update_test",
+        "fetch_test",
+    ],
+    tags = ["manual"],
+)
+
+test_suite(
+    name = "all_suites",
+    tests = [
+        "unit_suite",
+        "integration_suite",
     ],
     tags = ["manual"],
 )

@@ -21,7 +21,6 @@ go_library(
         "mutable_set.go",
         "rebar_config_parser.go",
         "resolve.go",
-        "tar.go",
         "update.go",
         "util.go",
     ],

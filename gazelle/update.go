@@ -64,7 +64,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		return nil, err
 	}
 	Log(config, "    extracting to", extractedPackageDir)
-	err = ExtractTar(archivePath, extractedPackageDir)
+	err = fetch.ExtractTar(archivePath, extractedPackageDir)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	// extract the contents.tar.gz, so that the BUILD file is appropriate for hex_pm_erlang_app
 	nestedArchivePath := filepath.Join(extractedPackageDir, "contents.tar.gz")
 	Log(config, "    extracting nested archive")
-	err = ExtractTarGz(nestedArchivePath, extractedPackageDir)
+	err = fetch.ExtractTarGz(nestedArchivePath, extractedPackageDir)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	Log(config, "    extracting to", extractedPackageDir)
 	// extract to downloadDir since the github archive will have a {name}-{version}
 	// folder in it already
-	err = ExtractTarGz(archivePath, downloadDir)
+	err = fetch.ExtractTarGz(archivePath, downloadDir)
 	if err != nil {
 		return nil, err
 	}

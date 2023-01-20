@@ -1,4 +1,4 @@
-package erlang
+package fetch
 
 import (
 	"archive/tar"
@@ -62,9 +62,14 @@ func extractTar(reader io.Reader, dest string) error {
 			if err := outFile.Close(); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			err := os.Symlink(header.Linkname, destPath)
+			if err != nil {
+				return err
+			}
 		case tar.TypeXGlobalHeader:
 		default:
-			return fmt.Errorf("ExtractTar: uknown type: %b in %s", header.Typeflag, header.Name)
+			return fmt.Errorf("extractTar: uknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
 	if err != io.EOF {
