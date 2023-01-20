@@ -8,5 +8,5 @@ type ErlAttrs struct {
 }
 
 type ErlParser interface {
-	DeepParseErl(string, *erlangApp, bool) (*ErlAttrs, error)
+	DeepParseErl(string, *ErlangApp, bool) (*ErlAttrs, error)
 }

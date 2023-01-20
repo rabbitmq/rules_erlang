@@ -94,7 +94,7 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	return false
 }
 
-func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *erlangApp) error {
+func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *ErlangApp) error {
 	Log(args.Config, "    Importing Hex.pm archive from", filepath.Join(args.Config.RepoRoot, args.Rel))
 
 	hexMetadataParser := newHexMetadataParser(args.Config.RepoRoot, args.Rel)
@@ -118,7 +118,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	maybeAppendRule(erlangConfig, untar, result)
 
 	for _, f := range hexMetadata.Files {
-		erlangApp.addFile(f)
+		erlangApp.AddFile(f)
 	}
 
 	for _, req := range hexMetadata.Requirements {
@@ -152,7 +152,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	return nil
 }
 
-func importRebar(args language.GenerateArgs, erlangApp *erlangApp) error {
+func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	rebarAppPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel)
 	Log(args.Config, "    Importing Rebar from",
 		filepath.Join(rebarAppPath, rebarConfigFilename))
@@ -183,7 +183,7 @@ func importRebar(args language.GenerateArgs, erlangApp *erlangApp) error {
 				if err != nil {
 					return err
 				}
-				erlangApp.addFile(rel)
+				erlangApp.AddFile(rel)
 				return nil
 			})
 		if err != nil {
@@ -197,7 +197,7 @@ func importRebar(args language.GenerateArgs, erlangApp *erlangApp) error {
 	return nil
 }
 
-func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
+func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	appPath := filepath.Join(args.Config.RepoRoot, args.Rel)
 	Log(args.Config, "    Importing bare erlang from", appPath)
 
@@ -220,7 +220,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 			if rel != filepath.Base(rel) && args.Config.IsValidBuildFileName(info.Name()) {
 				return filepath.SkipDir
 			}
-			erlangApp.addFile(rel)
+			erlangApp.AddFile(rel)
 			return nil
 		})
 	if err != nil {
@@ -228,7 +228,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *erlangApp) error {
 	}
 	for _, f := range args.GenFiles {
 		// Log(args.Config, "        ", f)
-		erlangApp.addFile(f)
+		erlangApp.AddFile(f)
 	}
 
 	return nil
@@ -490,7 +490,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	erlParser := newErlParser()
 
-	beamFilesRules := erlangApp.beamFilesRules(args, erlParser)
+	beamFilesRules := erlangApp.BeamFilesRules(args, erlParser)
 
 	testBeamFilesRules := erlangApp.testBeamFilesRules(args, erlParser)
 

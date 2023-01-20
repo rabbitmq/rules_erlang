@@ -40,10 +40,15 @@ go_test(
 
 go_test(
     name = "erlang_test",
-    srcs = ["erlang_test.go"],
+    srcs = [
+        "erlang_test.go",
+        "fake_erl_parser.go",
+    ],
     deps = [
         "@com_github_onsi_ginkgo_v2//:go_default_library",
         "@com_github_onsi_gomega//:go_default_library",
+        "@bazel_gazelle//config:go_default_library",
+        "@bazel_gazelle//language:go_default_library",
         "@rules_erlang//gazelle",
     ],
     tags = ["manual"],

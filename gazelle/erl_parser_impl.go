@@ -108,7 +108,7 @@ func (p *erlParserImpl) parseErl(erlFilePath string, test bool) (*ErlAttrs, erro
 	return &metadata, nil
 }
 
-func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *erlangApp, test bool, erlAttrs *ErlAttrs) error {
+func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, test bool, erlAttrs *ErlAttrs) error {
 	hrlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, hrlFile)
 	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -132,7 +132,7 @@ func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *erlangApp, test bool
 	return nil
 }
 
-func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *erlangApp, test bool) (*ErlAttrs, error) {
+func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *ErlangApp, test bool) (*ErlAttrs, error) {
 	erlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, erlFile)
 	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
 		return &ErlAttrs{}, nil

@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func MergeAppToModuleindex(moduleindexPath string, erlangApp *erlangApp) error {
+func MergeAppToModuleindex(moduleindexPath string, erlangApp *ErlangApp) error {
 	return MergeToModuleindex(moduleindexPath, map[string][]string{
 		erlangApp.Name: erlangApp.modules(),
 	})
