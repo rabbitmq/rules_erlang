@@ -4,6 +4,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 gazelle_binary(
     name = "gazelle_erlang_binary",
     languages = ["@rules_erlang//gazelle"],
+    tags = ["manual"],
 )
 
 go_test(
@@ -41,4 +42,5 @@ test_suite(
     tests = [
         "update_test",
     ],
+    tags = ["manual"],
 )

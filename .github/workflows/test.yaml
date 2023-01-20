@@ -189,7 +189,6 @@ jobs:
       working-directory: test
       run: |
         bazelisk test //... \
-          --build_tests_only \
           --config=rbe \
           --toolchain_resolution_debug="@rules_erlang.*" \
           --verbose_failures
