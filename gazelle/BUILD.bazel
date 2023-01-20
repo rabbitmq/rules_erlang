@@ -9,6 +9,7 @@ go_library(
         "configure.go",
         "dot_app_parser.go",
         "erl_parser.go",
+        "erl_parser_impl.go",
         "erlang_app.go",
         "fix.go",
         "generate.go",

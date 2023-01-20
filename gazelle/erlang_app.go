@@ -163,7 +163,7 @@ func (erlangApp *erlangApp) basePltRule() *rule.Rule {
 	return plt
 }
 
-func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules []*rule.Rule) {
+func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -181,7 +181,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -287,7 +287,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 	return
 }
 
-func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) (testBeamFilesRules []*rule.Rule) {
+func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (testBeamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -305,7 +305,7 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing (for tests)", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -537,7 +537,7 @@ func (erlangApp *erlangApp) testPathFor(from, include string) string {
 	return ""
 }
 
-func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) []*rule.Rule {
+func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -555,7 +555,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
