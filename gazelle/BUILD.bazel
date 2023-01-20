@@ -1,5 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 exports_files(["erl_attrs_to_json.sh"])
 
@@ -28,6 +28,7 @@ go_library(
     importpath = "github.com/rabbitmq/rules_erlang/gazelle",
     visibility = ["//visibility:public"],
     deps = [
+        "//gazelle/fetch",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",
@@ -63,24 +64,6 @@ sh_binary(
     name = "rebar_config_to_json",
     srcs = ["rebar_config_to_json.sh"],
     visibility = ["//visibility:public"],
-)
-
-go_test(
-    name = "gazelle_test",
-    srcs = ["erlang_test.go"],
-    data = [
-        ":gazelle_erlang_binary",
-        ":dot_app_to_json",
-        ":erl_attrs_to_json",
-        ":hex_metadata_config_to_json",
-        ":rebar_config_to_json",
-    ] + glob(["testdata/**"]),
-    deps = [
-        "@bazel_gazelle//testtools:go_default_library",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist",
-        "@com_github_ghodss_yaml//:yaml",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
-    ],
 )
 
 gazelle_binary(

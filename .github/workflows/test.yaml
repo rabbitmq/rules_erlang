@@ -247,15 +247,19 @@ jobs:
       with:
         otp-version: 25
     - name: TEST GAZELLE PACKAGE
+      working-directory: test
       run: |
         cat << EOF >> user.bazelrc
           build --color=yes
         EOF
 
-        bazelisk test //gazelle:all \
-          || bazelisk test //gazelle:all
+        bazelisk test //gazelle:unit_suite
+
+        bazelisk test //gazelle:integration_suite \
+          || bazelisk test //gazelle:integration_suite
     - name: RESOVLE TEST LOGS PATH
       if: always()
+      working-directory: test
       run: |
         echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
       id: resolve-test-logs-path

@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
 )
 
 const (
@@ -161,27 +161,8 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	return r, nil
 }
 
-func parseHexImportArg(imp string) (name, pkg, version string, err error) {
-	r := regexp.MustCompile(`(?P<Name>.*)=?hex\.pm/(?P<Pkg>[^@]+)@?(?P<Version>.*)`)
-	match := r.FindStringSubmatch(imp)
-	if len(match) == 4 {
-		name = match[1]
-		pkg = match[2]
-		version = match[3]
-		if name == "" {
-			name = pkg
-		}
-		if version == "" {
-			version = "latest"
-		}
-	} else {
-		err = fmt.Errorf("not a valid import string: %s", imp)
-	}
-	return
-}
-
 func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
-	name, pkg, version, err := parseHexImportArg(imp)
+	name, pkg, version, err := fetch.ParseHexImportArg(imp)
 	if err != nil {
 		// This is a soft error, where this importer just does not match
 		return nil, nil
@@ -222,28 +203,8 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 	return r, nil
 }
 
-func parseGithubImportArg(imp string) (name, owner, repo, ref string, err error) {
-	r := regexp.MustCompile(`(?P<Name>.*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
-	match := r.FindStringSubmatch(imp)
-	if len(match) == 5 {
-		name = match[1]
-		owner = match[2]
-		repo = match[3]
-		ref = match[4]
-		if name == "" {
-			name = repo
-		}
-		if ref == "" {
-			ref = "main"
-		}
-	} else {
-		err = fmt.Errorf("not a valid import string: %s", imp)
-	}
-	return
-}
-
 func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
-	name, owner, repo, ref, err := parseGithubImportArg(imp)
+	name, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
 	if err != nil {
 		// This is a soft error, where this importer just does not match
 		return nil, nil
