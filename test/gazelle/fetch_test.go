@@ -1,4 +1,4 @@
-package update_test
+package fetch_test
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -9,7 +9,7 @@ import (
 
 func TestUpdate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "update Suite")
+	RunSpecs(t, "Fetch Suite")
 }
 
 var _ = Describe("ParseGithubImportArg", func() {
