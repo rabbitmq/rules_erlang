@@ -394,7 +394,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	var result language.GenerateResult
 	result.Gen = make([]*rule.Rule, 0)
 
-	erlangApp := newErlangApp(args.Config.RepoRoot, args.Rel)
+	erlangApp := NewErlangApp(args.Config.RepoRoot, args.Rel)
 	for dep := range erlangConfig.Deps {
 		erlangApp.Deps.Add(dep)
 	}

@@ -35,7 +35,7 @@ type erlangApp struct {
 
 var ignoredIncludeLoggingPattern = regexp.MustCompile(`/lib/[^-]+-[^/]+/include/`)
 
-func newErlangApp(repoRoot, rel string) *erlangApp {
+func NewErlangApp(repoRoot, rel string) *erlangApp {
 	return &erlangApp{
 		RepoRoot:     repoRoot,
 		Rel:          rel,

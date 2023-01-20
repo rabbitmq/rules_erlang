@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	erlParserOnce   sync.Once
 	erlParserStdin  io.Writer
 	erlParserStdout io.Reader
 	erlParserMutex  sync.Mutex
@@ -26,50 +27,50 @@ var (
 // based on bazelbuild/rules_python/gazelle/parser.go
 // https://github.com/bazelbuild/rules_python/blob/main/gazelle/parser.go
 
-func init() {
-	scriptRunfile, err := bazel.Runfile("gazelle/erl_attrs_to_json")
-	if err != nil {
-		log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
-	cmd := exec.CommandContext(ctx, scriptRunfile)
-
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	erlParserStdin = stdin
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	erlParserStdout = stdout
-
-	if err := cmd.Start(); err != nil {
-		log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	go func() {
-		defer parserCancel()
-		if err := cmd.Wait(); err != nil {
-			log.Printf("failed to wait for erl_attrs_to_json: %v\n", err)
-			os.Exit(1)
-		}
-	}()
-}
-
 type erlParserImpl struct{}
 
 func newErlParser() *erlParserImpl {
+	erlParserOnce.Do(func() {
+		scriptRunfile, err := bazel.Runfile("gazelle/erl_attrs_to_json")
+		if err != nil {
+			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		ctx := context.Background()
+		ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
+		cmd := exec.CommandContext(ctx, scriptRunfile)
+
+		cmd.Stderr = os.Stderr
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		erlParserStdin = stdin
+
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		erlParserStdout = stdout
+
+		if err := cmd.Start(); err != nil {
+			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		go func() {
+			defer parserCancel()
+			if err := cmd.Wait(); err != nil {
+				log.Printf("failed to wait for erl_attrs_to_json: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+	})
+
 	return &erlParserImpl{}
 }
 

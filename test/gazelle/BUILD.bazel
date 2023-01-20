@@ -5,6 +5,7 @@ gazelle_binary(
     name = "gazelle_erlang_binary",
     languages = ["@rules_erlang//gazelle"],
     tags = ["manual"],
+    testonly = True,
 )
 
 go_test(
@@ -37,9 +38,21 @@ go_test(
     tags = ["manual"],
 )
 
+go_test(
+    name = "erlang_test",
+    srcs = ["erlang_test.go"],
+    deps = [
+        "@com_github_onsi_ginkgo_v2//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@rules_erlang//gazelle",
+    ],
+    tags = ["manual"],
+)
+
 test_suite(
     name = "unit_suite",
     tests = [
+        "erlang_test",
         "fetch_test",
     ],
     tags = ["manual"],

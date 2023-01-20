@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	parserOnce   sync.Once
 	parserStdin  io.Writer
 	parserStdout io.Reader
 	parserMutex  sync.Mutex
@@ -24,47 +25,6 @@ var (
 
 // based on bazelbuild/rules_python/gazelle/parser.go
 // https://github.com/bazelbuild/rules_python/blob/main/gazelle/parser.go
-
-func init() {
-	scriptRunfile, err := bazel.Runfile("gazelle/rebar_config_to_json")
-	if err != nil {
-		log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
-	cmd := exec.CommandContext(ctx, scriptRunfile)
-
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	parserStdin = stdin
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	parserStdout = stdout
-
-	if err := cmd.Start(); err != nil {
-		log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	go func() {
-		defer parserCancel()
-		if err := cmd.Wait(); err != nil {
-			log.Printf("failed to wait for rebar_config_to_json: %v\n", err)
-			os.Exit(1)
-		}
-	}()
-}
 
 type rebarConfigParser struct {
 	// The value of language.GenerateArgs.Config.RepoRoot.
@@ -77,6 +37,47 @@ func newRebarConfigParser(
 	repoRoot string,
 	relPackagePath string,
 ) *rebarConfigParser {
+	parserOnce.Do(func() {
+		scriptRunfile, err := bazel.Runfile("gazelle/rebar_config_to_json")
+		if err != nil {
+			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		ctx := context.Background()
+		ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
+		cmd := exec.CommandContext(ctx, scriptRunfile)
+
+		cmd.Stderr = os.Stderr
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		parserStdin = stdin
+
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		parserStdout = stdout
+
+		if err := cmd.Start(); err != nil {
+			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		go func() {
+			defer parserCancel()
+			if err := cmd.Wait(); err != nil {
+				log.Printf("failed to wait for rebar_config_to_json: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+	})
+
 	return &rebarConfigParser{
 		repoRoot:       repoRoot,
 		relPackagePath: relPackagePath,
