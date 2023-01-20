@@ -12,7 +12,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type erlangApp struct {
+type ErlangApp struct {
 	RepoRoot     string
 	Rel          string
 	Name         string
@@ -35,8 +35,8 @@ type erlangApp struct {
 
 var ignoredIncludeLoggingPattern = regexp.MustCompile(`/lib/[^-]+-[^/]+/include/`)
 
-func newErlangApp(repoRoot, rel string) *erlangApp {
-	return &erlangApp{
+func NewErlangApp(repoRoot, rel string) *ErlangApp {
+	return &ErlangApp{
 		RepoRoot:     repoRoot,
 		Rel:          rel,
 		Ebin:         NewMutableSet[string](),
@@ -55,7 +55,7 @@ func newErlangApp(repoRoot, rel string) *erlangApp {
 	}
 }
 
-func (erlangApp *erlangApp) addFile(f string) {
+func (erlangApp *ErlangApp) AddFile(f string) {
 	if strings.HasPrefix(f, "ebin/") {
 		if strings.HasSuffix(f, ".app") {
 			erlangApp.Ebin.Add(f)
@@ -109,7 +109,7 @@ func ruleName(f string) string {
 	return strings.ReplaceAll(r, ".", "_")
 }
 
-func (erlangApp *erlangApp) pathFor(from, include string) string {
+func (erlangApp *ErlangApp) pathFor(from, include string) string {
 	if erlangApp.PrivateHdrs.Contains(include) || erlangApp.PublicHdrs.Contains(include) {
 		return include
 	}
@@ -143,27 +143,27 @@ func erlcOptsWithSelect(debugOpts []string) rule.SelectStringListValue {
 	}
 }
 
-func (erlangApp *erlangApp) erlcOptsRule() *rule.Rule {
+func (erlangApp *ErlangApp) erlcOptsRule() *rule.Rule {
 	erlc_opts := rule.NewRule(erlcOptsKind, erlcOptsRuleName)
 	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
 	erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return erlc_opts
 }
 
-func (erlangApp *erlangApp) testErlcOptsRule() *rule.Rule {
+func (erlangApp *ErlangApp) testErlcOptsRule() *rule.Rule {
 	test_erlc_opts := rule.NewRule(erlcOptsKind, testErlcOptsRuleName)
 	test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
 	test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return test_erlc_opts
 }
 
-func (erlangApp *erlangApp) basePltRule() *rule.Rule {
+func (erlangApp *ErlangApp) basePltRule() *rule.Rule {
 	plt := rule.NewRule(pltKind, "base_plt")
 	plt.SetAttr("visibility", []string{":__subpackages__"})
 	return plt
 }
 
-func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser *erlParser) (beamFilesRules []*rule.Rule) {
+func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -181,7 +181,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -200,8 +200,11 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 
 		theseDeps := NewMutableSet[string]()
 		for _, include := range erlAttrs.IncludeLib {
-			parts := strings.Split(include, string(os.PathSeparator))
-			if len(parts) > 0 {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(args.Config, "            include_lib", path)
+				theseHdrs.Add(path)
+			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
 				if parts[0] == erlangApp.Name {
 					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
 					if path != "" {
@@ -287,7 +290,7 @@ func (erlangApp *erlangApp) beamFilesRules(args language.GenerateArgs, erlParser
 	return
 }
 
-func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) (testBeamFilesRules []*rule.Rule) {
+func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (testBeamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -305,7 +308,7 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing (for tests)", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -324,8 +327,11 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 
 		theseDeps := NewMutableSet[string]()
 		for _, include := range erlAttrs.IncludeLib {
-			parts := strings.Split(include, string(os.PathSeparator))
-			if len(parts) > 0 {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(args.Config, "            include_lib", path)
+				theseHdrs.Add(path)
+			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
 				if parts[0] == erlangApp.Name {
 					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
 					if path != "" {
@@ -413,7 +419,7 @@ func (erlangApp *erlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 	return
 }
 
-func (erlangApp *erlangApp) allSrcsRules() []*rule.Rule {
+func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	var rules []*rule.Rule
 
 	srcs := rule.NewRule("filegroup", "srcs")
@@ -454,7 +460,7 @@ func (erlangApp *erlangApp) allSrcsRules() []*rule.Rule {
 	return rules
 }
 
-func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
+func (erlangApp *ErlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	r := rule.NewRule(erlangAppKind, "erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
@@ -483,7 +489,7 @@ func (erlangApp *erlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
 	return r
 }
 
-func (erlangApp *erlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
+func (erlangApp *ErlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 	r := rule.NewRule(testErlangAppKind, "test_erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
@@ -521,7 +527,7 @@ func ruleNameForTestSrc(f string) string {
 	}
 }
 
-func (erlangApp *erlangApp) testPathFor(from, include string) string {
+func (erlangApp *ErlangApp) testPathFor(from, include string) string {
 	standardPath := erlangApp.pathFor(from, include)
 	if standardPath != "" {
 		return standardPath
@@ -537,7 +543,7 @@ func (erlangApp *erlangApp) testPathFor(from, include string) string {
 	return ""
 }
 
-func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser *erlParser) []*rule.Rule {
+func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -555,7 +561,7 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.deepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -574,8 +580,11 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 
 		theseDeps := NewMutableSet[string]()
 		for _, include := range erlAttrs.IncludeLib {
-			parts := strings.Split(include, string(os.PathSeparator))
-			if len(parts) > 0 {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(args.Config, "            include_lib", path)
+				theseHdrs.Add(path)
+			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
 				if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
 					Log(args.Config, "            include_lib", include, "->", parts[0])
 					theseDeps.Add(parts[0])
@@ -647,27 +656,27 @@ func (erlangApp *erlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	return beamFilesRules
 }
 
-func (erlangApp *erlangApp) xrefRule() *rule.Rule {
+func (erlangApp *ErlangApp) xrefRule() *rule.Rule {
 	r := rule.NewRule(xrefKind, "xref")
 	r.SetAttr("target", ":erlang_app")
 	return r
 }
 
-func (erlangApp *erlangApp) appPltRule() *rule.Rule {
+func (erlangApp *ErlangApp) appPltRule() *rule.Rule {
 	r := rule.NewRule(pltKind, "deps_plt")
 	r.SetAttr("plt", "//:base_plt")
 	r.SetAttr("for_target", ":erlang_app")
 	return r
 }
 
-func (erlangApp *erlangApp) dialyzeRule() *rule.Rule {
+func (erlangApp *ErlangApp) dialyzeRule() *rule.Rule {
 	r := rule.NewRule(dialyzeKind, "dialyze")
 	r.SetAttr("target", ":erlang_app")
 	r.SetAttr("plt", ":deps_plt")
 	return r
 }
 
-func (erlangApp *erlangApp) eunitRule() *rule.Rule {
+func (erlangApp *ErlangApp) eunitRule() *rule.Rule {
 	// eunit_mods is the list of source modules, plus any test module which is
 	// not among the source modules with a "_tests" suffix appended
 	modMap := make(map[string]string)
@@ -707,7 +716,7 @@ func (erlangApp *erlangApp) eunitRule() *rule.Rule {
 	return eunit
 }
 
-func (erlangApp *erlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*rule.Rule {
+func (erlangApp *ErlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*rule.Rule {
 	rulesByName := make(map[string]*rule.Rule, len(testDirBeamFilesRules))
 	for _, r := range testDirBeamFilesRules {
 		name := strings.TrimSuffix(r.Name(), "_beam_files")
@@ -735,11 +744,11 @@ func (erlangApp *erlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*
 	return rules
 }
 
-func (erlangApp *erlangApp) hasTestSuites() bool {
+func (erlangApp *ErlangApp) hasTestSuites() bool {
 	return !erlangApp.TestSrcs.IsEmpty()
 }
 
-func (erlangApp *erlangApp) modules() []string {
+func (erlangApp *ErlangApp) modules() []string {
 	modules := make([]string, len(erlangApp.Srcs))
 	for i, src := range erlangApp.Srcs.Values(strings.Compare) {
 		modules[i] = strings.TrimSuffix(filepath.Base(src), ".erl")

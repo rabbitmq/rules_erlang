@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	dotAppOnce         sync.Once
 	dotAppParserStdin  io.Writer
 	dotAppParserStdout io.Reader
 	dotAppParserMutex  sync.Mutex
@@ -24,47 +25,6 @@ var (
 
 // based on bazelbuild/rules_python/gazelle/parser.go
 // https://github.com/bazelbuild/rules_python/blob/main/gazelle/parser.go
-
-func init() {
-	scriptRunfile, err := bazel.Runfile("gazelle/dot_app_to_json")
-	if err != nil {
-		log.Printf("failed to initialize dot_app_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
-	cmd := exec.CommandContext(ctx, scriptRunfile)
-
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Printf("failed to initialize dot_app_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	dotAppParserStdin = stdin
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Printf("failed to initialize dot_app_to_json: %v\n", err)
-		os.Exit(1)
-	}
-	dotAppParserStdout = stdout
-
-	if err := cmd.Start(); err != nil {
-		log.Printf("failed to initialize dot_app_to_json: %v\n", err)
-		os.Exit(1)
-	}
-
-	go func() {
-		defer parserCancel()
-		if err := cmd.Wait(); err != nil {
-			log.Printf("failed to wait for dot_app_to_json: %v\n", err)
-			os.Exit(1)
-		}
-	}()
-}
 
 type dotAppParser struct {
 	// The value of language.GenerateArgs.Config.RepoRoot.
@@ -77,6 +37,47 @@ func newDotAppParser(
 	repoRoot string,
 	relPackagePath string,
 ) *dotAppParser {
+	dotAppOnce.Do(func() {
+		scriptRunfile, err := bazel.Runfile("gazelle/dot_app_to_json")
+		if err != nil {
+			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		ctx := context.Background()
+		ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
+		cmd := exec.CommandContext(ctx, scriptRunfile)
+
+		cmd.Stderr = os.Stderr
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		dotAppParserStdin = stdin
+
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
+			os.Exit(1)
+		}
+		dotAppParserStdout = stdout
+
+		if err := cmd.Start(); err != nil {
+			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
+			os.Exit(1)
+		}
+
+		go func() {
+			defer parserCancel()
+			if err := cmd.Wait(); err != nil {
+				log.Printf("failed to wait for dot_app_to_json: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+	})
+
 	return &dotAppParser{
 		repoRoot:       repoRoot,
 		relPackagePath: relPackagePath,
