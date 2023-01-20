@@ -237,3 +237,31 @@ jobs:
         if [[ "${{ steps.before.outputs.otp }}" == "${{ steps.after.outputs.otp }}" ]]; then
           echo "Fail"
         fi
+  test-gazelle-extension:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: 25
+    - name: TEST GAZELLE PACKAGE
+      run: |
+        cat << EOF >> user.bazelrc
+          build --color=yes
+        EOF
+
+        bazelisk test //gazelle:all \
+          || bazelisk test //gazelle:all
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      run: |
+        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: bazel-testlogs-gazelle
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
