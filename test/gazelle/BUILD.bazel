@@ -1,6 +1,11 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
+gazelle_binary(
+    name = "gazelle_erlang_binary",
+    languages = ["@rules_erlang//gazelle"],
+)
+
 go_test(
     name = "gazelle_test",
     srcs = ["erlang_test.go"],
@@ -19,7 +24,12 @@ go_test(
     ],
 )
 
-gazelle_binary(
-    name = "gazelle_erlang_binary",
-    languages = ["@rules_erlang//gazelle"],
+go_test(
+    name = "update_test",
+    srcs = ["update_test.go"],
+    deps = [
+        "@com_github_onsi_ginkgo_v2//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@rules_erlang//gazelle/fetch",
+    ],
 )

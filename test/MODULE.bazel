@@ -35,6 +35,8 @@ use_repo(
     go_deps,
     "com_github_emirpasic_gods",
     "com_github_ghodss_yaml",
+    "com_github_onsi_ginkgo_v2",
+    "com_github_onsi_gomega",
 )
 
 erlang_config_extension = use_extension(

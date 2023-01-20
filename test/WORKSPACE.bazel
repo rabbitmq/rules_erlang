@@ -78,29 +78,29 @@ local_repository(
     path = "..",
 )
 
-load(
-    "@rules_erlang//:rules_erlang.bzl",
-    "erlang_config",
-    "internal_erlang_from_github_release",
-    "rules_erlang_dependencies",
-)
+load("@rules_erlang//:internal_deps.bzl", "rules_erlang_internal_deps")
+
+rules_erlang_internal_deps()
+
+load("@rules_erlang//:internal_setup.bzl", "rules_erlang_internal_setup")
+
+rules_erlang_internal_setup(go_repository_default_config = "//:WORKSPACE")
+
 load("@rules_erlang//gazelle:deps.bzl", "gazelle_deps")
 
 gazelle_deps()
 
-go_rules_dependencies()
-
-go_register_toolchains(version = "1.18.3")
-
-gazelle_dependencies(go_repository_default_config = "//:WORKSPACE.bazel")
+load(
+    "@rules_erlang//:rules_erlang.bzl",
+    "erlang_config",
+    "internal_erlang_from_github_release",
+)
 
 erlang_config(
     internal_erlang_configs = [
         internal_erlang_from_github_release(),
     ],
 )
-
-rules_erlang_dependencies()
 
 load("@erlang_config//:defaults.bzl", "register_defaults")
 
