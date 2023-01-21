@@ -13,5 +13,8 @@ func fakeErlParser(responses map[string]*erlang.ErlAttrs) *erlParserFake {
 }
 
 func (p *erlParserFake) DeepParseErl(erlFile string, erlangApp *erlang.ErlangApp, test bool) (*erlang.ErlAttrs, error) {
-	return p.Responses[erlFile], nil
+	if r, ok := p.Responses[erlFile]; ok {
+		return r, nil
+	}
+	return &erlang.ErlAttrs{}, nil
 }

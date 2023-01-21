@@ -66,13 +66,13 @@ record_attr(E, _, behavior, Dep) ->
     ets:insert(E, {behaviour, Dep});
 record_attr(E, _, behaviour, Dep) ->
     ets:insert(E, {behaviour, Dep});
-%% record_attr(E, compile, {parse_transform, Dep}) ->
-%%     ets:insert(E, {Dep});
-%% record_attr(E, compile, Opts) when is_list(Opts) ->
-%%     case proplists:get_value(parse_transform, Opts) of
-%%         undefined -> ok;
-%%         Dep -> ets:insert(E, {Dep})
-%%     end;
+record_attr(E, _, compile, {parse_transform, Dep}) ->
+    ets:insert(E, {parse_transform, Dep});
+record_attr(E, _, compile, Opts) when is_list(Opts) ->
+    case proplists:get_value(parse_transform, Opts) of
+        undefined -> ok;
+        Dep -> ets:insert(E, {parse_transform, Dep})
+    end;
 record_attr(E, File, file, {Path, _}) when File =/= Path ->
     case string:reverse(Path) of
         "lrh." ++ _ ->
@@ -144,6 +144,8 @@ deps(E) ->
               Acc#{include := [Path | Include]};
           ({behaviour, Dep}, #{behaviour := Behaviours} = Acc) ->
               Acc#{behaviour := [Dep | Behaviours]};
+          ({parse_transform, Dep}, #{parse_transform := Transforms} = Acc) ->
+              Acc#{parse_transform := [Dep | Transforms]};
           ({call, M, F}, #{call := Calls0} = Acc) ->
               Calls = maps:update_with(M,
                                        fun(Fs) ->
@@ -164,6 +166,7 @@ deps(E) ->
         include_lib => [],
         include => [],
         behaviour => [],
+        parse_transform => [],
         call => #{}
        },
       E).

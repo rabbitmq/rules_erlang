@@ -15,6 +15,7 @@ basic(_) ->
          include_lib => [],
          include => ["my_header.hrl"],
          behaviour => [],
+         parse_transform => [my_pt],
          call => #{
                    io => [format],
                    other_lib => [foo]
@@ -26,6 +27,7 @@ basic(_) ->
          include_lib => ["some_lib/include/some_header.hrl"],
          include => ["my_header.hrl"],
          behaviour => [],
+         parse_transform => [my_pt],
          call => #{
                    io => [format],
                    other_lib => [foo]
