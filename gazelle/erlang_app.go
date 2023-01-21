@@ -224,7 +224,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.Behaviour {
+		for _, behaviour := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
 				if moduleName(other_src) == behaviour {
@@ -351,7 +351,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.Behaviour {
+		for _, behaviour := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
 				if moduleName(other_src) == behaviour {
@@ -595,7 +595,7 @@ func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.Behaviour {
+		for _, behaviour := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
 				if moduleName(other_src) == behaviour {

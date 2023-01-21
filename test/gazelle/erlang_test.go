@@ -48,7 +48,27 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules).NotTo(BeEmpty())
 
 			Expect(rules[0].Name()).To(Equal("ebin_foo_beam"))
-			Expect(rules[0].AttrStrings("hdrs")).To(ContainElements("src/foo.hrl"))
+			Expect(rules[0].AttrStrings("hdrs")).To(
+				ContainElements("src/foo.hrl"))
+		})
+
+		It("resolves parse_transforms", func() {
+			app.AddFile("src/bar.erl")
+
+			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					ParseTransform: []string{"bar"},
+				},
+			})
+
+			rules := app.BeamFilesRules(args, fakeParser)
+			Expect(rules).NotTo(BeEmpty())
+
+			Expect(rules[0].Name()).To(Equal("ebin_bar_beam"))
+
+			Expect(rules[1].Name()).To(Equal("ebin_foo_beam"))
+			Expect(rules[1].AttrStrings("beam")).To(
+				ContainElements("ebin/bar.beam"))
 		})
 	})
 })
