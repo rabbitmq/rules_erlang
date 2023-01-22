@@ -12,6 +12,8 @@ build:buildbuddy --grpc_keepalive_time=360s
 build:buildbuddy --grpc_keepalive_timeout=360s
 build:buildbuddy --build_metadata=REPO_URL=https://github.com/rabbitmq/rules_erlang.git
 
+build:buildbuddy --@rules_erlang//:ct_logdir=
+
 build:rbe --config=buildbuddy
 
 build:rbe --remote_executor=grpcs://remote.buildbuddy.io

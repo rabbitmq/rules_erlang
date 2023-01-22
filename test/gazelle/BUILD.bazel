@@ -3,9 +3,9 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 gazelle_binary(
     name = "gazelle_erlang_binary",
+    testonly = True,
     languages = ["@rules_erlang//gazelle"],
     tags = ["manual"],
-    testonly = True,
 )
 
 go_test(
@@ -18,24 +18,24 @@ go_test(
         "@rules_erlang//gazelle:hex_metadata_config_to_json",
         "@rules_erlang//gazelle:rebar_config_to_json",
     ] + glob(["testdata/**"]),
+    tags = ["manual"],
     deps = [
         "@bazel_gazelle//testtools:go_default_library",
         "@com_github_emirpasic_gods//lists/singlylinkedlist",
         "@com_github_ghodss_yaml//:yaml",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
-    tags = ["manual"],
 )
 
 go_test(
     name = "fetch_test",
     srcs = ["fetch_test.go"],
+    tags = ["manual"],
     deps = [
         "@com_github_onsi_ginkgo_v2//:go_default_library",
         "@com_github_onsi_gomega//:go_default_library",
         "@rules_erlang//gazelle/fetch",
     ],
-    tags = ["manual"],
 )
 
 go_test(
@@ -44,30 +44,30 @@ go_test(
         "erlang_test.go",
         "fake_erl_parser.go",
     ],
+    tags = ["manual"],
     deps = [
-        "@com_github_onsi_ginkgo_v2//:go_default_library",
-        "@com_github_onsi_gomega//:go_default_library",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//language:go_default_library",
+        "@com_github_onsi_ginkgo_v2//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
         "@rules_erlang//gazelle",
     ],
-    tags = ["manual"],
 )
 
 test_suite(
     name = "unit_suite",
+    tags = ["manual"],
     tests = [
         "erlang_test",
         "fetch_test",
     ],
-    tags = ["manual"],
 )
 
 test_suite(
     name = "all_suites",
-    tests = [
-        "unit_suite",
-        "integration_suite",
-    ],
     tags = ["manual"],
+    tests = [
+        "integration_suite",
+        "unit_suite",
+    ],
 )

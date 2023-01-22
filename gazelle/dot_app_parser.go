@@ -113,8 +113,8 @@ func (p *dotAppParser) parseAppSrc(appFile string) (*dotApp, error) {
 type dotApp map[string]dotAppProps
 
 type dotAppProps struct {
-	Description  string   `json:"description"`
-	Vsn          string   `json:"vsn"`
-	Licenses     []string `json:"licenses"`
-	Applications []string `json:"applications"`
+	Description  string      `json:"description"`
+	Vsn          interface{} `json:"vsn"`
+	Licenses     []string    `json:"licenses"`
+	Applications []string    `json:"applications"`
 }

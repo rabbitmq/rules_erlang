@@ -5,6 +5,10 @@
 
 -export([main/1]).
 
+-ifdef(TEST).
+-export([parse/1]).
+-endif.
+
 main(Args) ->
     case io:get_line("") of
         eof ->
@@ -40,8 +44,10 @@ conform(List) ->
         fun
             (description, Desc) ->
                 list_to_binary(Desc);
-            (vsn, Vsn) ->
+            (vsn, Vsn) when is_list(Vsn) ->
                 list_to_binary(Vsn);
+            (vsn, {cmd, Cmd}) when is_list(Cmd) ->
+                #{<<"cmd">> => list_to_binary(Cmd)};
             (licenses, Licenses) ->
                 lists:map(fun list_to_binary/1, Licenses);
             (applications, Apps) ->
