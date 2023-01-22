@@ -163,6 +163,21 @@ func (erlangApp *ErlangApp) basePltRule() *rule.Rule {
 	return plt
 }
 
+func macros(erlcOpts []string) ErlParserMacros {
+	r := make(ErlParserMacros)
+	for _, opt := range erlcOpts {
+		if strings.HasPrefix(opt, "-D") {
+			parts := strings.Split(strings.TrimPrefix(opt, "-D"), "=")
+			if len(parts) == 1 {
+				r[parts[0]] = nil
+			} else {
+				r[parts[0]] = &parts[1]
+			}
+		}
+	}
+	return r
+}
+
 func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
@@ -181,7 +196,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.ErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.ErlcOpts))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -308,7 +323,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		// TODO: not print Parsing when the file does not exist
 		Log(args.Config, "        Parsing (for tests)", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.TestErlcOpts))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -561,7 +576,7 @@ func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, Contains(erlangApp.TestErlcOpts, "-DTEST=1"))
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.TestErlcOpts))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}

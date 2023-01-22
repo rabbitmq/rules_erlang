@@ -6,8 +6,11 @@
 -export([main/1]).
 
 -ifdef(TEST).
--export([parse/2]).
+-export([parse/2,
+         parse_command/1]).
 -endif.
+
+-type macro() :: [atom() | {atom(), term()}].
 
 -spec main([string()]) -> no_return().
 main(Args) ->
@@ -15,8 +18,8 @@ main(Args) ->
         eof ->
             ok;
         Line ->
-            #{path := Filename, test := Test} = parse_command(string:trim(Line, trailing, "\n")),
-            Map = parse(Filename, Test),
+            #{path := Filename, macros := Macros} = parse_command(string:trim(Line, trailing, "\n")),
+            Map = parse(Filename, Macros),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = to_json(Map),
             io:format("~s", [Json]),
@@ -25,20 +28,38 @@ main(Args) ->
             main(Args)
     end.
 
--spec parse_command(string()) -> map().
+-spec parse_command(string()) -> #{path := string(), macros := [macro()]}.
 parse_command("{" ++ Tail) ->
     case string:reverse(Tail) of
         "}" ++ Middle ->
             Pairs = string:split(string:reverse(Middle), ",", all),
             maps:from_list([begin
-                [K, V] = string:split(Pair, ":"),
-                case K of
-                    "\"path\"" ->
-                        {path, parse_json_string(V)};
-                    "\"test\"" ->
-                        {test, list_to_atom(V)}
-                end
-            end || Pair <- Pairs])
+                                [K, V] = string:split(Pair, ":"),
+                                case K of
+                                    "\"path\"" ->
+                                        {path, parse_json_string(V)};
+                                    "\"macros\"" ->
+                                        {macros, parse_macros(V)}
+                                end
+                            end || Pair <- Pairs])
+    end.
+
+parse_macros("{}") ->
+    [];
+parse_macros("{" ++ Tail) ->
+    case string:reverse(Tail) of
+        "}" ++ Middle ->
+            Pairs = string:split(string:reverse(Middle), ",", all),
+            [begin
+                 [K, V] = string:split(Pair, ":"),
+                 Name = parse_json_string(K),
+                 case V of
+                     "null" ->
+                         list_to_atom(Name);
+                     _ ->
+                         {list_to_atom(Name), parse_json_string(V)}
+                 end
+             end || Pair <- Pairs]
     end.
 
 parse_json_string("\"" ++ Tail) ->
@@ -171,12 +192,12 @@ deps(E) ->
        },
       E).
 
--spec parse(filename:any(), boolean()) -> map() | 'null'.
-parse(File, Test) ->
-    Opts = case Test of
-        true ->
-            [{macros, ['TEST']}];
-        false ->
+-spec parse(filename:any(), [macro()]) -> map() | 'null'.
+parse(File, Macros) ->
+    Opts = case Macros of
+        Ms when length(Ms) > 0 ->
+            [{macros, Ms}];
+        _ ->
             []
     end,
     case epp:parse_file(File, Opts) of

@@ -102,6 +102,9 @@ ct_suite(
     data = [
         "test/basic.erl",
     ],
+    deps = [
+        "@thoas//:erlang_app",
+    ],
 )
 
 assert_suites2()
