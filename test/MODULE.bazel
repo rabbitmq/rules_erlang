@@ -56,3 +56,21 @@ register_toolchains(
     "@erlang_config//internal:toolchain",
     "@erlang_config//internal:toolchain2",
 )
+
+erlang_package = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "erlang_package",
+    dev_dependency = True,
+)
+
+erlang_package.hex_package(
+    name = "thoas",
+    build_file = "@//dot_app_to_json:BUILD.thoas",
+    sha256 = "442296847aca11db8d25180693d7ca3073d6d7179f66952f07b16415306513b6",
+    version = "0.4.0",
+)
+
+use_repo(
+    erlang_package,
+    "thoas",
+)

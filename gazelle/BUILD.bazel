@@ -1,7 +1,10 @@
 load("@bazel_gazelle//:def.bzl", "gazelle_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-exports_files(["erl_attrs_to_json.sh"])
+exports_files([
+    "dot_app_to_json.sh",
+    "erl_attrs_to_json.sh",
+])
 
 go_library(
     name = "gazelle",
