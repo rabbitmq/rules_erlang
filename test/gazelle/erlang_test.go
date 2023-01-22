@@ -31,6 +31,54 @@ var _ = Describe("an ErlangApp", func() {
 		app = erlang.NewErlangApp(args.Config.RepoRoot, args.Rel)
 	})
 
+	Describe("AddFile", func() {
+		BeforeEach(func() {
+			app.AddFile("src/foo.app.src")
+			app.AddFile("src/foo.erl")
+			app.AddFile("src/foo.hrl")
+			app.AddFile("include/bar.hrl")
+			app.AddFile("test/foo_SUITE.erl")
+			app.AddFile("priv/foo.img")
+			app.AddFile("LICENSE")
+			app.AddFile("src/bar.png")
+		})
+
+		It("puts .app.src files in AppSrc", func() {
+			Expect(app.AppSrc).To(HaveLen(1))
+			Expect(app.AppSrc.Contains("src/foo.app.src")).To(BeTrue())
+		})
+
+		It("puts src files in Srcs", func() {
+			Expect(app.Srcs).To(HaveLen(1))
+			Expect(app.Srcs.Contains("src/foo.erl")).To(BeTrue())
+		})
+
+		It("puts private hdrs in PrivateHdrs", func() {
+			Expect(app.PrivateHdrs).To(HaveLen(1))
+			Expect(app.PrivateHdrs.Contains("src/foo.hrl")).To(BeTrue())
+		})
+
+		It("puts public hdrs in PublicHdrs", func() {
+			Expect(app.PublicHdrs).To(HaveLen(1))
+			Expect(app.PublicHdrs.Contains("include/bar.hrl")).To(BeTrue())
+		})
+
+		It("puts test srcs in TestSrcs", func() {
+			Expect(app.TestSrcs).To(HaveLen(1))
+			Expect(app.TestSrcs.Contains("test/foo_SUITE.erl")).To(BeTrue())
+		})
+
+		It("puts priv in Priv", func() {
+			Expect(app.Priv).To(HaveLen(1))
+			Expect(app.Priv.Contains("priv/foo.img")).To(BeTrue())
+		})
+
+		It("puts license files in LicenseFiles", func() {
+			Expect(app.LicenseFiles).To(HaveLen(1))
+			Expect(app.LicenseFiles.Contains("LICENSE")).To(BeTrue())
+		})
+	})
+
 	Describe("BeamFilesRules", func() {
 		BeforeEach(func() {
 			app.AddFile("src/foo.erl")
