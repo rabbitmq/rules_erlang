@@ -24,212 +24,214 @@ const (
 	allSrcsKind            = "all_srcs"
 )
 
-func (*erlangLang) Kinds() map[string]rule.KindInfo {
-	return erlangKinds
-}
-
-var erlangAppKindInfo = rule.KindInfo{
-	MatchAny: true,
-	NonEmptyAttrs: map[string]bool{
-		"app_name":        true,
-		"app_version":     true,
-		"app_description": true,
-		"app_env":         true,
-		"visibility":      true,
-	},
-	SubstituteAttrs: map[string]bool{},
-	MergeableAttrs: map[string]bool{
-		"beam_files": true,
-		"hdrs":       true,
-		"srcs":       true,
-		"extra_apps": true,
-	},
-	ResolveAttrs: map[string]bool{
-		"deps": true,
-	},
-}
-
-var erlangKinds = map[string]rule.KindInfo{
-	"alias": {
-		NonEmptyAttrs:  map[string]bool{"actual": true},
-		MergeableAttrs: map[string]bool{"actual": true},
-	},
-	"filegroup": {
-		NonEmptyAttrs: map[string]bool{
-			"srcs":       true,
-			"visibility": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"srcs": true,
-		},
-		ResolveAttrs: map[string]bool{},
-	},
-	allBeamFilesKind: {
-		MatchAny: true,
-	},
-	allTestBeamFilesKind: {
-		MatchAny: true,
-	},
-	testSuiteBeamFilesKind: {
-		MatchAny: true,
-	},
-	allSrcsKind: {
-		MatchAny: true,
-	},
-	erlcOptsKind: {
-		MatchAttrs: []string{"values"},
-		NonEmptyAttrs: map[string]bool{
-			"values":     true,
-			"visibility": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs:  map[string]bool{},
-		ResolveAttrs:    map[string]bool{},
-	},
-	erlangBytecodeKind: {
-		MatchAttrs: []string{
-			"srcs",
-			"outs",
-		},
-		NonEmptyAttrs: map[string]bool{
-			"beam":       true,
-			"deps":       true,
-			"srcs":       true,
-			"hdrs":       true,
-			"outs":       true,
-			"visibility": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"app_name": true,
-			"srcs":     true,
-			"hdrs":     true,
-			"beam":     true,
-			"outs":     true,
-		},
-		ResolveAttrs: map[string]bool{
-			"deps": true,
-		},
-	},
-	erlangAppKind:     erlangAppKindInfo,
-	testErlangAppKind: erlangAppKindInfo,
-	xrefKind: {
-		MatchAttrs: []string{"target"},
-		NonEmptyAttrs: map[string]bool{
-			"target": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs:  map[string]bool{},
-		ResolveAttrs: map[string]bool{
-			"additional_libs": true,
-		},
-	},
-	pltKind: {
-		MatchAttrs: []string{"for_target"},
-		NonEmptyAttrs: map[string]bool{
-			"plt":        true,
-			"for_target": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"apps": true,
-		},
-		ResolveAttrs: map[string]bool{
-			"deps": true,
-		},
-	},
-	dialyzeKind: {
-		MatchAttrs: []string{"target"},
-		NonEmptyAttrs: map[string]bool{
-			"plt":      true,
-			"target":   true,
-			"plt_apps": true,
-		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"plt": true,
-		},
-		ResolveAttrs: map[string]bool{},
-	},
-	eunitKind: {
+func erlangAppKindInfo(l *erlangLang) rule.KindInfo {
+	return rule.KindInfo{
 		MatchAny: true,
 		NonEmptyAttrs: map[string]bool{
-			"compiled_suites": true,
-			"eunit_mods":      true,
+			"app_name":        true,
+			"app_version":     true,
+			"app_description": true,
+			"app_env":         true,
 			"visibility":      true,
 		},
 		SubstituteAttrs: map[string]bool{},
 		MergeableAttrs: map[string]bool{
-			"compiled_suites": true,
-			"eunit_mods":      true,
+			"app_name":    l.appName != "",
+			"app_version": l.appVersion != "",
+			"beam_files":  true,
+			"hdrs":        true,
+			"srcs":        true,
+			"extra_apps":  true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
 		},
-	},
-	ctTestKind: {
-		MatchAttrs: []string{"suite_name"},
-		NonEmptyAttrs: map[string]bool{
-			"suite_name":      true,
-			"compiled_suites": true,
-			"visibility":      true,
+	}
+}
+
+func (l *erlangLang) Kinds() map[string]rule.KindInfo {
+	return map[string]rule.KindInfo{
+		"alias": {
+			NonEmptyAttrs:  map[string]bool{"actual": true},
+			MergeableAttrs: map[string]bool{"actual": true},
 		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"compiled_suites": true,
+		"filegroup": {
+			NonEmptyAttrs: map[string]bool{
+				"srcs":       true,
+				"visibility": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"srcs": true,
+			},
+			ResolveAttrs: map[string]bool{},
 		},
-		ResolveAttrs: map[string]bool{
-			"deps": true,
+		allBeamFilesKind: {
+			MatchAny: true,
 		},
-	},
-	assertSuitesKind: {
-		MatchAny: true,
-		NonEmptyAttrs: map[string]bool{
-			"suite_files": true,
+		allTestBeamFilesKind: {
+			MatchAny: true,
 		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs:  map[string]bool{},
-		ResolveAttrs:    map[string]bool{},
-	},
-	untarKind: {
-		MatchAttrs: []string{"archive"},
-		NonEmptyAttrs: map[string]bool{
-			"archive":    true,
-			"outs":       true,
-			"visibility": true,
+		testSuiteBeamFilesKind: {
+			MatchAny: true,
 		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"outs": true,
+		allSrcsKind: {
+			MatchAny: true,
 		},
-		ResolveAttrs: map[string]bool{},
-	},
-	hexPmErlangAppKind: {
-		NonEmptyAttrs: map[string]bool{
-			"version": true,
+		erlcOptsKind: {
+			MatchAttrs: []string{"values"},
+			NonEmptyAttrs: map[string]bool{
+				"values":     true,
+				"visibility": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs:  map[string]bool{},
+			ResolveAttrs:    map[string]bool{},
 		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"pkg":        true,
-			"version":    true,
-			"build_file": true,
+		erlangBytecodeKind: {
+			MatchAttrs: []string{
+				"srcs",
+				"outs",
+			},
+			NonEmptyAttrs: map[string]bool{
+				"beam":       true,
+				"deps":       true,
+				"srcs":       true,
+				"hdrs":       true,
+				"outs":       true,
+				"visibility": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"app_name": true,
+				"srcs":     true,
+				"hdrs":     true,
+				"beam":     true,
+				"outs":     true,
+			},
+			ResolveAttrs: map[string]bool{
+				"deps": true,
+			},
 		},
-	},
-	githubErlangAppKind: {
-		NonEmptyAttrs: map[string]bool{
-			"repo":    true,
-			"org":     true,
-			"ref":     true,
-			"version": true,
+		erlangAppKind:     erlangAppKindInfo(l),
+		testErlangAppKind: erlangAppKindInfo(l),
+		xrefKind: {
+			MatchAttrs: []string{"target"},
+			NonEmptyAttrs: map[string]bool{
+				"target": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs:  map[string]bool{},
+			ResolveAttrs: map[string]bool{
+				"additional_libs": true,
+			},
 		},
-		SubstituteAttrs: map[string]bool{},
-		MergeableAttrs: map[string]bool{
-			"ref":        true,
-			"version":    true,
-			"build_file": true,
+		pltKind: {
+			MatchAttrs: []string{"for_target"},
+			NonEmptyAttrs: map[string]bool{
+				"plt":        true,
+				"for_target": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"apps": true,
+			},
+			ResolveAttrs: map[string]bool{
+				"deps": true,
+			},
 		},
-	},
+		dialyzeKind: {
+			MatchAttrs: []string{"target"},
+			NonEmptyAttrs: map[string]bool{
+				"plt":      true,
+				"target":   true,
+				"plt_apps": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"plt": true,
+			},
+			ResolveAttrs: map[string]bool{},
+		},
+		eunitKind: {
+			MatchAny: true,
+			NonEmptyAttrs: map[string]bool{
+				"compiled_suites": true,
+				"eunit_mods":      true,
+				"visibility":      true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"compiled_suites": true,
+				"eunit_mods":      true,
+			},
+			ResolveAttrs: map[string]bool{
+				"deps": true,
+			},
+		},
+		ctTestKind: {
+			MatchAttrs: []string{"suite_name"},
+			NonEmptyAttrs: map[string]bool{
+				"suite_name":      true,
+				"compiled_suites": true,
+				"visibility":      true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"compiled_suites": true,
+			},
+			ResolveAttrs: map[string]bool{
+				"deps": true,
+			},
+		},
+		assertSuitesKind: {
+			MatchAny: true,
+			NonEmptyAttrs: map[string]bool{
+				"suite_files": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs:  map[string]bool{},
+			ResolveAttrs:    map[string]bool{},
+		},
+		untarKind: {
+			MatchAttrs: []string{"archive"},
+			NonEmptyAttrs: map[string]bool{
+				"archive":    true,
+				"outs":       true,
+				"visibility": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"outs": true,
+			},
+			ResolveAttrs: map[string]bool{},
+		},
+		hexPmErlangAppKind: {
+			NonEmptyAttrs: map[string]bool{
+				"version": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"pkg":        true,
+				"version":    true,
+				"build_file": true,
+			},
+		},
+		githubErlangAppKind: {
+			NonEmptyAttrs: map[string]bool{
+				"repo":    true,
+				"org":     true,
+				"ref":     true,
+				"version": true,
+			},
+			SubstituteAttrs: map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"ref":        true,
+				"version":    true,
+				"build_file": true,
+			},
+		},
+	}
 }
 
 func (erlang *erlangLang) Loads() []rule.LoadInfo {
