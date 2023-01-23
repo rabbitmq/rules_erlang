@@ -12,6 +12,8 @@ func (attrs *ErlAttrs) modules() []string {
 	return append(attrs.Behaviour, attrs.ParseTransform...)
 }
 
+type ErlParserMacros map[string]*string
+
 type ErlParser interface {
-	DeepParseErl(string, *ErlangApp, bool) (*ErlAttrs, error)
+	DeepParseErl(string, *ErlangApp, ErlParserMacros) (*ErlAttrs, error)
 }

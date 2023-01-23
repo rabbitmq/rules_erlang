@@ -49,8 +49,8 @@ erlc_opts(
         ],
         "//conditions:default": [
             "+debug_info",
-            "-DTEST=1",
             "+deterministic",
+            "-DTEST=1",
         ],
     }),
     visibility = [":__subpackages__"],

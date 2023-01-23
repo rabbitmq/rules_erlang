@@ -164,9 +164,8 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	}
 
 	if rebarConfig.ErlOpts != nil {
-		erlangApp.ErlcOpts = make([]string, len(*rebarConfig.ErlOpts))
-		for i, o := range *rebarConfig.ErlOpts {
-			erlangApp.ErlcOpts[i] = "+" + o
+		for _, o := range *rebarConfig.ErlOpts {
+			erlangApp.ErlcOpts.Add("+" + o)
 		}
 	}
 
@@ -403,6 +402,14 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlangApp.ExtraApps.Add(app)
 	}
 
+	for opt := range erlangConfig.ErlcOpts {
+		erlangApp.ErlcOpts.Add(opt)
+	}
+
+	for opt := range erlangConfig.TestErlcOpts {
+		erlangApp.TestErlcOpts.Add(opt)
+	}
+
 	if isHexPmTar(args.RegularFiles) {
 		err := importHexPmTar(args, &result, erlangApp)
 		if err != nil {
@@ -461,7 +468,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	if args.Rel == "" {
-		erlc_opts := erlangApp.erlcOptsRule()
+		erlc_opts := erlangApp.ErlcOptsRule()
 		maybeAppendRule(erlangConfig, erlc_opts, &result)
 
 		test_erlc_opts := erlangApp.testErlcOptsRule()

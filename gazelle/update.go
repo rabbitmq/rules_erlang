@@ -85,6 +85,9 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	buildFileName := "BUILD." + name
 	buildFile := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), erlangConfig.BuildFilesDir, buildFileName)
 	if _, err := os.Stat(buildFile); !os.IsNotExist(err) {
+		// we should not probably not ovewrite an existing BUILD.bazel
+		// if there is one in the download (and maybe we don't, as we
+		// ignore the error from this copy if it occurs)
 		copyFile(
 			buildFile,
 			filepath.Join(extractedPackageDir, "BUILD.bazel"),

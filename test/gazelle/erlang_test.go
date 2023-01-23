@@ -3,6 +3,7 @@ package erlang_test
 import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/buildtools/build"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	erlang "github.com/rabbitmq/rules_erlang/gazelle"
@@ -76,6 +77,21 @@ var _ = Describe("an ErlangApp", func() {
 		It("puts license files in LicenseFiles", func() {
 			Expect(app.LicenseFiles).To(HaveLen(1))
 			Expect(app.LicenseFiles.Contains("LICENSE")).To(BeTrue())
+		})
+	})
+
+	Describe("ErlcOptsRule", func() {
+		BeforeEach(func() {
+			app.ErlcOpts.Add("+warn_export_all")
+		})
+
+		It("wraps the opts with a select based on the :debug_build setting", func() {
+			r := app.ErlcOptsRule()
+			Expect(r.Name()).To(Equal("erlc_opts"))
+			values := build.FormatString(r.Attr("values"))
+			Expect(values).To(ContainSubstring("select("))
+			Expect(values).To(ContainSubstring("+deterministic"))
+			Expect(values).To(ContainSubstring("+warn_export_all"))
 		})
 	})
 

@@ -1,0 +1,1 @@
+# gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
