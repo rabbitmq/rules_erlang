@@ -32,7 +32,7 @@ main(Args) ->
 parse_command("{" ++ Tail) ->
     case string:reverse(Tail) of
         "}" ++ Middle ->
-            Pairs = string:split(string:reverse(Middle), ",", all),
+            Pairs = string:split(string:reverse(Middle), ","),
             maps:from_list([begin
                                 [K, V] = string:split(Pair, ":"),
                                 case K of

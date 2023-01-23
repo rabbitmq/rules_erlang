@@ -21,6 +21,7 @@ const (
 	erlangAppDepIgnoreDirective          = "erlang_app_dep_ignore"
 	erlangAppExtraAppDirective           = "erlang_app_extra_app"
 	erlangNoTestsDirective               = "erlang_no_tests"
+	erlangErlcOptDirective               = "erlang_erlc_opt"
 )
 
 var (
@@ -71,6 +72,8 @@ var (
 		"edoc",
 		"erl_docgen",
 	)
+	defaultErlcOpts     = NewMutableSet("+debug_info")
+	defaultTestErlcOpts = NewMutableSet("+debug_info", "-DTEST=1")
 )
 
 type ErlangConfig struct {
@@ -87,6 +90,8 @@ type ErlangConfig struct {
 	GenerateSkipRules               MutableSet[string]
 	Deps                            MutableSet[string]
 	ExtraApps                       MutableSet[string]
+	ErlcOpts                        MutableSet[string]
+	TestErlcOpts                    MutableSet[string]
 }
 
 type ErlangConfigs map[string]*ErlangConfig
@@ -106,6 +111,8 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		GenerateSkipRules:               NewMutableSet[string](),
 		Deps:                            NewMutableSet[string](),
 		ExtraApps:                       NewMutableSet[string](),
+		ErlcOpts:                        Copy(defaultErlcOpts),
+		TestErlcOpts:                    Copy(defaultTestErlcOpts),
 	}
 }
 
@@ -132,6 +139,8 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			GenerateSkipRules:               Copy(parentConfig.GenerateSkipRules),
 			Deps:                            NewMutableSet[string](),
 			ExtraApps:                       NewMutableSet[string](),
+			ErlcOpts:                        Copy(defaultErlcOpts),
+			TestErlcOpts:                    Copy(defaultTestErlcOpts),
 		}
 	}
 	return configs[rel]
@@ -172,6 +181,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		erlangAppDepIgnoreDirective,
 		erlangAppExtraAppDirective,
 		erlangNoTestsDirective,
+		erlangErlcOptDirective,
 	}
 }
 
@@ -220,6 +230,9 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				erlangConfig.ExtraApps.Add(d.Value)
 			case erlangNoTestsDirective:
 				erlangConfig.NoTests = boolValue(d)
+			case erlangErlcOptDirective:
+				erlangConfig.ErlcOpts.Add(d.Value)
+				erlangConfig.TestErlcOpts.Add(d.Value)
 			}
 		}
 		// Log(c, "    ", erlangConfig)

@@ -4,15 +4,19 @@ load("@rules_erlang//:xref2.bzl", "xref")
 load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
 load("@rules_erlang//:ct.bzl", "assert_suites2")
 
+# gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
+
 erlc_opts(
     name = "erlc_opts",
     values = select({
         "@rules_erlang//:debug_build": [
             "+debug_info",
+            "-DBUILD_WITHOUT_FOO",
         ],
         "//conditions:default": [
             "+debug_info",
             "+deterministic",
+            "-DBUILD_WITHOUT_FOO",
         ],
     }),
     visibility = [":__subpackages__"],
@@ -23,12 +27,14 @@ erlc_opts(
     values = select({
         "@rules_erlang//:debug_build": [
             "+debug_info",
+            "-DBUILD_WITHOUT_FOO",
             "-DTEST=1",
         ],
         "//conditions:default": [
             "+debug_info",
-            "-DTEST=1",
             "+deterministic",
+            "-DBUILD_WITHOUT_FOO",
+            "-DTEST=1",
         ],
     }),
     visibility = [":__subpackages__"],

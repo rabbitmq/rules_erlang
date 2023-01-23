@@ -37,6 +37,14 @@ func (s MutableSet[T]) Any() T {
 	return result
 }
 
+func (s MutableSet[T]) ForEach(f func(v T)) {
+	for item, present := range s {
+		if present {
+			f(item)
+		}
+	}
+}
+
 func (s MutableSet[T]) Subtract(other MutableSet[T]) {
 	for item, present := range other {
 		if present {
