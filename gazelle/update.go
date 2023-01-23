@@ -207,13 +207,15 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 }
 
 func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
-	name, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
+	name, version, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
 	if err != nil {
 		// This is a soft error, where this importer just does not match
 		return nil, nil
 	}
 	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
-	version := strings.TrimPrefix(path.Base(ref), "v")
+	if version == "" {
+		version = strings.TrimPrefix(path.Base(ref), "v")
+	}
 	nameDashVersion := repo + "-" + version
 	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
@@ -354,6 +356,7 @@ func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateRep
 		fmt.Println("    github.com/owner/repo")
 		fmt.Println("    github.com/owner/repo@ref")
 		fmt.Println("    name=github.com/owner/repo@ref")
+		fmt.Println("    name@version=github.com/owner/repo@ref")
 	}
 
 	return result

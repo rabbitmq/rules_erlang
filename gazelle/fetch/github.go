@@ -5,14 +5,15 @@ import (
 	"regexp"
 )
 
-func ParseGithubImportArg(imp string) (name, owner, repo, ref string, err error) {
-	r := regexp.MustCompile(`(?P<Name>[^=]*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
+func ParseGithubImportArg(imp string) (name, version, owner, repo, ref string, err error) {
+	r := regexp.MustCompile(`(?P<Name>[^@=]*)@?(?P<Version>[^=]*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
 	match := r.FindStringSubmatch(imp)
-	if len(match) == 5 {
+	if len(match) == 6 {
 		name = match[1]
-		owner = match[2]
-		repo = match[3]
-		ref = match[4]
+		version = match[2]
+		owner = match[3]
+		repo = match[4]
+		ref = match[5]
 		if name == "" {
 			name = repo
 		}
