@@ -54,7 +54,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	}
 
 	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar")
-	err = DownloadRelease(pkg, version, archivePath)
+	err = fetch.DownloadRelease(pkg, version, archivePath)
 	if err != nil {
 		return nil, err
 	}
@@ -173,14 +173,14 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 	if version == "latest" {
 		Log(config, "    checking latest", pkg)
 		var err error
-		version, err = LatestRelease(pkg)
+		version, err = fetch.LatestRelease(pkg)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	Log(config, "    will fetch", pkg, version, "from hex.pm")
-	release, err := GetRelease(pkg, version)
+	release, err := fetch.GetRelease(pkg, version)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	}
 
 	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar.gz")
-	err = DownloadRef(owner, repo, ref, archivePath)
+	err = fetch.DownloadRef(owner, repo, ref, archivePath)
 	if err != nil {
 		return nil, err
 	}
