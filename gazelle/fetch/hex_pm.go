@@ -16,9 +16,6 @@ func ParseHexImportArg(imp string) (name, pkg, version string, err error) {
 		name = match[1]
 		pkg = match[2]
 		version = match[3]
-		if name == "" {
-			name = pkg
-		}
 		if version == "" {
 			version = "latest"
 		}

@@ -47,6 +47,11 @@ func copyFile(src, dest string) error {
 }
 
 func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.Rule, error) {
+	var explicitName bool
+	if explicitName = name != ""; !explicitName {
+		name = pkg
+	}
+
 	nameDashVersion := pkg + "-" + version
 	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
@@ -114,11 +119,13 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
-	cmd.Args = append(cmd.Args,
-		"--verbose",
-		"--no_tests",
-		"-repo_root", extractedPackageDir,
-		extractedPackageDir)
+	cmd.Args = append(cmd.Args, "--verbose")
+	cmd.Args = append(cmd.Args, "--no_tests")
+	if explicitName {
+		cmd.Args = append(cmd.Args, "--app_name", name)
+	}
+	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
+	cmd.Args = append(cmd.Args, extractedPackageDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("gazelle failed for", pkg, "in", extractedPackageDir)
@@ -214,10 +221,10 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	}
 	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
 	var explicitName, explicitVersion bool
-	if explicitName = name != ""; explicitName {
+	if explicitName = name != ""; !explicitName {
 		name = repo
 	}
-	if explicitVersion = version != ""; explicitVersion {
+	if explicitVersion = version != ""; !explicitVersion {
 		version = strings.TrimPrefix(path.Base(ref), "v")
 	}
 	nameDashVersion := repo + "-" + version
@@ -406,8 +413,4 @@ func (*erlangLang) ImportRepos(args language.ImportReposArgs) language.ImportRep
 	})
 
 	return res
-}
-
-func minVersion(requirement string) string {
-	return strings.TrimPrefix(requirement, "~> ")
 }

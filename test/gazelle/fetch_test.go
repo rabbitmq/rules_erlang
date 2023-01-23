@@ -23,6 +23,16 @@ var _ = Describe("Fetch Suite", func() {
 			Expect(version).To(Equal("1.0.0"))
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("leaves the name empty if not explicit", func() {
+			imp := "hex.pm/lz4-erlang@1.0.0"
+			name, pkg, version, err := fetch.ParseHexImportArg(imp)
+
+			Expect(name).To(Equal(""))
+			Expect(pkg).To(Equal("lz4-erlang"))
+			Expect(version).To(Equal("1.0.0"))
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Describe("ParseGithubImportArg", func() {
