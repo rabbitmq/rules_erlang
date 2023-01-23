@@ -16,9 +16,6 @@ func ParseGithubImportArg(imp string) (name, version, owner, repo, ref string, e
 		owner = match[3]
 		repo = match[4]
 		ref = match[5]
-		if name == "" {
-			name = repo
-		}
 		if ref == "" {
 			ref = "main"
 		}

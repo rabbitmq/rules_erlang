@@ -213,7 +213,11 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 		return nil, nil
 	}
 	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
-	if version == "" {
+	var explicitName, explicitVersion bool
+	if explicitName = name != ""; explicitName {
+		name = repo
+	}
+	if explicitVersion = version != ""; explicitVersion {
 		version = strings.TrimPrefix(path.Base(ref), "v")
 	}
 	nameDashVersion := repo + "-" + version
@@ -265,11 +269,16 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
-	cmd.Args = append(cmd.Args,
-		"--verbose",
-		"--no_tests",
-		"-repo_root", extractedPackageDir,
-		extractedPackageDir)
+	cmd.Args = append(cmd.Args, "--verbose")
+	cmd.Args = append(cmd.Args, "--no_tests")
+	if explicitName {
+		cmd.Args = append(cmd.Args, "--app_name", name)
+	}
+	if explicitVersion {
+		cmd.Args = append(cmd.Args, "--app_version", version)
+	}
+	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
+	cmd.Args = append(cmd.Args, extractedPackageDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("gazelle failed for", repo, "in", extractedPackageDir)

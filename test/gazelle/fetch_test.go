@@ -49,5 +49,17 @@ var _ = Describe("Fetch Suite", func() {
 			Expect(ref).To(Equal("master"))
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("leaves the name empty if not explicit", func() {
+			imp := "github.com/rabbitmq/inet_tcp_proxy@master"
+			name, version, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
+
+			Expect(name).To(Equal(""))
+			Expect(version).To(Equal(""))
+			Expect(owner).To(Equal("rabbitmq"))
+			Expect(repo).To(Equal("inet_tcp_proxy"))
+			Expect(ref).To(Equal("master"))
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 })

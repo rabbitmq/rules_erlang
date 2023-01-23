@@ -88,6 +88,8 @@ type ErlangConfig struct {
 	GenerateBeamFilesMacro          bool
 	GenerateTestBeamUnconditionally bool
 	GenerateSkipRules               MutableSet[string]
+	AppName                         string
+	AppVersion                      string
 	Deps                            MutableSet[string]
 	ExtraApps                       MutableSet[string]
 	ErlcOpts                        MutableSet[string]
@@ -109,6 +111,8 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		GenerateBeamFilesMacro:          false,
 		GenerateTestBeamUnconditionally: false,
 		GenerateSkipRules:               NewMutableSet[string](),
+		AppName:                         erlang.appName,
+		AppVersion:                      erlang.appVersion,
 		Deps:                            NewMutableSet[string](),
 		ExtraApps:                       NewMutableSet[string](),
 		ErlcOpts:                        Copy(defaultErlcOpts),
@@ -137,6 +141,8 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			GenerateBeamFilesMacro:          parentConfig.GenerateBeamFilesMacro,
 			GenerateTestBeamUnconditionally: parentConfig.GenerateTestBeamUnconditionally,
 			GenerateSkipRules:               Copy(parentConfig.GenerateSkipRules),
+			AppName:                         "",
+			AppVersion:                      "",
 			Deps:                            NewMutableSet[string](),
 			ExtraApps:                       NewMutableSet[string](),
 			ErlcOpts:                        Copy(defaultErlcOpts),
@@ -148,6 +154,8 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 
 type Configurer struct {
 	verbose       bool
+	appName       string
+	appVersion    string
 	noTests       bool
 	appsDir       string
 	buildFilesDir string
@@ -155,8 +163,12 @@ type Configurer struct {
 
 func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.BoolVar(&erlang.verbose, "verbose", false, "when true, the erlang extension will log additional output")
-	fs.BoolVar(&erlang.noTests, "no_tests", false, "when true, generates no rules associated with testing")
-	fs.StringVar(&erlang.appsDir, "default_apps_dir", "apps", "directory containing embedded applications in an umbrella project")
+	if cmd == "update" || cmd == "fix" {
+		fs.StringVar(&erlang.appName, "app_name", "", "sets the application name, overriding inferred values")
+		fs.StringVar(&erlang.appVersion, "app_version", "", "sets the application version, overriding inferred values")
+		fs.BoolVar(&erlang.noTests, "no_tests", false, "when true, generates no rules associated with testing")
+		fs.StringVar(&erlang.appsDir, "default_apps_dir", "apps", "directory containing embedded applications in an umbrella project")
+	}
 	if cmd == "update-repos" {
 		fs.StringVar(&erlang.buildFilesDir, "build_files_dir", "", "directory to place BUILD.lib_name files when running update-repos")
 	}
