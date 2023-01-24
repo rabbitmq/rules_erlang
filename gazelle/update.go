@@ -47,6 +47,11 @@ func copyFile(src, dest string) error {
 }
 
 func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.Rule, error) {
+	var explicitName bool
+	if explicitName = name != ""; !explicitName {
+		name = pkg
+	}
+
 	nameDashVersion := pkg + "-" + version
 	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
@@ -54,7 +59,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	}
 
 	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar")
-	err = DownloadRelease(pkg, version, archivePath)
+	err = fetch.DownloadRelease(pkg, version, archivePath)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +119,13 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
-	cmd.Args = append(cmd.Args,
-		"--verbose",
-		"--no_tests",
-		"-repo_root", extractedPackageDir,
-		extractedPackageDir)
+	cmd.Args = append(cmd.Args, "--verbose")
+	cmd.Args = append(cmd.Args, "--no_tests")
+	if explicitName {
+		cmd.Args = append(cmd.Args, "--app_name", name)
+	}
+	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
+	cmd.Args = append(cmd.Args, extractedPackageDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("gazelle failed for", pkg, "in", extractedPackageDir)
@@ -173,14 +180,14 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 	if version == "latest" {
 		Log(config, "    checking latest", pkg)
 		var err error
-		version, err = LatestRelease(pkg)
+		version, err = fetch.LatestRelease(pkg)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	Log(config, "    will fetch", pkg, version, "from hex.pm")
-	release, err := GetRelease(pkg, version)
+	release, err := fetch.GetRelease(pkg, version)
 	if err != nil {
 		return nil, err
 	}
@@ -207,13 +214,19 @@ func tryImportHex(config *config.Config, imp string) (*rule.Rule, error) {
 }
 
 func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
-	name, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
+	name, version, owner, repo, ref, err := fetch.ParseGithubImportArg(imp)
 	if err != nil {
 		// This is a soft error, where this importer just does not match
 		return nil, nil
 	}
 	Log(config, "    will fetch", owner+"/"+repo, ref, "from github.com")
-	version := strings.TrimPrefix(path.Base(ref), "v")
+	var explicitName, explicitVersion bool
+	if explicitName = name != ""; !explicitName {
+		name = repo
+	}
+	if explicitVersion = version != ""; !explicitVersion {
+		version = strings.TrimPrefix(path.Base(ref), "v")
+	}
 	nameDashVersion := repo + "-" + version
 	downloadDir, err := os.MkdirTemp("", nameDashVersion)
 	if err != nil {
@@ -221,7 +234,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	}
 
 	archivePath := filepath.Join(downloadDir, nameDashVersion+".tar.gz")
-	err = DownloadRef(owner, repo, ref, archivePath)
+	err = fetch.DownloadRef(owner, repo, ref, archivePath)
 	if err != nil {
 		return nil, err
 	}
@@ -263,11 +276,16 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
-	cmd.Args = append(cmd.Args,
-		"--verbose",
-		"--no_tests",
-		"-repo_root", extractedPackageDir,
-		extractedPackageDir)
+	cmd.Args = append(cmd.Args, "--verbose")
+	cmd.Args = append(cmd.Args, "--no_tests")
+	if explicitName {
+		cmd.Args = append(cmd.Args, "--app_name", name)
+	}
+	if explicitVersion {
+		cmd.Args = append(cmd.Args, "--app_version", version)
+	}
+	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
+	cmd.Args = append(cmd.Args, extractedPackageDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("gazelle failed for", repo, "in", extractedPackageDir)
@@ -354,6 +372,7 @@ func (*erlangLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateRep
 		fmt.Println("    github.com/owner/repo")
 		fmt.Println("    github.com/owner/repo@ref")
 		fmt.Println("    name=github.com/owner/repo@ref")
+		fmt.Println("    name@version=github.com/owner/repo@ref")
 	}
 
 	return result
@@ -394,8 +413,4 @@ func (*erlangLang) ImportRepos(args language.ImportReposArgs) language.ImportRep
 	})
 
 	return res
-}
-
-func minVersion(requirement string) string {
-	return strings.TrimPrefix(requirement, "~> ")
 }

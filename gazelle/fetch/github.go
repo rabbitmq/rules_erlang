@@ -2,20 +2,20 @@ package fetch
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"regexp"
 )
 
-func ParseGithubImportArg(imp string) (name, owner, repo, ref string, err error) {
-	r := regexp.MustCompile(`(?P<Name>[^=]*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
+func ParseGithubImportArg(imp string) (name, version, owner, repo, ref string, err error) {
+	r := regexp.MustCompile(`(?P<Name>[^@=]*)@?(?P<Version>[^=]*)=?github\.com/(?P<Owner>[^/]+)/(?P<Repo>[^@]+)@?(?P<Ref>.*)`)
 	match := r.FindStringSubmatch(imp)
-	if len(match) == 5 {
+	if len(match) == 6 {
 		name = match[1]
-		owner = match[2]
-		repo = match[3]
-		ref = match[4]
-		if name == "" {
-			name = repo
-		}
+		version = match[2]
+		owner = match[3]
+		repo = match[4]
+		ref = match[5]
 		if ref == "" {
 			ref = "main"
 		}
@@ -23,4 +23,14 @@ func ParseGithubImportArg(imp string) (name, owner, repo, ref string, err error)
 		err = fmt.Errorf("not a valid import string: %s", imp)
 	}
 	return
+}
+
+func DownloadRef(owner, repo, ref, filepath string) error {
+	url := url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   path.Join(owner, repo, "archive", ref+".tar.gz"),
+	}
+
+	return Download(&url, filepath)
 }

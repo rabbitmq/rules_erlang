@@ -428,7 +428,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	if erlangApp.Name == "" {
+	if erlangConfig.AppName != "" {
+		erlangApp.Name = erlangConfig.AppName
+	} else if erlangApp.Name == "" {
 		// TODO: handle when the filename does not match the contents, or when
 		//       ebin has other files
 		if !erlangApp.Ebin.IsEmpty() {
@@ -465,6 +467,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			erlangApp.Name = filepath.Base(filepath.Join(
 				erlangApp.RepoRoot, erlangApp.Rel))
 		}
+	}
+
+	if erlangConfig.AppVersion != "" {
+		erlangApp.Version = erlangConfig.AppVersion
 	}
 
 	if args.Rel == "" {
