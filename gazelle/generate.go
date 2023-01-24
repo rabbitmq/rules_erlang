@@ -428,47 +428,46 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	if erlangConfig.AppName != "" {
-		erlangApp.Name = erlangConfig.AppName
-	} else if erlangApp.Name == "" {
-		// TODO: handle when the filename does not match the contents, or when
-		//       ebin has other files
-		if !erlangApp.Ebin.IsEmpty() {
-			dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
-			dotApp, err := dotAppParser.parseAppSrc(erlangApp.Ebin.Any())
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-			}
-
-			erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.Ebin.Any()), ".app")
-			props := (*dotApp)[erlangApp.Name]
-			for _, app := range props.Applications {
-				if !Contains([]string{"kernel", "stdlib"}, app) {
-					erlangApp.ExtraApps.Add(app)
-				}
-			}
-			erlangApp.ExtraApps.Subtract(erlangApp.Deps)
-		} else if !erlangApp.AppSrc.IsEmpty() {
-			dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
-			dotApp, err := dotAppParser.parseAppSrc(erlangApp.AppSrc.Any())
-			if err != nil {
-				log.Fatalf("ERROR: %v\n", err)
-			}
-
-			erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.AppSrc.Any()), ".app.src")
-			props := (*dotApp)[erlangApp.Name]
-			for _, app := range props.Applications {
-				if !Contains([]string{"kernel", "stdlib"}, app) {
-					erlangApp.ExtraApps.Add(app)
-				}
-			}
-			erlangApp.ExtraApps.Subtract(erlangApp.Deps)
-		} else {
-			erlangApp.Name = filepath.Base(filepath.Join(
-				erlangApp.RepoRoot, erlangApp.Rel))
+	// TODO: handle when the filename does not match the contents, or when
+	//       ebin has other files
+	if !erlangApp.Ebin.IsEmpty() {
+		dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
+		dotApp, err := dotAppParser.parseAppSrc(erlangApp.Ebin.Any())
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
 		}
+
+		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.Ebin.Any()), ".app")
+		props := (*dotApp)[erlangApp.Name]
+		for _, app := range props.Applications {
+			if !Contains([]string{"kernel", "stdlib"}, app) {
+				erlangApp.ExtraApps.Add(app)
+			}
+		}
+		erlangApp.ExtraApps.Subtract(erlangApp.Deps)
+	} else if !erlangApp.AppSrc.IsEmpty() {
+		dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
+		dotApp, err := dotAppParser.parseAppSrc(erlangApp.AppSrc.Any())
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.AppSrc.Any()), ".app.src")
+		props := (*dotApp)[erlangApp.Name]
+		for _, app := range props.Applications {
+			if !Contains([]string{"kernel", "stdlib"}, app) {
+				erlangApp.ExtraApps.Add(app)
+			}
+		}
+		erlangApp.ExtraApps.Subtract(erlangApp.Deps)
+	} else {
+		erlangApp.Name = filepath.Base(filepath.Join(
+			erlangApp.RepoRoot, erlangApp.Rel))
 	}
 
+	if erlangConfig.AppName != "" {
+		erlangApp.Name = erlangConfig.AppName
+	}
 	if erlangConfig.AppVersion != "" {
 		erlangApp.Version = erlangConfig.AppVersion
 	}
