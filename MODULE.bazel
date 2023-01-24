@@ -1,7 +1,7 @@
 module(
     name = "rules_erlang",
     compatibility_level = 3,
-    version = "3.9.0",
+    version = "3.9.1",
 )
 
 bazel_dep(
