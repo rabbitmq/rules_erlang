@@ -431,7 +431,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	// TODO: handle when the filename does not match the contents, or when
 	//       ebin has other files
 	if !erlangApp.Ebin.IsEmpty() {
-		dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
+		dotAppParser := newDotAppParser(erlangApp.RepoRoot, args.Rel)
 		dotApp, err := dotAppParser.parseAppSrc(erlangApp.Ebin.Any())
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
@@ -446,7 +446,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 		erlangApp.ExtraApps.Subtract(erlangApp.Deps)
 	} else if !erlangApp.AppSrc.IsEmpty() {
-		dotAppParser := newDotAppParser(args.Config.RepoRoot, args.Rel)
+		dotAppParser := newDotAppParser(erlangApp.RepoRoot, args.Rel)
 		dotApp, err := dotAppParser.parseAppSrc(erlangApp.AppSrc.Any())
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)

@@ -169,6 +169,10 @@ erlang_app(
     app_name = "aten",
     app_version = "0.5.8",
     beam_files = [":beam_files"],
+    extra_apps = [
+        "crypto",
+        "sasl",
+    ],
     extra_license_files = [
         "LICENSE",
         "LICENSE-APACHE2",
