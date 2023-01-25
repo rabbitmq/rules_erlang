@@ -247,7 +247,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
 					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
 					theseDeps.Add(dep)
 					found = true
@@ -374,7 +374,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
 					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
 					theseDeps.Add(dep)
 					found = true
@@ -618,7 +618,7 @@ func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 				}
 			}
 			if !found {
-				if dep, found := erlangConfig.BehaviourMappings[behaviour]; found {
+				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
 					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
 					theseDeps.Add(dep)
 					found = true
