@@ -48,6 +48,16 @@ func MapCat[T, R any](f func(T) []R, s []T) []R {
 	return result
 }
 
+func Keys[K comparable, V any](m map[K]V) []K {
+	r := make([]K, len(m))
+	i := 0
+	for k := range m {
+		r[i] = k
+		i++
+	}
+	return r
+}
+
 func Log(c *config.Config, a ...interface{}) (n int, err error) {
 	rootConfig := c.Exts[languageName].(ErlangConfigs)[""]
 	if rootConfig.Verbose {

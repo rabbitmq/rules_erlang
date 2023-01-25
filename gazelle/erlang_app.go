@@ -236,42 +236,41 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.modules() {
+		for _, module := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(other_src) == behaviour {
-					Log(args.Config, "            behaviour", behaviour, "->", beamFile(other_src))
+				if moduleName(other_src) == module {
+					Log(args.Config, "            module", module, "->", beamFile(src))
 					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
-			if !found {
-				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
-					theseDeps.Add(dep)
-					found = true
-					break
-				}
+			if found {
+				continue
 			}
-			if !found {
-				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
-					theseDeps.Add(app)
-					found = true
-					break
-				}
+			if dep, found := erlangConfig.ModuleMappings[module]; found {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				theseDeps.Add(dep)
+				continue
+			}
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				theseDeps.Add(app)
+				continue
 			}
 		}
 
 		for module := range erlAttrs.Call {
-			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				if !erlangConfig.IgnoredDeps.Contains(app) {
-					Log(args.Config, "            call", module, "->", app)
-					erlangApp.Deps.Add(app)
-				} else {
-					Log(args.Config, "            ignoring call", module, "->", app)
-				}
+			app := erlangConfig.ModuleMappings[module]
+			if app == "" {
+				app = FindModule(moduleindex, module)
+			}
+			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
+				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
+				erlangApp.Deps.Add(app)
+			} else {
+				Log(args.Config, "            ignoring call", module, "->", app)
 			}
 		}
 
@@ -363,42 +362,41 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.modules() {
+		for _, module := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(other_src) == behaviour {
-					Log(args.Config, "            behaviour", behaviour, "->", beamFile(src))
+				if moduleName(other_src) == module {
+					Log(args.Config, "            module", module, "->", beamFile(src))
 					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
-			if !found {
-				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
-					theseDeps.Add(dep)
-					found = true
-					break
-				}
+			if found {
+				continue
 			}
-			if !found {
-				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
-					theseDeps.Add(app)
-					found = true
-					break
-				}
+			if dep, found := erlangConfig.ModuleMappings[module]; found {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				theseDeps.Add(dep)
+				continue
+			}
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				theseDeps.Add(app)
+				continue
 			}
 		}
 
 		for module := range erlAttrs.Call {
-			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				if !erlangConfig.IgnoredDeps.Contains(app) {
-					Log(args.Config, "            call", module, "->", app)
-					erlangApp.Deps.Add(app)
-				} else {
-					Log(args.Config, "            ignoring call", module, "->", app)
-				}
+			app := erlangConfig.ModuleMappings[module]
+			if app == "" {
+				app = FindModule(moduleindex, module)
+			}
+			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
+				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
+				erlangApp.Deps.Add(app)
+			} else {
+				Log(args.Config, "            ignoring call", module, "->", app)
 			}
 		}
 

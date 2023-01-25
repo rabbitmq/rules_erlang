@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	erlang "github.com/rabbitmq/rules_erlang/gazelle"
+	"strings"
 	"testing"
 )
 
@@ -133,6 +134,32 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[1].Name()).To(Equal("ebin_foo_beam"))
 			Expect(rules[1].AttrStrings("beam")).To(
 				ContainElements("ebin/bar.beam"))
+		})
+
+		It("honors erlang_module_source_lib directives", func() {
+			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					ParseTransform: []string{"baz"},
+					Call: map[string][]string{
+						"fuzz": []string{"create"},
+					},
+				},
+			})
+
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ModuleMappings["baz"] = "baz_app"
+			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
+
+			rules := app.BeamFilesRules(args, fakeParser)
+			Expect(rules).NotTo(BeEmpty())
+
+			Expect(rules[0].Name()).To(Equal("ebin_foo_beam"))
+			Expect(rules[0].AttrStrings("deps")).To(
+				ContainElements("baz_app"))
+
+			Expect(app.Deps.Values(strings.Compare)).To(
+				ContainElements("fuzz_app"))
 		})
 	})
 })
