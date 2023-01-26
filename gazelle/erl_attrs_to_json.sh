@@ -130,6 +130,10 @@ record_expression(E, {'case', _, Arg, Expressions}) ->
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
       Expressions);
+record_expression(E, {match, _, Lhs, Rhs} = _Match) ->
+    %% io:format(standard_error, "Match: ~p~n", [Match]),
+    record_expression(E, Lhs),
+    record_expression(E, Rhs);
 record_expression(_, _Exp) ->
     %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.

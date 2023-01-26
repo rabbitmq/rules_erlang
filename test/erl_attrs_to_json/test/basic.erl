@@ -15,4 +15,5 @@ myfunc() ->
 
 main(_) ->
     myfunc(),
+    _ = some_other_lib:bar(2),
     other_lib:foo(1).
