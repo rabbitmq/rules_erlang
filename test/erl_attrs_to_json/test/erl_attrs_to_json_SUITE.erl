@@ -7,7 +7,8 @@
 
 all() -> [
           parse_command,
-          basic
+          basic,
+          test_src
          ].
 
 parse_command(_) ->
@@ -53,6 +54,17 @@ basic(_) ->
                   }
         },
        erl_attrs_to_json:parse(fixture_path("test/basic.erl"), ['TEST'])).
+
+test_src(_) ->
+   ?assertMatch(
+      #{
+        include_lib := ["proper/include/proper.hrl"],
+        parse_transform := [eunit_autoexport],
+        call := #{
+         proper := [counterexample]
+        }
+       },
+      erl_attrs_to_json:parse(fixture_path("test/test.erl"), ['TEST'])).
 
 fixture_path(File) ->
     filename:join([os:getenv("TEST_SRCDIR"),

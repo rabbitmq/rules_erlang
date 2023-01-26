@@ -109,23 +109,41 @@ record_attr(E, _, include_lib, Path) ->
 record_attr(_, _, _, _) ->
     ok.
 
-record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, _Args}) ->
+record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, _Args} = _Call) ->
+    %% io:format(standard_error, "Call: ~p~n", [Call]),
     %% TODO: handle anonymous functions in _Args
     ets:insert(E, {call, M, F});
+record_expression(E, {call, _, {'fun', _, {clauses, Clauses}}, _Args} = _Call) ->
+    %% io:format(standard_error, "Call: ~p~n", [Call]),
+    lists:foreach(
+      fun (Clause) -> record_clause(E, Clause) end,
+      Clauses);
 record_expression(_, {call, _, _, _} = _Call) ->
     %% io:format(standard_error, "Ignoring Call: ~p~n", [Call]),
     ok;
-record_expression(_, _) ->
+record_expression(E, {block, _, Expressions}) ->
+    lists:foreach(
+      fun (Expression) -> record_expression(E, Expression) end,
+      Expressions);
+record_expression(E, {'case', _, Arg, Expressions}) ->
+    record_expression(E, Arg),
+    lists:foreach(
+      fun (Expression) -> record_expression(E, Expression) end,
+      Expressions);
+record_expression(_, _Exp) ->
+    %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.
 
-record_clause(_, {clause, _, [], _, []}) ->
+record_clause(_, {clause, _, [], _, []} = _Clause) ->
+    %% io:format(standard_error, "Ignoring clause: ~p~n", [Clause]),
     ok;
-record_clause(E, {clause, N, [Arg | Rest], O, Expressions}) ->
+record_clause(E, {clause, L, [Arg | Rest], O, Expressions} = _Clause) ->
+    %% io:format(standard_error, "Clause: ~p~n", [Clause]),
     case Arg of
         {'fun' = Name, _, Clauses} ->
             record_function(E, Name, Clauses);
         _ ->
-            record_clause(E, {clause, N, Rest, O, Expressions})
+            record_clause(E, {clause, L, Rest, O, Expressions})
     end;
 record_clause(E, {clause, N, [], O, [Expression | Rest]}) ->
     record_expression(E, Expression),
