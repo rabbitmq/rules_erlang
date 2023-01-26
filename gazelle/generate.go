@@ -508,7 +508,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	allSrcsRules := erlangApp.allSrcsRules()
 
-	testDirBeamFilesRules := erlangApp.testDirBeamFilesRules(args, erlParser)
+	testDirBeamFilesRules := erlangApp.TestDirBeamFilesRules(args, erlParser)
 
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
@@ -622,7 +622,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			eunitRule := erlangApp.eunitRule()
 			maybeAppendRule(erlangConfig, eunitRule, &result)
 
-			ctSuiteRules := erlangApp.ctSuiteRules(testDirBeamFilesRules)
+			ctSuiteRules := erlangApp.CtSuiteRules(testDirBeamFilesRules)
 			for _, r := range ctSuiteRules {
 				maybeAppendRule(erlangConfig, r, &result)
 			}

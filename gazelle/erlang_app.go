@@ -553,7 +553,7 @@ func (erlangApp *ErlangApp) testPathFor(from, include string) string {
 	return ""
 }
 
-func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) []*rule.Rule {
+func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	ownModules := NewMutableSet[string]()
@@ -605,39 +605,55 @@ func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		}
 
 		theseBeam := NewMutableSet[string]()
-		for _, behaviour := range erlAttrs.modules() {
+		for _, module := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(other_src) == behaviour {
-					Log(args.Config, "            behaviour", behaviour, "->", beamFile(other_src))
+				if moduleName(other_src) == module {
+					Log(args.Config, "            module", module, "->", beamFile(src))
 					theseBeam.Add(beamFile(other_src))
 					found = true
 					break
 				}
 			}
-			if !found {
-				if dep, found := erlangConfig.ModuleMappings[behaviour]; found {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", dep, behaviour))
-					theseDeps.Add(dep)
-					found = true
-					break
-				}
+			if found {
+				continue
 			}
-			if !found {
-				if app := FindModule(moduleindex, behaviour); app != "" && app != erlangApp.Name {
-					Log(args.Config, "            behaviour", behaviour, "->", fmt.Sprintf("%s:%s", app, behaviour))
-					theseDeps.Add(app)
-					found = true
-					break
-				}
+			if dep, found := erlangConfig.ModuleMappings[module]; found {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				theseDeps.Add(dep)
+				continue
+			}
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				theseDeps.Add(app)
+				continue
 			}
 		}
 
+		theseRuntimeBeam := NewMutableSet[string]()
 		theseRuntimeDeps := NewMutableSet[string]()
 		for module := range erlAttrs.Call {
-			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            call", module, "->", app)
+			found := false
+			for _, other_src := range erlangApp.TestSrcs.Values(strings.Compare) {
+				if moduleName(other_src) == module {
+					Log(args.Config, "            module", module, "->", beamFile(src))
+					theseRuntimeBeam.Add(strings.TrimSuffix(other_src, ".erl") + ".beam")
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			app := erlangConfig.ModuleMappings[module]
+			if app == "" {
+				app = FindModule(moduleindex, module)
+			}
+			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
+				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
 				theseRuntimeDeps.Add(app)
+			} else {
+				Log(args.Config, "            ignoring call", module, "->", app)
 			}
 		}
 
@@ -657,6 +673,7 @@ func (erlangApp *ErlangApp) testDirBeamFilesRules(args language.GenerateArgs, er
 		if !theseDeps.IsEmpty() {
 			erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
 		}
+		erlang_bytecode.SetPrivateAttr("runtime_beam", theseRuntimeBeam.Values(strings.Compare))
 		erlang_bytecode.SetPrivateAttr("runtime_deps", theseRuntimeDeps.Values(strings.Compare))
 		erlang_bytecode.SetAttr("testonly", true)
 
@@ -726,7 +743,7 @@ func (erlangApp *ErlangApp) eunitRule() *rule.Rule {
 	return eunit
 }
 
-func (erlangApp *ErlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*rule.Rule {
+func (erlangApp *ErlangApp) CtSuiteRules(testDirBeamFilesRules []*rule.Rule) []*rule.Rule {
 	rulesByName := make(map[string]*rule.Rule, len(testDirBeamFilesRules))
 	for _, r := range testDirBeamFilesRules {
 		name := strings.TrimSuffix(r.Name(), "_beam_files")
@@ -739,7 +756,9 @@ func (erlangApp *ErlangApp) ctSuiteRules(testDirBeamFilesRules []*rule.Rule) []*
 		if strings.HasSuffix(modName, "_SUITE") {
 			beamFilesRule := rulesByName[modName]
 			r := rule.NewRule(ctTestKind, modName)
-			r.SetAttr("compiled_suites", []string{":" + beamFilesRule.Name()})
+			r.SetAttr("compiled_suites",
+				append([]string{":" + beamFilesRule.Name()},
+					runtimeBeam(beamFilesRule)...))
 			r.SetAttr("data", rule.GlobValue{
 				Patterns: []string{"test/" + modName + "_data/**/*"},
 			})
@@ -764,6 +783,10 @@ func (erlangApp *ErlangApp) modules() []string {
 		modules[i] = strings.TrimSuffix(filepath.Base(src), ".erl")
 	}
 	return modules
+}
+
+func runtimeBeam(r *rule.Rule) []string {
+	return r.PrivateAttr("runtime_beam").([]string)
 }
 
 func runtimeDeps(r *rule.Rule) []string {
