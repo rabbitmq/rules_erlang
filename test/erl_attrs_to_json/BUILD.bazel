@@ -101,6 +101,7 @@ ct_suite(
     size = "small",
     data = [
         "test/basic.erl",
+        "test/test.erl",
     ],
     deps = [
         "@thoas//:erlang_app",

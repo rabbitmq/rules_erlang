@@ -3,10 +3,12 @@ package erlang_test
 import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	erlang "github.com/rabbitmq/rules_erlang/gazelle"
+	"strings"
 	"testing"
 )
 
@@ -133,6 +135,86 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[1].Name()).To(Equal("ebin_foo_beam"))
 			Expect(rules[1].AttrStrings("beam")).To(
 				ContainElements("ebin/bar.beam"))
+		})
+
+		It("honors erlang_module_source_lib directives", func() {
+			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					ParseTransform: []string{"baz"},
+					Call: map[string][]string{
+						"fuzz": []string{"create"},
+					},
+				},
+			})
+
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ModuleMappings["baz"] = "baz_app"
+			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
+
+			rules := app.BeamFilesRules(args, fakeParser)
+			Expect(rules).NotTo(BeEmpty())
+
+			Expect(rules[0].Name()).To(Equal("ebin_foo_beam"))
+			Expect(rules[0].AttrStrings("deps")).To(
+				ContainElements("baz_app"))
+
+			Expect(app.Deps.Values(strings.Compare)).To(
+				ContainElements("fuzz_app"))
+		})
+	})
+
+	Describe("Tests Rules", func() {
+		var fakeParser erlang.ErlParser
+		var testDirRules []*rule.Rule
+
+		BeforeEach(func() {
+			app.AddFile("src/foo.erl")
+			app.AddFile("test/foo_SUITE.erl")
+			app.AddFile("test/foo_helper.erl")
+
+			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{},
+				"test/foo_SUITE.erl": &erlang.ErlAttrs{
+					ParseTransform: []string{"foo"},
+					Call: map[string][]string{
+						"foo_helper": []string{"make_test_thing"},
+						"fuzz":       []string{"create"},
+					},
+				},
+				"test/foo_helper.erl": &erlang.ErlAttrs{},
+			})
+
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
+
+			testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
+		})
+
+		Describe("TestDirBeamFilesRules", func() {
+			It("Adds runtime deps to the suite", func() {
+				Expect(testDirRules).To(HaveLen(2))
+
+				Expect(testDirRules[0].Name()).To(Equal("foo_SUITE_beam_files"))
+				Expect(testDirRules[0].AttrStrings("beam")).To(
+					ContainElements("ebin/foo.beam"))
+
+				Expect(testDirRules[1].Name()).To(Equal("test_foo_helper_beam"))
+			})
+		})
+
+		Describe("CtSuiteRules", func() {
+			It("Adds runtime deps to the suite", func() {
+				rules := app.CtSuiteRules(testDirRules)
+				Expect(rules).To(HaveLen(1))
+
+				Expect(rules[0].Name()).To(Equal("foo_SUITE"))
+				Expect(rules[0].AttrStrings("compiled_suites")).To(
+					ContainElements(":foo_SUITE_beam_files", "test/foo_helper.beam"))
+				Expect(rules[0].AttrStrings("deps")).To(
+					ContainElements(":test_erlang_app", "fuzz_app"))
+			})
 		})
 	})
 })

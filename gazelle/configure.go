@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	behaviourSourceDirective             = "erlang_behaviour_source_lib"
+	moduleSourceDirective                = "erlang_module_source_lib"
 	excludeWhenRuleOfKindExistsDirective = "erlang_exclude_when_rule_of_kind_exists"
 	generateBeamFilesMacroDirective      = "erlang_generate_beam_files_macro"
 	generateTestBeamUnconditionally      = "erlang_always_generate_test_beam_files"
@@ -82,7 +82,7 @@ type ErlangConfig struct {
 	NoTests                         bool
 	BuildFilesDir                   string
 	AppsDirs                        MutableSet[string]
-	BehaviourMappings               map[string]string
+	ModuleMappings                  map[string]string
 	ExcludeWhenRuleOfKindExists     MutableSet[string]
 	IgnoredDeps                     MutableSet[string]
 	GenerateBeamFilesMacro          bool
@@ -105,7 +105,7 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		NoTests:                         erlang.noTests,
 		BuildFilesDir:                   erlang.buildFilesDir,
 		AppsDirs:                        NewMutableSet(erlang.appsDir),
-		BehaviourMappings:               make(map[string]string),
+		ModuleMappings:                  make(map[string]string),
 		ExcludeWhenRuleOfKindExists:     NewMutableSet[string](),
 		IgnoredDeps:                     defaultIgnoredDeps,
 		GenerateBeamFilesMacro:          false,
@@ -135,7 +135,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			NoTests:                         parentConfig.NoTests,
 			BuildFilesDir:                   parentConfig.BuildFilesDir,
 			AppsDirs:                        Copy(parentConfig.AppsDirs),
-			BehaviourMappings:               CopyMap(parentConfig.BehaviourMappings),
+			ModuleMappings:                  CopyMap(parentConfig.ModuleMappings),
 			ExcludeWhenRuleOfKindExists:     Copy(parentConfig.ExcludeWhenRuleOfKindExists),
 			IgnoredDeps:                     Copy(parentConfig.IgnoredDeps),
 			GenerateBeamFilesMacro:          parentConfig.GenerateBeamFilesMacro,
@@ -183,7 +183,7 @@ func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (erlang *Configurer) KnownDirectives() []string {
 	return []string{
-		behaviourSourceDirective,
+		moduleSourceDirective,
 		excludeWhenRuleOfKindExistsDirective,
 		generateBeamFilesMacroDirective,
 		generateSkipRules,
@@ -215,11 +215,11 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 
 		for _, d := range f.Directives {
 			switch d.Key {
-			case behaviourSourceDirective:
+			case moduleSourceDirective:
 				parts := strings.Split(d.Value, ":")
 				behaviour := parts[0]
 				dep := parts[1]
-				erlangConfig.BehaviourMappings[behaviour] = dep
+				erlangConfig.ModuleMappings[behaviour] = dep
 			case excludeWhenRuleOfKindExistsDirective:
 				erlangConfig.ExcludeWhenRuleOfKindExists[d.Value] = true
 			case generateBeamFilesMacroDirective:
