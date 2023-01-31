@@ -4,7 +4,8 @@ load(
     "maybe_install_erlang",
 )
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
-load("//:util.bzl", "windows_path")
+load("//:util.bzl", "path_join", "windows_path")
+load(":util.bzl", "erl_libs_contents2")
 load(":ct.bzl", "code_paths")
 
 def _impl(ctx):
@@ -19,6 +20,18 @@ def _impl(ctx):
     else:
         plt_args = "--plt " + windows_path(ctx.file.plt.short_path) + " --no_check_plt"
 
+    erl_libs_dir = ctx.label.name + "_deps"
+
+    erl_libs_files = erl_libs_contents2(
+        ctx,
+        deps = ctx.attr.libs,
+        dir = erl_libs_dir,
+    )
+
+    erl_libs_path = ""
+    if len(erl_libs_files) > 0:
+        erl_libs_path = path_join(ctx.label.package, erl_libs_dir)
+
     dirs = code_paths(ctx.attr.target)
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
@@ -31,6 +44,10 @@ def _impl(ctx):
 
 export HOME=${{TEST_TMPDIR}}
 
+if [ -n "{erl_libs_path}" ]; then
+    export ERL_LIBS={erl_libs_path}
+fi
+
 set -x
 "{erlang_home}"/bin/dialyzer {apps_args} \\
     {plt_args} \\
@@ -38,6 +55,7 @@ set -x
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
+            erl_libs_path = erl_libs_path,
             apps_args = apps_args,
             plt_args = plt_args,
             dirs = " ".join(dirs),
@@ -47,6 +65,12 @@ set -x
     else:
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """
+if [{erl_libs_path}] == [] goto :dialyze
+REM TEST_SRCDIR is provided by bazel but with unix directory separators
+set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
+set ERL_LIBS=%ERL_LIBS:/=\\%
+:dialyze
+
 "{erlang_home}\\bin\\dialyzer" {apps_args} ^
     {plt_args} ^
     -r {dirs} {opts}
@@ -55,6 +79,7 @@ if %ERRORLEVEL% EQU 0 EXIT /B 0
 EXIT /B 1
 """.format(
             erlang_home = windows_path(erlang_home),
+            erl_libs_path = erl_libs_path,
             apps_args = apps_args,
             plt_args = plt_args,
             dirs = " ".join(dirs),
@@ -68,7 +93,7 @@ EXIT /B 1
     )
 
     runfiles = runfiles.merge_all([
-        ctx.runfiles(ctx.files.plt),
+        ctx.runfiles(ctx.files.plt + erl_libs_files),
         ctx.attr.target[DefaultInfo].default_runfiles,
     ])
     return [DefaultInfo(
@@ -88,6 +113,9 @@ dialyze_test = rule(
             mandatory = True,
         ),
         "plt_apps": attr.string_list(),
+        "libs": attr.label_list(
+            providers = [ErlangAppInfo],
+        ),
         "dialyzer_opts": attr.string_list(
             default = [
                 "-Werror_handling",
