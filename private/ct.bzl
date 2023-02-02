@@ -70,9 +70,10 @@ def _impl(ctx):
 
     ct_logdir = ctx.attr._ct_logdir[BuildSettingInfo].value
 
-    ct_hooks_args = ""
+    extra_args = []
     if len(ctx.attr.ct_hooks) > 0:
-        ct_hooks_args = "-ct_hooks " + " ".join(ctx.attr.ct_hooks)
+        extra_args.append("-ct_hooks " + " ".join(ctx.attr.ct_hooks))
+    extra_args.extend(ctx.attr.ct_run_extra_args)
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
@@ -143,8 +144,7 @@ set -x
     -dir test {pa_args} \\
     -logdir "{log_dir}" \\
     -hidden \\
-    {ct_hooks_args} \\
-    -sname {sname}
+    -sname {sname} {extra_args}
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
@@ -156,8 +156,8 @@ set -x
             pa_args = " ".join(pa_args),
             dir = path_join(package, "test"),
             log_dir = log_dir,
-            ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
+            extra_args = " ".join(extra_args),
             test_env = "\n".join(test_env_commands),
         )
     else:
@@ -221,8 +221,7 @@ echo on
     -dir test {pa_args} ^
     -logdir {drive_letter}: ^
     -hidden ^
-    {ct_hooks_args} ^
-    -sname {sname}
+    -sname {sname} {extra_args}
 set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
 subst {drive_letter}: /d
 exit /b %CT_RUN_ERRORLEVEL%
@@ -238,8 +237,8 @@ exit /b %CT_RUN_ERRORLEVEL%
             dir = path_join(package, "test"),
             log_dir = log_dir,
             drive_letter = ctx.attr._windows_logdir_drive_letter,
-            ct_hooks_args = ct_hooks_args,
             sname = sname(ctx),
+            extra_args = " ".join(extra_args),
             test_env = "\n".join(test_env_commands),
         )
 
@@ -284,6 +283,7 @@ ct_test = rule(
             mandatory = True,
         ),
         "ct_hooks": attr.string_list(),
+        "ct_run_extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "tools": attr.label_list(cfg = "target"),
