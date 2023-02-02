@@ -7,6 +7,9 @@
       "name": "Rin Kuryloski"
     }
   ],
+  "repository": [
+    "github:rabbitmq/rules_erlang"
+  ],
   "versions": [],
   "yanked_versions": {}
 }
