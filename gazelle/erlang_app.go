@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -30,6 +31,7 @@ type ErlangApp struct {
 	ErlcOpts     MutableSet[string]
 	TestErlcOpts MutableSet[string]
 	Deps         MutableSet[string]
+	TestDeps     MutableSet[string]
 	ExtraApps    MutableSet[string]
 }
 
@@ -51,6 +53,7 @@ func NewErlangApp(repoRoot, rel string) *ErlangApp {
 		ErlcOpts:     NewMutableSet[string](),
 		TestErlcOpts: NewMutableSet[string](),
 		Deps:         NewMutableSet[string](),
+		TestDeps:     NewMutableSet[string](),
 		ExtraApps:    NewMutableSet[string](),
 	}
 }
@@ -191,6 +194,97 @@ func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlP
 	return r
 }
 
+type depsInfo struct {
+	Hdrs        MutableSet[string]
+	Beam        MutableSet[string]
+	Deps        MutableSet[string]
+	RuntimeDeps MutableSet[string]
+}
+
+func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *ErlangConfig, moduleindex Moduleindex, src string, erlAttrs *ErlAttrs) depsInfo {
+	info := depsInfo{
+		Hdrs:        NewMutableSet[string](),
+		Beam:        NewMutableSet[string](),
+		Deps:        NewMutableSet[string](),
+		RuntimeDeps: NewMutableSet[string](),
+	}
+
+	for _, include := range erlAttrs.Include {
+		path := erlangApp.pathFor(src, include)
+		if path != "" {
+			Log(config, "            include", path)
+			info.Hdrs.Add(path)
+		} else if !ignoredIncludeLoggingPattern.MatchString(include) {
+			Log(config, "            ignoring include",
+				include, "as it cannot be found")
+		}
+	}
+
+	for _, include := range erlAttrs.IncludeLib {
+		path := erlangApp.pathFor(src, include)
+		if path != "" {
+			Log(config, "            include_lib", path)
+			info.Hdrs.Add(path)
+		} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
+			if parts[0] == erlangApp.Name {
+				path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
+				if path != "" {
+					Log(config, "            include_lib (self)", path)
+					info.Hdrs.Add(path)
+				} else {
+					Log(config, "            ignoring include_lib (self)",
+						include, "as it cannot be found")
+				}
+			} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
+				Log(config, "            include_lib", include, "->", parts[0])
+				info.Deps.Add(parts[0])
+			} else {
+				Log(config, "            ignoring include_lib", include)
+			}
+		}
+	}
+
+	for _, module := range erlAttrs.modules() {
+		found := false
+		for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
+			if moduleName(other_src) == module {
+				Log(config, "            module", module, "->", beamFile(src))
+				info.Beam.Add(beamFile(other_src))
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		if dep, found := erlangConfig.ModuleMappings[module]; found {
+			Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+			info.Deps.Add(dep)
+			continue
+		}
+		if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+			Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+			info.Deps.Add(app)
+			continue
+		}
+	}
+
+	for module := range erlAttrs.Call {
+		app := erlangConfig.ModuleMappings[module]
+		if app == "" {
+			app = FindModule(moduleindex, module)
+		}
+		if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
+			Log(config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
+			info.RuntimeDeps.Add(app)
+		} else {
+			Log(config, "            ignoring call", module, "->", app)
+		}
+	}
+
+	return info
+}
+
 func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
@@ -214,81 +308,9 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			continue
 		}
 
-		theseHdrs := NewMutableSet[string]()
-		for _, include := range erlAttrs.Include {
-			path := erlangApp.pathFor(src, include)
-			if path != "" {
-				Log(args.Config, "            include", path)
-				theseHdrs.Add(path)
-			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
-				Log(args.Config, "            ignoring include",
-					include, "as it cannot be found")
-			}
-		}
+		deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, src, erlAttrs)
 
-		theseDeps := NewMutableSet[string]()
-		for _, include := range erlAttrs.IncludeLib {
-			path := erlangApp.pathFor(src, include)
-			if path != "" {
-				Log(args.Config, "            include_lib", path)
-				theseHdrs.Add(path)
-			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
-				if parts[0] == erlangApp.Name {
-					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
-					if path != "" {
-						Log(args.Config, "            include_lib (self)", path)
-						theseHdrs.Add(path)
-					} else {
-						Log(args.Config, "            ignoring include_lib (self)",
-							include, "as it cannot be found")
-					}
-				} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
-					Log(args.Config, "            include_lib", include, "->", parts[0])
-					theseDeps.Add(parts[0])
-				} else {
-					Log(args.Config, "            ignoring include_lib", include)
-				}
-			}
-		}
-
-		theseBeam := NewMutableSet[string]()
-		for _, module := range erlAttrs.modules() {
-			found := false
-			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(other_src) == module {
-					Log(args.Config, "            module", module, "->", beamFile(src))
-					theseBeam.Add(beamFile(other_src))
-					found = true
-					break
-				}
-			}
-			if found {
-				continue
-			}
-			if dep, found := erlangConfig.ModuleMappings[module]; found {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
-				theseDeps.Add(dep)
-				continue
-			}
-			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
-				theseDeps.Add(app)
-				continue
-			}
-		}
-
-		for module := range erlAttrs.Call {
-			app := erlangConfig.ModuleMappings[module]
-			if app == "" {
-				app = FindModule(moduleindex, module)
-			}
-			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
-				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
-				erlangApp.Deps.Add(app)
-			} else {
-				Log(args.Config, "            ignoring call", module, "->", app)
-			}
-		}
+		erlangApp.Deps.Add(deps.RuntimeDeps.ValuesUnordered()...)
 
 		out := beamFile(src)
 		outs.Add(out)
@@ -296,16 +318,16 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(out))
 		erlang_bytecode.SetAttr("app_name", erlangApp.Name)
 		erlang_bytecode.SetAttr("srcs", []interface{}{src})
-		if !theseHdrs.IsEmpty() {
-			erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
+		if !deps.Hdrs.IsEmpty() {
+			erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
 		}
 		erlang_bytecode.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 		erlang_bytecode.SetAttr("outs", []string{out})
-		if !theseBeam.IsEmpty() {
-			erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
+		if !deps.Beam.IsEmpty() {
+			erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
 		}
-		if !theseDeps.IsEmpty() {
-			erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
+		if !deps.Deps.IsEmpty() {
+			erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
 		}
 
 		beamFilesRules = append(beamFilesRules, erlang_bytecode)
@@ -340,81 +362,9 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			continue
 		}
 
-		theseHdrs := NewMutableSet[string]()
-		for _, include := range erlAttrs.Include {
-			path := erlangApp.pathFor(src, include)
-			if path != "" {
-				Log(args.Config, "            include", path)
-				theseHdrs.Add(path)
-			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
-				Log(args.Config, "            ignoring include",
-					include, "as it cannot be found")
-			}
-		}
+		deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, src, erlAttrs)
 
-		theseDeps := NewMutableSet[string]()
-		for _, include := range erlAttrs.IncludeLib {
-			path := erlangApp.pathFor(src, include)
-			if path != "" {
-				Log(args.Config, "            include_lib", path)
-				theseHdrs.Add(path)
-			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
-				if parts[0] == erlangApp.Name {
-					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
-					if path != "" {
-						Log(args.Config, "            include_lib (self)", path)
-						theseHdrs.Add(path)
-					} else {
-						Log(args.Config, "            ignoring include_lib (self)",
-							include, "as it cannot be found")
-					}
-				} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
-					Log(args.Config, "            include_lib", include, "->", parts[0])
-					theseDeps.Add(parts[0])
-				} else {
-					Log(args.Config, "            ignoring include_lib", include)
-				}
-			}
-		}
-
-		theseBeam := NewMutableSet[string]()
-		for _, module := range erlAttrs.modules() {
-			found := false
-			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-				if moduleName(other_src) == module {
-					Log(args.Config, "            module", module, "->", beamFile(src))
-					theseBeam.Add(beamFile(other_src))
-					found = true
-					break
-				}
-			}
-			if found {
-				continue
-			}
-			if dep, found := erlangConfig.ModuleMappings[module]; found {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
-				theseDeps.Add(dep)
-				continue
-			}
-			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
-				theseDeps.Add(app)
-				continue
-			}
-		}
-
-		for module := range erlAttrs.Call {
-			app := erlangConfig.ModuleMappings[module]
-			if app == "" {
-				app = FindModule(moduleindex, module)
-			}
-			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
-				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
-				erlangApp.Deps.Add(app)
-			} else {
-				Log(args.Config, "            ignoring call", module, "->", app)
-			}
-		}
+		erlangApp.TestDeps.Add(deps.RuntimeDeps.ValuesUnordered()...)
 
 		test_out := testBeamFile(src)
 		testOuts.Add(test_out)
@@ -422,16 +372,16 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		test_erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(test_out))
 		test_erlang_bytecode.SetAttr("app_name", erlangApp.Name)
 		test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
-		if !theseHdrs.IsEmpty() {
-			test_erlang_bytecode.SetAttr("hdrs", theseHdrs.Values(strings.Compare))
+		if !deps.Hdrs.IsEmpty() {
+			test_erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
 		}
 		test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 		test_erlang_bytecode.SetAttr("outs", []string{test_out})
-		if !theseBeam.IsEmpty() {
-			test_erlang_bytecode.SetAttr("beam", theseBeam.Values(strings.Compare))
+		if !deps.Beam.IsEmpty() {
+			test_erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
 		}
-		if !theseDeps.IsEmpty() {
-			test_erlang_bytecode.SetAttr("deps", theseDeps.Values(strings.Compare))
+		if !deps.Deps.IsEmpty() {
+			test_erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
 		}
 		test_erlang_bytecode.SetAttr("testonly", true)
 
@@ -538,8 +488,9 @@ func (erlangApp *ErlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
 	}
 
-	if !erlangApp.Deps.IsEmpty() {
-		r.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
+	deps := Union(erlangApp.Deps, erlangApp.TestDeps)
+	if !deps.IsEmpty() {
+		r.SetAttr("deps", deps.Values(strings.Compare))
 	}
 	return r
 }

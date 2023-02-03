@@ -68,12 +68,17 @@ func Copy[T comparable](set MutableSet[T]) MutableSet[T] {
 }
 
 func (s MutableSet[T]) Values(compare func(i T, j T) int) []T {
+	values := s.ValuesUnordered()
+	sort.SliceStable(values, func(i, j int) bool {
+		return compare(values[i], values[j]) == -1
+	})
+	return values
+}
+
+func (s MutableSet[T]) ValuesUnordered() []T {
 	var values []T
 	for item := range s {
 		values = append(values, item)
 	}
-	sort.SliceStable(values, func(i, j int) bool {
-		return compare(values[i], values[j]) == -1
-	})
 	return values
 }
