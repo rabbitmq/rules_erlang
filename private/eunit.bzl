@@ -4,7 +4,7 @@ load(
     "path_join",
     "windows_path",
 )
-load(":util.bzl", "erl_libs_contents")
+load(":util.bzl", "erl_libs_contents2")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -35,13 +35,37 @@ def package_relative_dirnames(package, files):
             dirs.append(rel)
     return dirs
 
-def _to_atom_list(l):
-    return "[" + ",".join(["'{}'".format(i) for i in l]) + "]"
+def _to_atom_list(atoms):
+    return "[" + ",".join(["'%s'" % a for a in atoms]) + "]"
 
 def _impl(ctx):
+    if ctx.attr.eunit_mods == [] and ctx.attr.target == None:
+        fail("Either eunit_mods or target must be set")
+    if ctx.attr.eunit_mods != [] and ctx.attr.target != None:
+        fail("eunit_mods and target cannot be set simultaneously")
+
+    deps = list(ctx.attr.deps)
+    eunit_mods = list(ctx.attr.eunit_mods)
+    if ctx.attr.target != None:
+        lib_info = ctx.attr.target[ErlangAppInfo]
+        deps.extend(lib_info.deps)
+        for m in lib_info.beam:
+            if m.extension == "beam":
+                module_name = m.basename.removesuffix(".beam")
+                if not module_name.endswith("_tests"):
+                    eunit_mods.append(module_name)
+        for s in ctx.files.compiled_suites:
+            module_name = s.basename.removesuffix(".beam")
+            if not module_name.endswith("_tests"):
+                eunit_mods.append(module_name)
+
     erl_libs_dir = ctx.label.name + "_deps"
 
-    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
+    erl_libs_files = erl_libs_contents2(
+        ctx,
+        deps = deps,
+        dir = erl_libs_dir,
+    )
 
     package = ctx.label.package
 
@@ -66,7 +90,9 @@ def _impl(ctx):
 {maybe_install_erlang}
 
 export HOME=${{TEST_TMPDIR}}
-export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
+if [ -n "{erl_libs_path}" ]; then
+    export ERL_LIBS=$TEST_SRCDIR/$TEST_WORKSPACE/{erl_libs_path}
+fi
 
 {test_env}
 
@@ -81,10 +107,10 @@ set -x
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
-            erl_libs_path = erl_libs_path,
+            erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             package = package,
             pa_args = " ".join(pa_args),
-            eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
+            eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
         )
@@ -95,9 +121,11 @@ set -x
 
         output = ctx.actions.declare_file(ctx.label.name + ".bat")
         script = """@echo off
+if [{erl_libs_path}] == [] goto :env
 REM TEST_SRCDIR is provided by bazel but with unix directory separators
 set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
 set ERL_LIBS=%ERL_LIBS:/=\\%
+:env
 
 {test_env}
 
@@ -110,9 +138,9 @@ echo on
 """.format(
             package = package,
             erlang_home = windows_path(erlang_home),
-            erl_libs_path = erl_libs_path,
+            erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             pa_args = " ".join(pa_args),
-            eunit_mods_term = _to_atom_list(ctx.attr.eunit_mods),
+            eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
         )
@@ -131,6 +159,8 @@ echo on
             for tool in ctx.attr.tools
         ],
     )
+    if ctx.attr.target != None:
+        runfiles = runfiles.merge(ctx.attr.target[DefaultInfo].default_runfiles)
 
     return [DefaultInfo(
         runfiles = runfiles,
@@ -143,9 +173,9 @@ eunit_test = rule(
         "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
-            mandatory = True,
         ),
-        "eunit_mods": attr.string_list(mandatory = True),
+        "eunit_mods": attr.string_list(),
+        "target": attr.label(providers = [ErlangAppInfo]),
         "eunit_opts": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),

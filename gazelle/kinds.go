@@ -157,13 +157,13 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 			MatchAny: true,
 			NonEmptyAttrs: map[string]bool{
 				"compiled_suites": true,
-				"eunit_mods":      true,
+				"target":          true,
 				"visibility":      true,
 			},
 			SubstituteAttrs: map[string]bool{},
 			MergeableAttrs: map[string]bool{
 				"compiled_suites": true,
-				"eunit_mods":      true,
+				"target":          true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,

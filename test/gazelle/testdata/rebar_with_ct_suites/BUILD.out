@@ -91,25 +91,7 @@ dialyze(
 
 eunit(
     name = "eunit",
-    compiled_suites = [],
-    eunit_mods = [
-        "osiris",
-        "osiris_app",
-        "osiris_bench",
-        "osiris_counters",
-        "osiris_log",
-        "osiris_log_shared",
-        "osiris_replica",
-        "osiris_replica_reader",
-        "osiris_replica_reader_sup",
-        "osiris_retention",
-        "osiris_server_sup",
-        "osiris_sup",
-        "osiris_tracking",
-        "osiris_util",
-        "osiris_writer",
-    ],
-    deps = [":test_erlang_app"],
+    target = ":test_erlang_app",
 )
 
 ct_test(
