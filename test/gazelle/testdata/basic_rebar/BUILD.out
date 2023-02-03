@@ -255,15 +255,7 @@ eunit(
         ":test_seshat_counters_server_test_beam",
         ":test_seshat_test_beam",
     ],
-    eunit_mods = [
-        "seshat",
-        "seshat_app",
-        "seshat_counters_server",
-        "seshat_counters_server_test",
-        "seshat_sup",
-        "seshat_test",
-    ],
-    deps = [":test_erlang_app"],
+    target = ":test_erlang_app",
 )
 
 assert_suites2()

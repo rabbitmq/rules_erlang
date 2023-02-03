@@ -619,7 +619,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		maybeAppendRule(erlangConfig, dialyzeRule, &result)
 
 		if erlangApp.hasTestSuites() {
-			eunitRule := erlangApp.eunitRule()
+			eunitRule := erlangApp.EunitRule()
 			maybeAppendRule(erlangConfig, eunitRule, &result)
 
 			ctSuiteRules := erlangApp.CtSuiteRules(testDirBeamFilesRules)

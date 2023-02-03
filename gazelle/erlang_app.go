@@ -703,7 +703,7 @@ func (erlangApp *ErlangApp) dialyzeRule() *rule.Rule {
 	return r
 }
 
-func (erlangApp *ErlangApp) eunitRule() *rule.Rule {
+func (erlangApp *ErlangApp) EunitRule() *rule.Rule {
 	// eunit_mods is the list of source modules, plus any test module which is
 	// not among the source modules with a "_tests" suffix appended
 	modMap := make(map[string]string)
@@ -736,9 +736,10 @@ func (erlangApp *ErlangApp) eunitRule() *rule.Rule {
 	}
 
 	eunit := rule.NewRule(eunitKind, "eunit")
-	eunit.SetAttr("compiled_suites", compiled_suites.Values(strings.Compare))
-	eunit.SetAttr("eunit_mods", eunit_mods.Values(strings.Compare))
-	eunit.SetAttr("deps", []string{":test_erlang_app"})
+	if !compiled_suites.IsEmpty() {
+		eunit.SetAttr("compiled_suites", compiled_suites.Values(strings.Compare))
+	}
+	eunit.SetAttr("target", ":test_erlang_app")
 
 	return eunit
 }

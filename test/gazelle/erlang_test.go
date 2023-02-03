@@ -170,8 +170,10 @@ var _ = Describe("an ErlangApp", func() {
 
 		BeforeEach(func() {
 			app.AddFile("src/foo.erl")
+			app.AddFile("src/bar.erl")
 			app.AddFile("test/foo_SUITE.erl")
 			app.AddFile("test/foo_helper.erl")
+			app.AddFile("test/bar_tests.erl")
 
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{},
@@ -194,13 +196,26 @@ var _ = Describe("an ErlangApp", func() {
 
 		Describe("TestDirBeamFilesRules", func() {
 			It("Adds runtime deps to the suite", func() {
-				Expect(testDirRules).To(HaveLen(2))
+				Expect(testDirRules).To(HaveLen(3))
 
-				Expect(testDirRules[0].Name()).To(Equal("foo_SUITE_beam_files"))
-				Expect(testDirRules[0].AttrStrings("beam")).To(
+				Expect(testDirRules[0].Name()).To(Equal("test_bar_tests_beam"))
+
+				Expect(testDirRules[1].Name()).To(Equal("foo_SUITE_beam_files"))
+				Expect(testDirRules[1].AttrStrings("beam")).To(
 					ContainElements("ebin/foo.beam"))
 
-				Expect(testDirRules[1].Name()).To(Equal("test_foo_helper_beam"))
+				Expect(testDirRules[2].Name()).To(Equal("test_foo_helper_beam"))
+			})
+		})
+
+		Describe("EunitRule", func() {
+			It("Adds runtime deps to the suite", func() {
+				r := app.EunitRule()
+
+				Expect(r.Name()).To(Equal("eunit"))
+				Expect(r.AttrStrings("compiled_suites")).To(
+					ContainElements(":test_foo_helper_beam"))
+				Expect(r.AttrString("target")).To(Equal(":test_erlang_app"))
 			})
 		})
 
