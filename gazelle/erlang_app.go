@@ -175,6 +175,22 @@ func macros(erlcOpts MutableSet[string]) ErlParserMacros {
 	return r
 }
 
+func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlParser, erlcOpts MutableSet[string]) map[string]*ErlAttrs {
+	r := make(map[string]*ErlAttrs)
+	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
+		// TODO: not print Parsing when the file does not exist
+		Log(args.Config, "        Parsing", src, "->", actualPath)
+		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlcOpts))
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			continue
+		}
+		r[src] = erlAttrs
+	}
+	return r
+}
+
 func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
@@ -185,17 +201,17 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 
 	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
 	if err != nil {
-		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
+		moduleindex = Moduleindex{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
+
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts)
 
 	outs := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
-		// TODO: not print Parsing when the file does not exist
-		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.ErlcOpts))
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		var erlAttrs *ErlAttrs
+		var ok bool
+		if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
+			continue
 		}
 
 		theseHdrs := NewMutableSet[string]()
@@ -314,14 +330,14 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts)
+
 	testOuts := NewMutableSet[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
-		// TODO: not print Parsing when the file does not exist
-		Log(args.Config, "        Parsing (for tests)", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.TestErlcOpts))
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		var erlAttrs *ErlAttrs
+		var ok bool
+		if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
+			continue
 		}
 
 		theseHdrs := NewMutableSet[string]()
