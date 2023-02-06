@@ -113,7 +113,7 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		ExcludeWhenRuleOfKindExists:     mutable_set.New[string](),
 		IgnoredDeps:                     defaultIgnoredDeps,
 		GenerateBeamFilesMacro:          false,
-		GenerateFewerBytecodeRules:      false,
+		GenerateFewerBytecodeRules:      erlang.compact,
 		GenerateTestBeamUnconditionally: false,
 		GenerateSkipRules:               mutable_set.New[string](),
 		AppName:                         erlang.appName,
@@ -163,6 +163,7 @@ type Configurer struct {
 	appName       string
 	appVersion    string
 	noTests       bool
+	compact       bool
 	appsDir       string
 	buildFilesDir string
 }
@@ -173,6 +174,7 @@ func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.
 		fs.StringVar(&erlang.appName, "app_name", "", "sets the application name, overriding inferred values")
 		fs.StringVar(&erlang.appVersion, "app_version", "", "sets the application version, overriding inferred values")
 		fs.BoolVar(&erlang.noTests, "no_tests", false, "when true, generates no rules associated with testing")
+		fs.BoolVar(&erlang.compact, "compact", false, "when true, generates fewer rules")
 		fs.StringVar(&erlang.appsDir, "default_apps_dir", "apps", "directory containing embedded applications in an umbrella project")
 	}
 	if cmd == "update-repos" {
