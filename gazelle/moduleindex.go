@@ -3,6 +3,7 @@ package erlang
 import (
 	"os"
 
+	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 	"gopkg.in/yaml.v2"
 )
 
@@ -63,7 +64,7 @@ func ReadModuleindex(file string) (Moduleindex, error) {
 
 func FindModule(moduleindex Moduleindex, module string) string {
 	for app, modules := range moduleindex {
-		if Contains(modules, module) {
+		if slices.Contains(modules, module) {
 			return app
 		}
 	}

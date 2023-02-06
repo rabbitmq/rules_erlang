@@ -16,6 +16,9 @@ ErlcOptsInfo = provider(
 )
 
 def _impl(ctx):
+    if len(ctx.attr.outs) == 0:
+        fail("attr outs must not be empty")
+
     outputs = [
         ctx.actions.declare_file(f.name)
         for f in ctx.attr.outs

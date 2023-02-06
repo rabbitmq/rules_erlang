@@ -39,6 +39,17 @@ go_test(
 )
 
 go_test(
+    name = "mutable_set_test",
+    srcs = ["mutable_set_test.go"],
+    tags = ["manual"],
+    deps = [
+        "@com_github_onsi_ginkgo_v2//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@rules_erlang//gazelle/mutable_set",
+    ],
+)
+
+go_test(
     name = "erlang_test",
     srcs = [
         "erlang_test.go",
@@ -62,6 +73,7 @@ test_suite(
     tests = [
         "erlang_test",
         "fetch_test",
+        "mutable_set_test",
     ],
 )
 

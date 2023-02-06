@@ -11,6 +11,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 )
 
 type ErlangApp struct {
@@ -19,20 +20,20 @@ type ErlangApp struct {
 	Name         string
 	Description  string
 	Version      string
-	Ebin         MutableSet[string]
-	Srcs         MutableSet[string]
-	PrivateHdrs  MutableSet[string]
-	PublicHdrs   MutableSet[string]
-	AppSrc       MutableSet[string]
-	TestSrcs     MutableSet[string]
-	TestHdrs     MutableSet[string]
-	Priv         MutableSet[string]
-	LicenseFiles MutableSet[string]
-	ErlcOpts     MutableSet[string]
-	TestErlcOpts MutableSet[string]
-	Deps         MutableSet[string]
-	TestDeps     MutableSet[string]
-	ExtraApps    MutableSet[string]
+	Ebin         mutable_set.MutableSet[string]
+	Srcs         mutable_set.MutableSet[string]
+	PrivateHdrs  mutable_set.MutableSet[string]
+	PublicHdrs   mutable_set.MutableSet[string]
+	AppSrc       mutable_set.MutableSet[string]
+	TestSrcs     mutable_set.MutableSet[string]
+	TestHdrs     mutable_set.MutableSet[string]
+	Priv         mutable_set.MutableSet[string]
+	LicenseFiles mutable_set.MutableSet[string]
+	ErlcOpts     mutable_set.MutableSet[string]
+	TestErlcOpts mutable_set.MutableSet[string]
+	Deps         mutable_set.MutableSet[string]
+	TestDeps     mutable_set.MutableSet[string]
+	ExtraApps    mutable_set.MutableSet[string]
 }
 
 var ignoredIncludeLoggingPattern = regexp.MustCompile(`/lib/[^-]+-[^/]+/include/`)
@@ -41,20 +42,20 @@ func NewErlangApp(repoRoot, rel string) *ErlangApp {
 	return &ErlangApp{
 		RepoRoot:     repoRoot,
 		Rel:          rel,
-		Ebin:         NewMutableSet[string](),
-		Srcs:         NewMutableSet[string](),
-		PrivateHdrs:  NewMutableSet[string](),
-		PublicHdrs:   NewMutableSet[string](),
-		AppSrc:       NewMutableSet[string](),
-		TestSrcs:     NewMutableSet[string](),
-		TestHdrs:     NewMutableSet[string](),
-		Priv:         NewMutableSet[string](),
-		LicenseFiles: NewMutableSet[string](),
-		ErlcOpts:     NewMutableSet[string](),
-		TestErlcOpts: NewMutableSet[string](),
-		Deps:         NewMutableSet[string](),
-		TestDeps:     NewMutableSet[string](),
-		ExtraApps:    NewMutableSet[string](),
+		Ebin:         mutable_set.New[string](),
+		Srcs:         mutable_set.New[string](),
+		PrivateHdrs:  mutable_set.New[string](),
+		PublicHdrs:   mutable_set.New[string](),
+		AppSrc:       mutable_set.New[string](),
+		TestSrcs:     mutable_set.New[string](),
+		TestHdrs:     mutable_set.New[string](),
+		Priv:         mutable_set.New[string](),
+		LicenseFiles: mutable_set.New[string](),
+		ErlcOpts:     mutable_set.New[string](),
+		TestErlcOpts: mutable_set.New[string](),
+		Deps:         mutable_set.New[string](),
+		TestDeps:     mutable_set.New[string](),
+		ExtraApps:    mutable_set.New[string](),
 	}
 }
 
@@ -133,9 +134,9 @@ func (erlangApp *ErlangApp) pathFor(from, include string) string {
 	return ""
 }
 
-func erlcOptsWithSelect(opts MutableSet[string]) rule.SelectStringListValue {
-	debugOpts := Copy(opts)
-	defaultOpts := Copy(opts)
+func erlcOptsWithSelect(opts mutable_set.MutableSet[string]) rule.SelectStringListValue {
+	debugOpts := mutable_set.Copy(opts)
+	defaultOpts := mutable_set.Copy(opts)
 	defaultOpts.Add("+deterministic")
 	return rule.SelectStringListValue{
 		"@rules_erlang//:debug_build": debugOpts.Values(strings.Compare),
@@ -163,7 +164,7 @@ func (erlangApp *ErlangApp) basePltRule() *rule.Rule {
 	return plt
 }
 
-func macros(erlcOpts MutableSet[string]) ErlParserMacros {
+func macros(erlcOpts mutable_set.MutableSet[string]) ErlParserMacros {
 	r := make(ErlParserMacros)
 	erlcOpts.ForEach(func(opt string) {
 		if strings.HasPrefix(opt, "-D") {
@@ -178,7 +179,7 @@ func macros(erlcOpts MutableSet[string]) ErlParserMacros {
 	return r
 }
 
-func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlParser, erlcOpts MutableSet[string]) map[string]*ErlAttrs {
+func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlParser, erlcOpts mutable_set.MutableSet[string]) map[string]*ErlAttrs {
 	r := make(map[string]*ErlAttrs)
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
@@ -187,7 +188,6 @@ func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlP
 		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlcOpts))
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
-			continue
 		}
 		r[src] = erlAttrs
 	}
@@ -195,90 +195,94 @@ func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlP
 }
 
 type depsInfo struct {
-	Hdrs        MutableSet[string]
-	Beam        MutableSet[string]
-	Deps        MutableSet[string]
-	RuntimeDeps MutableSet[string]
+	Hdrs        mutable_set.MutableSet[string]
+	Beam        mutable_set.MutableSet[string]
+	Deps        mutable_set.MutableSet[string]
+	RuntimeDeps mutable_set.MutableSet[string]
 }
 
-func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *ErlangConfig, moduleindex Moduleindex, src string, erlAttrs *ErlAttrs) depsInfo {
+func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *ErlangConfig, moduleindex Moduleindex, erlAttrsBySrc map[string]*ErlAttrs, srcs ...string) depsInfo {
 	info := depsInfo{
-		Hdrs:        NewMutableSet[string](),
-		Beam:        NewMutableSet[string](),
-		Deps:        NewMutableSet[string](),
-		RuntimeDeps: NewMutableSet[string](),
+		Hdrs:        mutable_set.New[string](),
+		Beam:        mutable_set.New[string](),
+		Deps:        mutable_set.New[string](),
+		RuntimeDeps: mutable_set.New[string](),
 	}
 
-	for _, include := range erlAttrs.Include {
-		path := erlangApp.pathFor(src, include)
-		if path != "" {
-			Log(config, "            include", path)
-			info.Hdrs.Add(path)
-		} else if !ignoredIncludeLoggingPattern.MatchString(include) {
-			Log(config, "            ignoring include",
-				include, "as it cannot be found")
+	for _, src := range srcs {
+		erlAttrs := erlAttrsBySrc[src]
+
+		for _, include := range erlAttrs.Include {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(config, "            include", path)
+				info.Hdrs.Add(path)
+			} else if !ignoredIncludeLoggingPattern.MatchString(include) {
+				Log(config, "            ignoring include",
+					include, "as it cannot be found")
+			}
 		}
-	}
 
-	for _, include := range erlAttrs.IncludeLib {
-		path := erlangApp.pathFor(src, include)
-		if path != "" {
-			Log(config, "            include_lib", path)
-			info.Hdrs.Add(path)
-		} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
-			if parts[0] == erlangApp.Name {
-				path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
-				if path != "" {
-					Log(config, "            include_lib (self)", path)
-					info.Hdrs.Add(path)
+		for _, include := range erlAttrs.IncludeLib {
+			path := erlangApp.pathFor(src, include)
+			if path != "" {
+				Log(config, "            include_lib", path)
+				info.Hdrs.Add(path)
+			} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
+				if parts[0] == erlangApp.Name {
+					path := erlangApp.pathFor(src, strings.Join(parts[1:], string(os.PathSeparator)))
+					if path != "" {
+						Log(config, "            include_lib (self)", path)
+						info.Hdrs.Add(path)
+					} else {
+						Log(config, "            ignoring include_lib (self)",
+							include, "as it cannot be found")
+					}
+				} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
+					Log(config, "            include_lib", include, "->", parts[0])
+					info.Deps.Add(parts[0])
 				} else {
-					Log(config, "            ignoring include_lib (self)",
-						include, "as it cannot be found")
+					Log(config, "            ignoring include_lib", include)
 				}
-			} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
-				Log(config, "            include_lib", include, "->", parts[0])
-				info.Deps.Add(parts[0])
+			}
+		}
+
+		for _, module := range erlAttrs.modules() {
+			found := false
+			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
+				if moduleName(other_src) == module {
+					Log(config, "            module", module, "->", beamFile(src))
+					info.Beam.Add(beamFile(other_src))
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			if dep, found := erlangConfig.ModuleMappings[module]; found {
+				Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				info.Deps.Add(dep)
+				continue
+			}
+			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+				Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				info.Deps.Add(app)
+				continue
+			}
+		}
+
+		for module := range erlAttrs.Call {
+			app := erlangConfig.ModuleMappings[module]
+			if app == "" {
+				app = FindModule(moduleindex, module)
+			}
+			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
+				Log(config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
+				info.RuntimeDeps.Add(app)
 			} else {
-				Log(config, "            ignoring include_lib", include)
+				Log(config, "            ignoring call", module, "->", app)
 			}
-		}
-	}
-
-	for _, module := range erlAttrs.modules() {
-		found := false
-		for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
-			if moduleName(other_src) == module {
-				Log(config, "            module", module, "->", beamFile(src))
-				info.Beam.Add(beamFile(other_src))
-				found = true
-				break
-			}
-		}
-		if found {
-			continue
-		}
-		if dep, found := erlangConfig.ModuleMappings[module]; found {
-			Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
-			info.Deps.Add(dep)
-			continue
-		}
-		if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-			Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
-			info.Deps.Add(app)
-			continue
-		}
-	}
-
-	for module := range erlAttrs.Call {
-		app := erlangConfig.ModuleMappings[module]
-		if app == "" {
-			app = FindModule(moduleindex, module)
-		}
-		if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
-			Log(config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
-			info.RuntimeDeps.Add(app)
-		} else {
-			Log(config, "            ignoring call", module, "->", app)
 		}
 	}
 
@@ -288,10 +292,7 @@ func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *Er
 func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (beamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
-	ownModules := NewMutableSet[string]()
-	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		ownModules.Add(moduleName(src))
-	}
+	ownModules := mutable_set.Map(erlangApp.Srcs, moduleName)
 
 	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
 	if err != nil {
@@ -300,98 +301,254 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 
 	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts)
 
-	outs := NewMutableSet[string]()
-	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		var erlAttrs *ErlAttrs
-		var ok bool
-		if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
-			continue
+	if erlangConfig.GenerateFewerBytecodeRules {
+		transforms := mutable_set.New[string]()
+		behaviours := mutable_set.New[string]()
+
+		srcByModuleName := mutable_set.Index(erlangApp.Srcs, moduleName)
+
+		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+			var erlAttrs *ErlAttrs
+			var ok bool
+			if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
+				continue
+			}
+
+			for _, module := range erlAttrs.ParseTransform {
+				if other_src, ok := srcByModuleName[module]; ok {
+					transforms.Add(other_src)
+				}
+			}
+			for _, module := range erlAttrs.Behaviour {
+				if other_src, ok := srcByModuleName[module]; ok {
+					behaviours.Add(other_src)
+				}
+			}
 		}
 
-		deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, src, erlAttrs)
+		others := mutable_set.Copy(erlangApp.Srcs)
+		others.Subtract(transforms)
+		others.Subtract(behaviours)
 
-		erlangApp.Deps.Add(deps.RuntimeDeps.ValuesUnordered()...)
-
-		out := beamFile(src)
-		outs.Add(out)
-
-		erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(out))
-		erlang_bytecode.SetAttr("app_name", erlangApp.Name)
-		erlang_bytecode.SetAttr("srcs", []interface{}{src})
-		if !deps.Hdrs.IsEmpty() {
-			erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
-		}
-		erlang_bytecode.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
-		erlang_bytecode.SetAttr("outs", []string{out})
-		if !deps.Beam.IsEmpty() {
-			erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
-		}
-		if !deps.Deps.IsEmpty() {
-			erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
+		var xformsRule, behavioursRule, othersRule *rule.Rule
+		var beamFilesGroupRules []string
+		if !transforms.IsEmpty() {
+			xformsRule = rule.NewRule(erlangBytecodeKind, "parse_transforms")
+			xformsRule.SetAttr("app_name", erlangApp.Name)
+			xformsRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
+			xformsRule.SetAttr("srcs", transforms.Values(strings.Compare))
+			xformsRule.SetAttr("hdrs", erlangApp.Hdrs())
+			xformsRule.SetAttr("outs", mutable_set.Map(transforms, beamFile).Values(strings.Compare))
+			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
+			xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(xformsDeps.RuntimeDeps)
+			beamFilesRules = append(beamFilesRules, xformsRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+xformsRule.Name())
 		}
 
-		beamFilesRules = append(beamFilesRules, erlang_bytecode)
+		if !behaviours.IsEmpty() {
+			behavioursRule = rule.NewRule(erlangBytecodeKind, "behaviours")
+			behavioursRule.SetAttr("app_name", erlangApp.Name)
+			behavioursRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
+			behavioursRule.SetAttr("srcs", behaviours.Values(strings.Compare))
+			behavioursRule.SetAttr("hdrs", erlangApp.Hdrs())
+			behavioursRule.SetAttr("outs", mutable_set.Map(behaviours, beamFile).Values(strings.Compare))
+			if len(beamFilesGroupRules) > 0 {
+				behavioursRule.SetAttr("beam", beamFilesGroupRules)
+			}
+			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
+			behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(behavioursDeps.RuntimeDeps)
+			beamFilesRules = append(beamFilesRules, behavioursRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+behavioursRule.Name())
+		}
+
+		if !others.IsEmpty() {
+			othersRule = rule.NewRule(erlangBytecodeKind, "other_beam")
+			othersRule.SetAttr("app_name", erlangApp.Name)
+			othersRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
+			othersRule.SetAttr("srcs", others.Values(strings.Compare))
+			othersRule.SetAttr("hdrs", erlangApp.Hdrs())
+			othersRule.SetAttr("outs", mutable_set.Map(others, beamFile).Values(strings.Compare))
+
+			othersRule.SetAttr("beam", beamFilesGroupRules)
+			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
+			othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(othersDeps.RuntimeDeps)
+			beamFilesRules = append(beamFilesRules, othersRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+othersRule.Name())
+		}
+
+		beam_files := rule.NewRule("filegroup", "beam_files")
+		beam_files.SetAttr("srcs", beamFilesGroupRules)
+		beamFilesRules = append(beamFilesRules, beam_files)
+	} else {
+		outs := mutable_set.New[string]()
+		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+			deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, src)
+
+			erlangApp.Deps.Add(deps.RuntimeDeps.ValuesUnordered()...)
+
+			out := beamFile(src)
+			outs.Add(out)
+
+			erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(out))
+			erlang_bytecode.SetAttr("app_name", erlangApp.Name)
+			erlang_bytecode.SetAttr("srcs", []interface{}{src})
+			if !deps.Hdrs.IsEmpty() {
+				erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
+			}
+			erlang_bytecode.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
+			erlang_bytecode.SetAttr("outs", []string{out})
+			if !deps.Beam.IsEmpty() {
+				erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
+			}
+			if !deps.Deps.IsEmpty() {
+				erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
+			}
+
+			beamFilesRules = append(beamFilesRules, erlang_bytecode)
+		}
+
+		beam_files := rule.NewRule("filegroup", "beam_files")
+		beam_files.SetAttr("srcs", outs.Values(strings.Compare))
+		beamFilesRules = append(beamFilesRules, beam_files)
 	}
 
-	beam_files := rule.NewRule("filegroup", "beam_files")
-	beam_files.SetAttr("srcs", outs.Values(strings.Compare))
-	beamFilesRules = append(beamFilesRules, beam_files)
 	return
 }
 
 func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) (testBeamFilesRules []*rule.Rule) {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
-	ownModules := NewMutableSet[string]()
-	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		ownModules.Add(moduleName(src))
-	}
+	ownModules := mutable_set.Map(erlangApp.Srcs, moduleName)
 
 	moduleindex, err := ReadModuleindex(filepath.Join(args.Config.RepoRoot, "moduleindex.yaml"))
 	if err != nil {
 		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
-	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts)
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.TestErlcOpts)
 
-	testOuts := NewMutableSet[string]()
-	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-		var erlAttrs *ErlAttrs
-		var ok bool
-		if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
-			continue
+	if erlangConfig.GenerateFewerBytecodeRules {
+		transforms := mutable_set.New[string]()
+		behaviours := mutable_set.New[string]()
+
+		srcByModuleName := mutable_set.Index(erlangApp.Srcs, moduleName)
+
+		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+			var erlAttrs *ErlAttrs
+			var ok bool
+			if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
+				continue
+			}
+
+			for _, module := range erlAttrs.ParseTransform {
+				if other_src, ok := srcByModuleName[module]; ok {
+					transforms.Add(other_src)
+				}
+			}
+			for _, module := range erlAttrs.Behaviour {
+				if other_src, ok := srcByModuleName[module]; ok {
+					behaviours.Add(other_src)
+				}
+			}
 		}
 
-		deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, src, erlAttrs)
+		others := mutable_set.Copy(erlangApp.Srcs)
+		others.Subtract(transforms)
+		others.Subtract(behaviours)
 
-		erlangApp.TestDeps.Add(deps.RuntimeDeps.ValuesUnordered()...)
-
-		test_out := testBeamFile(src)
-		testOuts.Add(test_out)
-
-		test_erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(test_out))
-		test_erlang_bytecode.SetAttr("app_name", erlangApp.Name)
-		test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
-		if !deps.Hdrs.IsEmpty() {
-			test_erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
+		var xformsRule, behavioursRule, othersRule *rule.Rule
+		var beamFilesGroupRules []string
+		if !transforms.IsEmpty() {
+			xformsRule = rule.NewRule(erlangBytecodeKind, "test_parse_transforms")
+			xformsRule.SetAttr("testonly", true)
+			xformsRule.SetAttr("app_name", erlangApp.Name)
+			xformsRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
+			xformsRule.SetAttr("srcs", transforms.Values(strings.Compare))
+			xformsRule.SetAttr("hdrs", erlangApp.Hdrs())
+			xformsRule.SetAttr("outs", mutable_set.Map(transforms, testBeamFile).Values(strings.Compare))
+			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
+			xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(xformsDeps.RuntimeDeps)
+			testBeamFilesRules = append(testBeamFilesRules, xformsRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+xformsRule.Name())
 		}
-		test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
-		test_erlang_bytecode.SetAttr("outs", []string{test_out})
-		if !deps.Beam.IsEmpty() {
-			test_erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
-		}
-		if !deps.Deps.IsEmpty() {
-			test_erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
-		}
-		test_erlang_bytecode.SetAttr("testonly", true)
 
-		testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
+		if !behaviours.IsEmpty() {
+			behavioursRule = rule.NewRule(erlangBytecodeKind, "test_behaviours")
+			behavioursRule.SetAttr("testonly", true)
+			behavioursRule.SetAttr("app_name", erlangApp.Name)
+			behavioursRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
+			behavioursRule.SetAttr("srcs", behaviours.Values(strings.Compare))
+			behavioursRule.SetAttr("hdrs", erlangApp.Hdrs())
+			behavioursRule.SetAttr("outs", mutable_set.Map(behaviours, testBeamFile).Values(strings.Compare))
+			if len(beamFilesGroupRules) > 0 {
+				behavioursRule.SetAttr("beam", beamFilesGroupRules)
+			}
+			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
+			behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(behavioursDeps.RuntimeDeps)
+			testBeamFilesRules = append(testBeamFilesRules, behavioursRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+behavioursRule.Name())
+		}
+
+		if !others.IsEmpty() {
+			othersRule = rule.NewRule(erlangBytecodeKind, "test_other_beam")
+			othersRule.SetAttr("testonly", true)
+			othersRule.SetAttr("app_name", erlangApp.Name)
+			othersRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
+			othersRule.SetAttr("srcs", others.Values(strings.Compare))
+			othersRule.SetAttr("hdrs", erlangApp.Hdrs())
+			othersRule.SetAttr("outs", mutable_set.Map(others, testBeamFile).Values(strings.Compare))
+
+			othersRule.SetAttr("beam", beamFilesGroupRules)
+			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
+			othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(othersDeps.RuntimeDeps)
+			testBeamFilesRules = append(testBeamFilesRules, othersRule)
+			beamFilesGroupRules = append(beamFilesGroupRules, ":"+othersRule.Name())
+		}
+
+		test_beam_files := rule.NewRule("filegroup", "test_beam_files")
+		test_beam_files.SetAttr("srcs", beamFilesGroupRules)
+		test_beam_files.SetAttr("testonly", true)
+		testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
+	} else {
+		testOuts := mutable_set.New[string]()
+		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+			deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, src)
+
+			erlangApp.TestDeps.Add(deps.RuntimeDeps.ValuesUnordered()...)
+
+			test_out := testBeamFile(src)
+			testOuts.Add(test_out)
+
+			test_erlang_bytecode := rule.NewRule(erlangBytecodeKind, ruleName(test_out))
+			test_erlang_bytecode.SetAttr("app_name", erlangApp.Name)
+			test_erlang_bytecode.SetAttr("srcs", []interface{}{src})
+			if !deps.Hdrs.IsEmpty() {
+				test_erlang_bytecode.SetAttr("hdrs", deps.Hdrs.Values(strings.Compare))
+			}
+			test_erlang_bytecode.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
+			test_erlang_bytecode.SetAttr("outs", []string{test_out})
+			if !deps.Beam.IsEmpty() {
+				test_erlang_bytecode.SetAttr("beam", deps.Beam.Values(strings.Compare))
+			}
+			if !deps.Deps.IsEmpty() {
+				test_erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
+			}
+			test_erlang_bytecode.SetAttr("testonly", true)
+
+			testBeamFilesRules = append(testBeamFilesRules, test_erlang_bytecode)
+		}
+
+		test_beam_files := rule.NewRule("filegroup", "test_beam_files")
+		test_beam_files.SetAttr("srcs", testOuts.Values(strings.Compare))
+		test_beam_files.SetAttr("testonly", true)
+		testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
 	}
-
-	test_beam_files := rule.NewRule("filegroup", "test_beam_files")
-	test_beam_files.SetAttr("srcs", testOuts.Values(strings.Compare))
-	test_beam_files.SetAttr("testonly", true)
-	testBeamFilesRules = append(testBeamFilesRules, test_beam_files)
 	return
 }
 
@@ -399,7 +556,7 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	var rules []*rule.Rule
 
 	srcs := rule.NewRule("filegroup", "srcs")
-	srcs.SetAttr("srcs", Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare))
+	srcs.SetAttr("srcs", mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare))
 	rules = append(rules, srcs)
 
 	private_hdrs := rule.NewRule("filegroup", "private_hdrs")
@@ -488,7 +645,7 @@ func (erlangApp *ErlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
 	}
 
-	deps := Union(erlangApp.Deps, erlangApp.TestDeps)
+	deps := mutable_set.Union(erlangApp.Deps, erlangApp.TestDeps)
 	if !deps.IsEmpty() {
 		r.SetAttr("deps", deps.Values(strings.Compare))
 	}
@@ -523,7 +680,7 @@ func (erlangApp *ErlangApp) testPathFor(from, include string) string {
 func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, erlParser ErlParser) []*rule.Rule {
 	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
-	ownModules := NewMutableSet[string]()
+	ownModules := mutable_set.New[string]()
 	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 		ownModules.Add(moduleName(src))
 	}
@@ -534,7 +691,7 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 	}
 
 	var beamFilesRules []*rule.Rule
-	outs := NewMutableSet[string]()
+	outs := mutable_set.New[string]()
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
 		Log(args.Config, "        Parsing", src, "->", actualPath)
@@ -543,7 +700,7 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		theseHdrs := NewMutableSet[string]()
+		theseHdrs := mutable_set.New[string]()
 		for _, include := range erlAttrs.Include {
 			path := erlangApp.testPathFor(src, include)
 			if path != "" {
@@ -555,7 +712,7 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 			}
 		}
 
-		theseDeps := NewMutableSet[string]()
+		theseDeps := mutable_set.New[string]()
 		for _, include := range erlAttrs.IncludeLib {
 			path := erlangApp.pathFor(src, include)
 			if path != "" {
@@ -571,7 +728,7 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 			}
 		}
 
-		theseBeam := NewMutableSet[string]()
+		theseBeam := mutable_set.New[string]()
 		for _, module := range erlAttrs.modules() {
 			found := false
 			for _, other_src := range erlangApp.Srcs.Values(strings.Compare) {
@@ -597,8 +754,8 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 			}
 		}
 
-		theseRuntimeBeam := NewMutableSet[string]()
-		theseRuntimeDeps := NewMutableSet[string]()
+		theseRuntimeBeam := mutable_set.New[string]()
+		theseRuntimeDeps := mutable_set.New[string]()
 		for module := range erlAttrs.Call {
 			found := false
 			for _, other_src := range erlangApp.TestSrcs.Values(strings.Compare) {
@@ -693,8 +850,8 @@ func (erlangApp *ErlangApp) EunitRule() *rule.Rule {
 		}
 	}
 
-	eunit_mods := NewMutableSet[string]()
-	compiled_suites := NewMutableSet[string]()
+	eunit_mods := mutable_set.New[string]()
+	compiled_suites := mutable_set.New[string]()
 	for mod, beam := range modMap {
 		eunit_mods.Add(mod)
 		if beam != "" {
@@ -743,6 +900,13 @@ func (erlangApp *ErlangApp) CtSuiteRules(testDirBeamFilesRules []*rule.Rule) []*
 
 func (erlangApp *ErlangApp) hasTestSuites() bool {
 	return !erlangApp.TestSrcs.IsEmpty()
+}
+
+func (erlangApp *ErlangApp) Hdrs() []string {
+	return mutable_set.Union(
+		erlangApp.PrivateHdrs,
+		erlangApp.PublicHdrs,
+	).Values(strings.Compare)
 }
 
 func (erlangApp *ErlangApp) modules() []string {

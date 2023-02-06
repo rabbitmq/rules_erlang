@@ -13,11 +13,12 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 )
 
 const languageName = "erlang"
 
-var resolveableKinds = NewMutableSet(
+var resolveableKinds = mutable_set.New(
 	erlangBytecodeKind,
 	erlangAppKind,
 	testErlangAppKind,

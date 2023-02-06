@@ -232,4 +232,80 @@ var _ = Describe("an ErlangApp", func() {
 			})
 		})
 	})
+
+	Describe("Compact BeamFilesRules", func() {
+		BeforeEach(func() {
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.GenerateFewerBytecodeRules = true
+
+			app.Name = "foo"
+			app.AddFile("src/foo.erl")
+			app.AddFile("src/bar.erl")
+			app.AddFile("src/baz.erl")
+			app.AddFile("src/xform.erl")
+			app.AddFile("include/foo.hrl")
+		})
+
+		It("produces a smaller set of bytecode compilation rules", func() {
+			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					IncludeLib:     []string{"other/include/other.hrl"},
+					ParseTransform: []string{"xform"},
+					Behaviour:      []string{"bar", "baz"},
+				},
+			})
+
+			rules := app.BeamFilesRules(args, fakeParser)
+			Expect(rules).To(HaveLen(4))
+
+			Expect(rules[0].Name()).To(Equal("parse_transforms"))
+			Expect(rules[0].AttrString("app_name")).To(Equal(app.Name))
+			Expect(rules[0].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
+			Expect(rules[0].AttrStrings("srcs")).To(
+				ContainElements("src/xform.erl"),
+			)
+			Expect(rules[0].AttrStrings("outs")).To(
+				ContainElements("ebin/xform.beam"),
+			)
+
+			Expect(rules[1].Name()).To(Equal("behaviours"))
+			Expect(rules[1].AttrString("app_name")).To(Equal(app.Name))
+			Expect(rules[1].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
+			Expect(rules[1].AttrStrings("srcs")).To(
+				ContainElements("src/bar.erl", "src/baz.erl"),
+			)
+			Expect(rules[1].AttrStrings("outs")).To(
+				ContainElements("ebin/bar.beam", "ebin/baz.beam"),
+			)
+			Expect(rules[1].AttrStrings("beam")).To(
+				ContainElements(":parse_transforms"),
+			)
+
+			Expect(rules[2].Name()).To(Equal("other_beam"))
+			Expect(rules[2].AttrString("app_name")).To(Equal(app.Name))
+			Expect(rules[2].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
+			Expect(rules[2].AttrStrings("srcs")).To(
+				ContainElements("src/foo.erl"),
+			)
+			Expect(rules[2].AttrStrings("outs")).To(
+				ContainElements("ebin/foo.beam"),
+			)
+			Expect(rules[2].AttrStrings("beam")).To(
+				ContainElements(":parse_transforms", ":behaviours"),
+			)
+			Expect(rules[2].AttrStrings("deps")).To(
+				ContainElements("other"),
+			)
+
+			Expect(rules[3].Name()).To(Equal("beam_files"))
+			Expect(rules[3].AttrStrings("srcs")).To(
+				ContainElements(
+					":"+rules[0].Name(),
+					":"+rules[1].Name(),
+					":"+rules[2].Name(),
+				),
+			)
+		})
+	})
 })
