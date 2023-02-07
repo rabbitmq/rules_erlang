@@ -32,6 +32,11 @@ def _impl(ctx):
             include = ctx.files.hdrs,
         )
 
+    package_dir = path_join(
+        ctx.label.workspace_root,
+        ctx.label.package,
+    )
+
     erl_libs_files = erl_libs_contents(
         ctx,
         target_info = target,
@@ -56,9 +61,7 @@ def _impl(ctx):
 
     dest_dir = beam_files[0].dirname
 
-    include_args = []
-    if erl_libs_path != "":
-        include_args.extend(["-I", erl_libs_path])
+    include_args = ["-I", package_dir]
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 
