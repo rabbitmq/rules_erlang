@@ -95,12 +95,12 @@ func moduleName(src string) string {
 }
 
 func beamFile(src string) string {
-	r := "ebin/" + strings.TrimPrefix(src, "src/")
+	r := "ebin/" + filepath.Base(src)
 	return strings.TrimSuffix(r, ".erl") + ".beam"
 }
 
 func testBeamFile(src string) string {
-	r := "test/" + strings.TrimPrefix(src, "src/")
+	r := "test/" + filepath.Base(src)
 	return strings.TrimSuffix(r, ".erl") + ".beam"
 }
 
