@@ -94,10 +94,7 @@ fi
         include_args = " ".join(include_args),
         pa_args = " ".join(pa_args),
         out_dir = out_dir,
-        erlc_opts = " ".join([
-            "'{}'".format(opt)
-            for opt in ctx.attr.erlc_opts[ErlcOptsInfo].values
-        ]),
+        erlc_opts = " ".join(ctx.attr.erlc_opts[ErlcOptsInfo].values),
     )
 
     inputs = depset(
