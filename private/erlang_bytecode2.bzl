@@ -30,6 +30,11 @@ def _impl(ctx):
             include = ctx.files.hdrs,
         )
 
+    package_dir = path_join(
+        ctx.label.workspace_root,
+        ctx.label.package,
+    )
+
     # this actually just needs to be headers and behaviours, in the context of compiling,
     # though it must include the transitive headers and behaviors. Therefore this file
     # could have it's own optimized version of `erl_libs_contents`
@@ -55,9 +60,7 @@ def _impl(ctx):
         fail(ctx.attr.outs, "do not share a common parent directory")
     out_dir = out_dirs[0]
 
-    include_args = []
-    if erl_libs_path != "":
-        include_args.extend(["-I", erl_libs_path])
+    include_args = ["-I", package_dir]
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 
