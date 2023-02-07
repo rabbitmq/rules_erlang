@@ -135,7 +135,7 @@ func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, macros Er
 func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *ErlangApp, macros ErlParserMacros) (*ErlAttrs, error) {
 	erlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, erlFile)
 	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
-		return &ErlAttrs{}, nil
+		return nil, err
 	}
 
 	rootAttrs, err := p.parseErl(erlFilePath, macros)

@@ -1,7 +1,7 @@
 package erlang
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -179,17 +179,21 @@ func macros(erlcOpts mutable_set.MutableSet[string]) ErlParserMacros {
 	return r
 }
 
-func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlParser, erlcOpts mutable_set.MutableSet[string]) map[string]*ErlAttrs {
+func (erlangApp *ErlangApp) parseSrcs(args language.GenerateArgs, erlParser ErlParser, erlcOpts mutable_set.MutableSet[string], srcs mutable_set.MutableSet[string]) map[string]*ErlAttrs {
 	r := make(map[string]*ErlAttrs)
-	for _, src := range erlangApp.Srcs.Values(strings.Compare) {
+	for _, src := range srcs.Values(strings.Compare) {
 		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
-		// TODO: not print Parsing when the file does not exist
-		Log(args.Config, "        Parsing", src, "->", actualPath)
 		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlcOpts))
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		if errors.Is(err, os.ErrNotExist) {
+			Log(args.Config, "        Skipped (not found)", src, "->", actualPath)
+			r[src] = &ErlAttrs{}
+		} else {
+			Log(args.Config, "        Parsed", src, "->", actualPath)
+			if err != nil {
+				log.Fatalf("ERROR: %v\n", err)
+			}
+			r[src] = erlAttrs
 		}
-		r[src] = erlAttrs
 	}
 	return r
 }
@@ -210,6 +214,8 @@ func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *Er
 	}
 
 	for _, src := range srcs {
+		Log(config, "        Analyzing", src)
+
 		erlAttrs := erlAttrsBySrc[src]
 
 		for _, include := range erlAttrs.Include {
@@ -261,12 +267,12 @@ func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *Er
 				continue
 			}
 			if dep, found := erlangConfig.ModuleMappings[module]; found {
-				Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				Log(config, "            module", module, "->", dep)
 				info.Deps.Add(dep)
 				continue
 			}
 			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				Log(config, "            module", module, "->", app)
 				info.Deps.Add(app)
 				continue
 			}
@@ -277,11 +283,15 @@ func (erlangApp *ErlangApp) dependencies(config *config.Config, erlangConfig *Er
 			if app == "" {
 				app = FindModule(moduleindex, module)
 			}
-			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
-				Log(config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
-				info.RuntimeDeps.Add(app)
+			if app == "" {
+				Log(config, "            ignoring call", module)
+			} else if app == erlangApp.Name {
+				Log(config, "            self call", module, "->", app)
+			} else if erlangConfig.IgnoredDeps.Contains(app) {
+				Log(config, "            ignoring call", module, "->", app, "(explicit ignore)")
 			} else {
-				Log(config, "            ignoring call", module, "->", app)
+				Log(config, "            call", module, "->", app)
+				info.RuntimeDeps.Add(app)
 			}
 		}
 	}
@@ -299,7 +309,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		moduleindex = Moduleindex{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
-	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts)
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts, erlangApp.Srcs)
 
 	if erlangConfig.GenerateFewerBytecodeRules {
 		transforms := mutable_set.New[string]()
@@ -308,11 +318,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		srcByModuleName := mutable_set.Index(erlangApp.Srcs, moduleName)
 
 		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-			var erlAttrs *ErlAttrs
-			var ok bool
-			if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
-				continue
-			}
+			erlAttrs := erlAttrsBySrc[src]
 
 			for _, module := range erlAttrs.ParseTransform {
 				if other_src, ok := srcByModuleName[module]; ok {
@@ -428,7 +434,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
-	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.TestErlcOpts)
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.TestErlcOpts, erlangApp.Srcs)
 
 	if erlangConfig.GenerateFewerBytecodeRules {
 		transforms := mutable_set.New[string]()
@@ -437,11 +443,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		srcByModuleName := mutable_set.Index(erlangApp.Srcs, moduleName)
 
 		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
-			var erlAttrs *ErlAttrs
-			var ok bool
-			if erlAttrs, ok = erlAttrsBySrc[src]; !ok {
-				continue
-			}
+			erlAttrs := erlAttrsBySrc[src]
 
 			for _, module := range erlAttrs.ParseTransform {
 				if other_src, ok := srcByModuleName[module]; ok {
@@ -690,15 +692,14 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.TestErlcOpts, erlangApp.TestSrcs)
+
 	var beamFilesRules []*rule.Rule
 	outs := mutable_set.New[string]()
 	for _, src := range erlangApp.TestSrcs.Values(strings.Compare) {
-		actualPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, src)
-		Log(args.Config, "        Parsing", src, "->", actualPath)
-		erlAttrs, err := erlParser.DeepParseErl(src, erlangApp, macros(erlangApp.TestErlcOpts))
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
-		}
+		erlAttrs := erlAttrsBySrc[src]
+
+		Log(args.Config, "        Analyzing", src)
 
 		theseHdrs := mutable_set.New[string]()
 		for _, include := range erlAttrs.Include {
@@ -743,12 +744,12 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 				continue
 			}
 			if dep, found := erlangConfig.ModuleMappings[module]; found {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", dep, module))
+				Log(args.Config, "            module", module, "->", dep)
 				theseDeps.Add(dep)
 				continue
 			}
 			if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
-				Log(args.Config, "            module", module, "->", fmt.Sprintf("%s:%s", app, module))
+				Log(args.Config, "            module", module, "->", app)
 				theseDeps.Add(app)
 				continue
 			}
@@ -773,11 +774,15 @@ func (erlangApp *ErlangApp) TestDirBeamFilesRules(args language.GenerateArgs, er
 			if app == "" {
 				app = FindModule(moduleindex, module)
 			}
-			if app != "" && app != erlangApp.Name && !erlangConfig.IgnoredDeps.Contains(app) {
-				Log(args.Config, "            call", module, "->", fmt.Sprintf("%s:%s", app, module))
-				theseRuntimeDeps.Add(app)
+			if app == "" {
+				Log(args.Config, "            ignoring call", module)
+			} else if app == erlangApp.Name {
+				Log(args.Config, "            self call", module, "->", app)
+			} else if erlangConfig.IgnoredDeps.Contains(app) {
+				Log(args.Config, "            ignoring call", module, "->", app, "(explicit ignore)")
 			} else {
-				Log(args.Config, "            ignoring call", module, "->", app)
+				Log(args.Config, "            call", module, "->", app)
+				theseRuntimeDeps.Add(app)
 			}
 		}
 
