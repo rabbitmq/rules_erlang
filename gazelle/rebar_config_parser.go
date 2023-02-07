@@ -110,9 +110,14 @@ func (p *rebarConfigParser) parseRebarConfig(configFilename string) (*rebarConfi
 	return &metadata, nil
 }
 
+type rebarConfigErlOpt struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
 type rebarConfig struct {
-	Deps    []map[string]string `json:"deps"`
-	ErlOpts *[]string           `json:"erl_opts"`
+	Deps    []map[string]string  `json:"deps"`
+	ErlOpts *[]rebarConfigErlOpt `json:"erl_opts"`
 }
 
 func (p *rebarConfigParser) parseRebarLock(lockFilename string) (*rebarLock, error) {

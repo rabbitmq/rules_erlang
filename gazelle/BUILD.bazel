@@ -4,6 +4,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 exports_files([
     "dot_app_to_json.sh",
     "erl_attrs_to_json.sh",
+    "rebar_config_to_json.sh",
 ])
 
 go_library(
