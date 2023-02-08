@@ -347,6 +347,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			xformsRule.SetAttr("outs", mutable_set.Map(transforms, beamFile).Values(strings.Compare))
 			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
 			xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(xformsDeps.Deps)
 			erlangApp.Deps.Union(xformsDeps.RuntimeDeps)
 			beamFilesRules = append(beamFilesRules, xformsRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+xformsRule.Name())
@@ -364,6 +365,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			}
 			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
 			behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(behavioursDeps.Deps)
 			erlangApp.Deps.Union(behavioursDeps.RuntimeDeps)
 			beamFilesRules = append(beamFilesRules, behavioursRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+behavioursRule.Name())
@@ -380,6 +382,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			othersRule.SetAttr("beam", beamFilesGroupRules)
 			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
 			othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+			erlangApp.Deps.Union(othersDeps.Deps)
 			erlangApp.Deps.Union(othersDeps.RuntimeDeps)
 			beamFilesRules = append(beamFilesRules, othersRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+othersRule.Name())
@@ -393,7 +396,8 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 			deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, src)
 
-			erlangApp.Deps.Add(deps.RuntimeDeps.ValuesUnordered()...)
+			erlangApp.Deps.Union(deps.Deps)
+			erlangApp.Deps.Union(deps.RuntimeDeps)
 
 			out := beamFile(src)
 			outs.Add(out)
@@ -473,6 +477,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			xformsRule.SetAttr("outs", mutable_set.Map(transforms, testBeamFile).Values(strings.Compare))
 			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
 			xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(xformsDeps.Deps)
 			erlangApp.TestDeps.Union(xformsDeps.RuntimeDeps)
 			testBeamFilesRules = append(testBeamFilesRules, xformsRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+xformsRule.Name())
@@ -491,6 +496,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			}
 			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
 			behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(behavioursDeps.Deps)
 			erlangApp.TestDeps.Union(behavioursDeps.RuntimeDeps)
 			testBeamFilesRules = append(testBeamFilesRules, behavioursRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+behavioursRule.Name())
@@ -508,6 +514,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			othersRule.SetAttr("beam", beamFilesGroupRules)
 			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
 			othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+			erlangApp.TestDeps.Union(othersDeps.Deps)
 			erlangApp.TestDeps.Union(othersDeps.RuntimeDeps)
 			testBeamFilesRules = append(testBeamFilesRules, othersRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+othersRule.Name())
@@ -522,7 +529,8 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		for _, src := range erlangApp.Srcs.Values(strings.Compare) {
 			deps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, src)
 
-			erlangApp.TestDeps.Add(deps.RuntimeDeps.ValuesUnordered()...)
+			erlangApp.Deps.Union(deps.Deps)
+			erlangApp.Deps.Union(deps.RuntimeDeps)
 
 			test_out := testBeamFile(src)
 			testOuts.Add(test_out)
@@ -595,7 +603,7 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	return rules
 }
 
-func (erlangApp *ErlangApp) erlangAppRule(explicitFiles bool) *rule.Rule {
+func (erlangApp *ErlangApp) ErlangAppRule(explicitFiles bool) *rule.Rule {
 	r := rule.NewRule(erlangAppKind, "erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {

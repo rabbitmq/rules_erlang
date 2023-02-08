@@ -597,7 +597,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	explicitFiles := erlangApp.RepoRoot != args.Config.RepoRoot
-	erlang_app := erlangApp.erlangAppRule(explicitFiles)
+	erlang_app := erlangApp.ErlangAppRule(explicitFiles)
 	maybeAppendRule(erlangConfig, erlang_app, &result)
 
 	alias := rule.NewRule("alias", erlangApp.Name)

@@ -234,9 +234,12 @@ var _ = Describe("an ErlangApp", func() {
 	})
 
 	Describe("Compact BeamFilesRules", func() {
+		var fakeParser *erlParserFake
+
 		BeforeEach(func() {
 			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
 			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
 			erlangConfig.GenerateFewerBytecodeRules = true
 
 			app.Name = "foo"
@@ -245,17 +248,20 @@ var _ = Describe("an ErlangApp", func() {
 			app.AddFile("src/baz.erl")
 			app.AddFile("src/xform.erl")
 			app.AddFile("include/foo.hrl")
-		})
 
-		It("produces a smaller set of bytecode compilation rules", func() {
-			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{
 					IncludeLib:     []string{"other/include/other.hrl"},
 					ParseTransform: []string{"xform"},
 					Behaviour:      []string{"bar", "baz"},
+					Call: map[string][]string{
+						"fuzz": []string{"create"},
+					},
 				},
 			})
+		})
 
+		It("produces a smaller set of bytecode compilation rules", func() {
 			rules := app.BeamFilesRules(args, fakeParser)
 			Expect(rules).To(HaveLen(4))
 
@@ -305,6 +311,16 @@ var _ = Describe("an ErlangApp", func() {
 					":"+rules[1].Name(),
 					":"+rules[2].Name(),
 				),
+			)
+		})
+
+		It("Adds discoverd deps to the application", func() {
+			app.BeamFilesRules(args, fakeParser)
+			r := app.ErlangAppRule(true)
+
+			Expect(r.Name()).To(Equal("erlang_app"))
+			Expect(r.AttrStrings("deps")).To(
+				ContainElements("other", "fuzz_app"),
 			)
 		})
 	})
