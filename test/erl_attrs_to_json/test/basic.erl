@@ -15,5 +15,6 @@ myfunc() ->
 
 main(_) ->
     myfunc(),
+    filename:split(some_other_lib:baz()),
     _ = some_other_lib:bar(2),
     other_lib:foo(1).

@@ -109,15 +109,17 @@ record_attr(E, _, include_lib, Path) ->
 record_attr(_, _, _, _) ->
     ok.
 
-record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, _Args} = _Call) ->
+record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, []} = _Call) ->
     %% io:format(standard_error, "Call: ~p~n", [Call]),
-    %% TODO: handle anonymous functions in _Args
     ets:insert(E, {call, M, F});
-record_expression(E, {call, _, {'fun', _, {clauses, Clauses}}, _Args} = _Call) ->
+record_expression(E, {call, _, {'fun', _, {clauses, Clauses}}, []} = _Call) ->
     %% io:format(standard_error, "Call: ~p~n", [Call]),
     lists:foreach(
       fun (Clause) -> record_clause(E, Clause) end,
       Clauses);
+record_expression(E, {call, L, R, [Arg | Rest]}) ->
+    record_expression(E, Arg),
+    record_expression(E, {call, L, R, Rest});
 record_expression(_, {call, _, _, _} = _Call) ->
     %% io:format(standard_error, "Ignoring Call: ~p~n", [Call]),
     ok;

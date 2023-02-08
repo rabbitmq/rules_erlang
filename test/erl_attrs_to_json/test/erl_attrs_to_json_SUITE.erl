@@ -37,9 +37,10 @@ basic(_) ->
          behaviour => [],
          parse_transform => [my_pt],
          call => #{
+                   filename => [split],
                    io => [format],
                    other_lib => [foo],
-                   some_other_lib => [bar]
+                   some_other_lib => [bar, baz]
                   }
         },
        erl_attrs_to_json:parse(fixture_path("test/basic.erl"), [])),
@@ -50,9 +51,10 @@ basic(_) ->
          behaviour => [],
          parse_transform => [my_pt],
          call => #{
+                   filename => [split],
                    io => [format],
                    other_lib => [foo],
-                   some_other_lib => [bar]
+                   some_other_lib => [bar, baz]
                   }
         },
        erl_attrs_to_json:parse(fixture_path("test/basic.erl"), ['TEST'])).
