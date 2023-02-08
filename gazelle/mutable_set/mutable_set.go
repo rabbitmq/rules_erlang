@@ -61,6 +61,16 @@ func (s MutableSet[T]) Subtract(other MutableSet[T]) {
 	}
 }
 
+func (s MutableSet[T]) Clone() MutableSet[T] {
+	r := make(MutableSet[T], len(s))
+	for item, present := range s {
+		if present {
+			r[item] = true
+		}
+	}
+	return r
+}
+
 func GroupBy[T, K comparable](s MutableSet[T], f func(v T) K) map[K][]T {
 	r := make(map[K][]T, len(s))
 	s.ForEach(func(v T) {

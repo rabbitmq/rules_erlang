@@ -22,6 +22,7 @@ const (
 	localAppsDirsDirective               = "erlang_apps_dirs"
 	erlangAppDepDirective                = "erlang_app_dep"
 	erlangAppDepIgnoreDirective          = "erlang_app_dep_ignore"
+	erlangAppDepBuildOnlyDirective       = "erlang_app_dep_exclude"
 	erlangAppExtraAppDirective           = "erlang_app_extra_app"
 	erlangNoTestsDirective               = "erlang_no_tests"
 	erlangErlcOptDirective               = "erlang_erlc_opt"
@@ -88,6 +89,7 @@ type ErlangConfig struct {
 	ModuleMappings                  map[string]string
 	ExcludeWhenRuleOfKindExists     mutable_set.MutableSet[string]
 	IgnoredDeps                     mutable_set.MutableSet[string]
+	ExcludedDeps                    mutable_set.MutableSet[string]
 	GenerateBeamFilesMacro          bool
 	GenerateFewerBytecodeRules      bool
 	GenerateTestBeamUnconditionally bool
@@ -112,6 +114,7 @@ func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
 		ModuleMappings:                  make(map[string]string),
 		ExcludeWhenRuleOfKindExists:     mutable_set.New[string](),
 		IgnoredDeps:                     defaultIgnoredDeps,
+		ExcludedDeps:                    mutable_set.New[string](),
 		GenerateBeamFilesMacro:          false,
 		GenerateFewerBytecodeRules:      erlang.compact,
 		GenerateTestBeamUnconditionally: false,
@@ -143,6 +146,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			ModuleMappings:                  CopyMap(parentConfig.ModuleMappings),
 			ExcludeWhenRuleOfKindExists:     mutable_set.Copy(parentConfig.ExcludeWhenRuleOfKindExists),
 			IgnoredDeps:                     mutable_set.Copy(parentConfig.IgnoredDeps),
+			ExcludedDeps:                    mutable_set.Copy(parentConfig.ExcludedDeps),
 			GenerateBeamFilesMacro:          parentConfig.GenerateBeamFilesMacro,
 			GenerateFewerBytecodeRules:      parentConfig.GenerateFewerBytecodeRules,
 			GenerateTestBeamUnconditionally: parentConfig.GenerateTestBeamUnconditionally,
@@ -200,6 +204,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		localAppsDirsDirective,
 		erlangAppDepDirective,
 		erlangAppDepIgnoreDirective,
+		erlangAppDepBuildOnlyDirective,
 		erlangAppExtraAppDirective,
 		erlangNoTestsDirective,
 		erlangErlcOptDirective,
@@ -249,6 +254,8 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				erlangConfig.Deps.Add(d.Value)
 			case erlangAppDepIgnoreDirective:
 				erlangConfig.IgnoredDeps.Add(d.Value)
+			case erlangAppDepBuildOnlyDirective:
+				erlangConfig.ExcludedDeps.Add(d.Value)
 			case erlangAppExtraAppDirective:
 				erlangConfig.ExtraApps.Add(d.Value)
 			case erlangNoTestsDirective:

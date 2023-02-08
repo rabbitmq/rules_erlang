@@ -115,7 +115,7 @@ var _ = Describe("an ErlangApp", func() {
 
 			Expect(rules[0].Name()).To(Equal("ebin_foo_beam"))
 			Expect(rules[0].AttrStrings("hdrs")).To(
-				ContainElements("src/foo.hrl"))
+				ConsistOf("src/foo.hrl"))
 		})
 
 		It("resolves parse_transforms", func() {
@@ -134,7 +134,7 @@ var _ = Describe("an ErlangApp", func() {
 
 			Expect(rules[1].Name()).To(Equal("ebin_foo_beam"))
 			Expect(rules[1].AttrStrings("beam")).To(
-				ContainElements("ebin/bar.beam"))
+				ConsistOf("ebin/bar.beam"))
 		})
 
 		It("honors erlang_module_source_lib directives", func() {
@@ -157,10 +157,10 @@ var _ = Describe("an ErlangApp", func() {
 
 			Expect(rules[0].Name()).To(Equal("ebin_foo_beam"))
 			Expect(rules[0].AttrStrings("deps")).To(
-				ContainElements("baz_app"))
+				ConsistOf("baz_app"))
 
 			Expect(app.Deps.Values(strings.Compare)).To(
-				ContainElements("fuzz_app"))
+				ConsistOf("baz_app", "fuzz_app"))
 		})
 	})
 
@@ -176,7 +176,6 @@ var _ = Describe("an ErlangApp", func() {
 			app.AddFile("test/bar_tests.erl")
 
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
-				"src/foo.erl": &erlang.ErlAttrs{},
 				"test/foo_SUITE.erl": &erlang.ErlAttrs{
 					ParseTransform: []string{"foo"},
 					Call: map[string][]string{
@@ -184,7 +183,6 @@ var _ = Describe("an ErlangApp", func() {
 						"fuzz":       []string{"create"},
 					},
 				},
-				"test/foo_helper.erl": &erlang.ErlAttrs{},
 			})
 
 			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
@@ -202,7 +200,7 @@ var _ = Describe("an ErlangApp", func() {
 
 				Expect(testDirRules[1].Name()).To(Equal("foo_SUITE_beam_files"))
 				Expect(testDirRules[1].AttrStrings("beam")).To(
-					ContainElements("ebin/foo.beam"))
+					ConsistOf("ebin/foo.beam"))
 
 				Expect(testDirRules[2].Name()).To(Equal("test_foo_helper_beam"))
 			})
@@ -214,7 +212,7 @@ var _ = Describe("an ErlangApp", func() {
 
 				Expect(r.Name()).To(Equal("eunit"))
 				Expect(r.AttrStrings("compiled_suites")).To(
-					ContainElements(":test_foo_helper_beam"))
+					ConsistOf(":test_foo_helper_beam", ":test_bar_tests_beam"))
 				Expect(r.AttrString("target")).To(Equal(":test_erlang_app"))
 			})
 		})
@@ -226,9 +224,9 @@ var _ = Describe("an ErlangApp", func() {
 
 				Expect(rules[0].Name()).To(Equal("foo_SUITE"))
 				Expect(rules[0].AttrStrings("compiled_suites")).To(
-					ContainElements(":foo_SUITE_beam_files", "test/foo_helper.beam"))
+					ConsistOf(":foo_SUITE_beam_files", "test/foo_helper.beam"))
 				Expect(rules[0].AttrStrings("deps")).To(
-					ContainElements(":test_erlang_app", "fuzz_app"))
+					ConsistOf(":test_erlang_app", "fuzz_app"))
 			})
 		})
 	})
@@ -269,44 +267,44 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[0].AttrString("app_name")).To(Equal(app.Name))
 			Expect(rules[0].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
 			Expect(rules[0].AttrStrings("srcs")).To(
-				ContainElements("src/xform.erl"),
+				ConsistOf("src/xform.erl"),
 			)
 			Expect(rules[0].AttrStrings("outs")).To(
-				ContainElements("ebin/xform.beam"),
+				ConsistOf("ebin/xform.beam"),
 			)
 
 			Expect(rules[1].Name()).To(Equal("behaviours"))
 			Expect(rules[1].AttrString("app_name")).To(Equal(app.Name))
 			Expect(rules[1].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
 			Expect(rules[1].AttrStrings("srcs")).To(
-				ContainElements("src/bar.erl", "src/baz.erl"),
+				ConsistOf("src/bar.erl", "src/baz.erl"),
 			)
 			Expect(rules[1].AttrStrings("outs")).To(
-				ContainElements("ebin/bar.beam", "ebin/baz.beam"),
+				ConsistOf("ebin/bar.beam", "ebin/baz.beam"),
 			)
 			Expect(rules[1].AttrStrings("beam")).To(
-				ContainElements(":parse_transforms"),
+				ConsistOf(":parse_transforms"),
 			)
 
 			Expect(rules[2].Name()).To(Equal("other_beam"))
 			Expect(rules[2].AttrString("app_name")).To(Equal(app.Name))
 			Expect(rules[2].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
 			Expect(rules[2].AttrStrings("srcs")).To(
-				ContainElements("src/foo.erl"),
+				ConsistOf("src/foo.erl"),
 			)
 			Expect(rules[2].AttrStrings("outs")).To(
-				ContainElements("ebin/foo.beam"),
+				ConsistOf("ebin/foo.beam"),
 			)
 			Expect(rules[2].AttrStrings("beam")).To(
-				ContainElements(":parse_transforms", ":behaviours"),
+				ConsistOf(":parse_transforms", ":behaviours"),
 			)
 			Expect(rules[2].AttrStrings("deps")).To(
-				ContainElements("other"),
+				ConsistOf("other"),
 			)
 
 			Expect(rules[3].Name()).To(Equal("beam_files"))
 			Expect(rules[3].AttrStrings("srcs")).To(
-				ContainElements(
+				ConsistOf(
 					":"+rules[0].Name(),
 					":"+rules[1].Name(),
 					":"+rules[2].Name(),
@@ -316,11 +314,31 @@ var _ = Describe("an ErlangApp", func() {
 
 		It("Adds discoverd deps to the application", func() {
 			app.BeamFilesRules(args, fakeParser)
-			r := app.ErlangAppRule(true)
+			r := app.ErlangAppRule(args, true)
 
 			Expect(r.Name()).To(Equal("erlang_app"))
 			Expect(r.AttrStrings("deps")).To(
-				ContainElements("other", "fuzz_app"),
+				ConsistOf("other", "fuzz_app"),
+			)
+		})
+
+		It("Treats deps marked with the erlang_app_dep_exclude directive as a build dep only", func() {
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ExcludedDeps.Add("other")
+
+			rules := app.BeamFilesRules(args, fakeParser)
+
+			Expect(rules[2].Name()).To(Equal("other_beam"))
+			Expect(rules[2].AttrStrings("deps")).To(
+				ConsistOf("other"),
+			)
+
+			r := app.ErlangAppRule(args, true)
+
+			Expect(r.Name()).To(Equal("erlang_app"))
+			Expect(r.AttrStrings("deps")).To(
+				ConsistOf("fuzz_app"),
 			)
 		})
 	})

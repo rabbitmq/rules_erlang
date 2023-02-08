@@ -603,7 +603,9 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	return rules
 }
 
-func (erlangApp *ErlangApp) ErlangAppRule(explicitFiles bool) *rule.Rule {
+func (erlangApp *ErlangApp) ErlangAppRule(args language.GenerateArgs, explicitFiles bool) *rule.Rule {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+
 	r := rule.NewRule(erlangAppKind, "erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
@@ -626,13 +628,17 @@ func (erlangApp *ErlangApp) ErlangAppRule(explicitFiles bool) *rule.Rule {
 		r.SetAttr("extra_license_files", erlangApp.LicenseFiles.Values(strings.Compare))
 	}
 
-	if !erlangApp.Deps.IsEmpty() {
-		r.SetAttr("deps", erlangApp.Deps.Values(strings.Compare))
+	deps := erlangApp.Deps.Clone()
+	deps.Subtract(erlangConfig.ExcludedDeps)
+	if !deps.IsEmpty() {
+		r.SetAttr("deps", deps.Values(strings.Compare))
 	}
 	return r
 }
 
-func (erlangApp *ErlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
+func (erlangApp *ErlangApp) testErlangAppRule(args language.GenerateArgs, explicitFiles bool) *rule.Rule {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
+
 	r := rule.NewRule(testErlangAppKind, "test_erlang_app")
 	r.SetAttr("app_name", erlangApp.Name)
 	if erlangApp.Version != "" {
@@ -656,6 +662,7 @@ func (erlangApp *ErlangApp) testErlangAppRule(explicitFiles bool) *rule.Rule {
 	}
 
 	deps := mutable_set.Union(erlangApp.Deps, erlangApp.TestDeps)
+	deps.Subtract(erlangConfig.ExcludedDeps)
 	if !deps.IsEmpty() {
 		r.SetAttr("deps", deps.Values(strings.Compare))
 	}

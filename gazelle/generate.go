@@ -597,7 +597,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	explicitFiles := erlangApp.RepoRoot != args.Config.RepoRoot
-	erlang_app := erlangApp.ErlangAppRule(explicitFiles)
+	erlang_app := erlangApp.ErlangAppRule(args, explicitFiles)
 	maybeAppendRule(erlangConfig, erlang_app, &result)
 
 	alias := rule.NewRule("alias", erlangApp.Name)
@@ -607,7 +607,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	if !erlangConfig.NoTests {
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
-			test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
+			test_erlang_app := erlangApp.testErlangAppRule(args, explicitFiles)
 			maybeAppendRule(erlangConfig, test_erlang_app, &result)
 		}
 
