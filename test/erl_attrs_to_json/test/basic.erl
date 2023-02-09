@@ -11,7 +11,10 @@
 -endif.
 
 myfunc(M) when is_map(M) ->
-    _ = maps:merge(M, #{k2 => other_lib:encode(<<"string">>)}),
+    try maps:merge(M, #{k2 => other_lib:encode(<<"string">>)})
+    catch _:_ ->
+        invalid
+    end,
     io:format("Hello~n", []),
     {ok, some_other_lib:fizz()}.
 

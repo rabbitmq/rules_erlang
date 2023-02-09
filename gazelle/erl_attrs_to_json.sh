@@ -109,20 +109,24 @@ record_attr(E, _, include_lib, Path) ->
 record_attr(_, _, _, _) ->
     ok.
 
-record_expression(E, {call, _, {remote, _, {atom, _, M}, {atom, _, F}}, []} = _Call) ->
-    %% io:format(standard_error, "Call: ~p~n", [Call]),
+record_expression(E, {remote, _, {atom, _, M}, {atom, _, F}}) ->
     ets:insert(E, {call, M, F});
-record_expression(E, {call, _, {'fun', _, {clauses, Clauses}}, []} = _Call) ->
-    %% io:format(standard_error, "Call: ~p~n", [Call]),
+record_expression(E, {call, _, F, Args}) ->
     lists:foreach(
-      fun (Clause) -> record_clause(E, Clause) end,
+      fun (Arg) -> record_expression(E, Arg) end,
+      Args),
+    record_expression(E, F);
+record_expression(E, {'fun', _, {clauses, Clauses}}) ->
+    lists:foreach(
+      fun (Clause) -> record_expression(E, Clause) end,
       Clauses);
-record_expression(E, {call, L, R, [Arg | Rest]}) ->
-    record_expression(E, Arg),
-    record_expression(E, {call, L, R, Rest});
-record_expression(_, {call, _, _, _} = _Call) ->
-    %% io:format(standard_error, "Ignoring Call: ~p~n", [Call]),
-    ok;
+record_expression(E, {clause, _, Args, _Guards, Expressions}) ->
+    lists:foreach(
+      fun (Arg) -> record_expression(E, Arg) end,
+      Args),
+    lists:foreach(
+      fun (Expression) -> record_expression(E, Expression) end,
+      Expressions);
 record_expression(E, {block, _, Expressions}) ->
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
@@ -132,8 +136,14 @@ record_expression(E, {'case', _, Arg, Expressions}) ->
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
       Expressions);
-record_expression(E, {match, _, Lhs, Rhs} = _Match) ->
-    %% io:format(standard_error, "Match: ~p~n", [Match]),
+record_expression(E, {'try', _, Expressions, _, Clauses, []}) ->
+    lists:foreach(
+      fun (Expression) -> record_expression(E, Expression) end,
+      Expressions),
+    lists:foreach(
+      fun (Clause) -> record_expression(E, Clause) end,
+      Clauses);
+record_expression(E, {match, _, Lhs, Rhs}) ->
     record_expression(E, Lhs),
     record_expression(E, Rhs);
 record_expression(E, {tuple, _, Elements}) ->
@@ -150,30 +160,12 @@ record_expression(E, {map, _, Assocs}) ->
               ok
       end,
       Assocs);
+record_expression(E, {cons, _, Head, Tail}) ->
+    record_expression(E, Head),
+    record_expression(E, Tail);
 record_expression(_, _Exp) ->
     %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.
-
-record_clause(_, {clause, _, [], _, []} = _Clause) ->
-    %% io:format(standard_error, "Ignoring clause: ~p~n", [Clause]),
-    ok;
-record_clause(E, {clause, L, [Arg | Rest], O, Expressions} = _Clause) ->
-    %% io:format(standard_error, "Clause: ~p~n", [Clause]),
-    case Arg of
-        {'fun' = Name, _, Clauses} ->
-            record_function(E, Name, Clauses);
-        _ ->
-            record_clause(E, {clause, L, Rest, O, Expressions})
-    end;
-record_clause(E, {clause, N, [], O, [Expression | Rest]}) ->
-    record_expression(E, Expression),
-    record_clause(E, {clause, N, [], O, Rest}).
-
-record_function(_, _, []) ->
-    ok;
-record_function(E, Name, [Clause | Rest]) ->
-    record_clause(E, Clause),
-    record_function(E, Name, Rest).
 
 note_form(_, _, {eof, _}) ->
     ok;
@@ -187,9 +179,11 @@ note_form(_, _, {error, _Reason}) ->
 note_form(E, File, {attribute, _, Key, Value} = _AbsData) ->
     %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
     record_attr(E, File, Key, Value);
-note_form(E, _, {function, _, Name, _, Clauses} = _AbsData) ->
+note_form(E, _, {function, _, _, _, Clauses} = _AbsData) ->
     %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
-    record_function(E, Name, Clauses);
+    lists:foreach(
+      fun (Clause) -> record_expression(E, Clause) end,
+      Clauses);
 note_form(_, _, _AbsData) ->
     %% io:format(standard_error, "AbsData: ~p~n", [AbsData]),
     ok.
