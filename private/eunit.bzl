@@ -72,6 +72,9 @@ def _impl(ctx):
     erl_libs_path = path_join(package, erl_libs_dir)
 
     pa_args = []
+    if ctx.attr.target != None:
+        for dir in package_relative_dirnames(package, ctx.attr.target[ErlangAppInfo].beam):
+            pa_args.extend(["-pa", dir])
     for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
         pa_args.extend(["-pa", dir])
 
