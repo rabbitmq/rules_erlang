@@ -140,6 +140,16 @@ record_expression(E, {tuple, _, Elements}) ->
     lists:foreach(
       fun (Element) -> record_expression(E, Element)end,
       Elements);
+record_expression(E, {map, _, Assocs}) ->
+    lists:foreach(
+      fun
+          ({map_field_assoc, _, Lhs, Rhs}) ->
+              record_expression(E, Lhs),
+              record_expression(E, Rhs);
+          (_) ->
+              ok
+      end,
+      Assocs);
 record_expression(_, _Exp) ->
     %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.
