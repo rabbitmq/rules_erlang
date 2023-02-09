@@ -39,7 +39,8 @@ basic(_) ->
          call => #{
                    filename => [split],
                    io => [format],
-                   other_lib => [foo],
+                   maps => [merge],
+                   other_lib => [foo, encode],
                    some_other_lib => [bar, baz, fizz]
                   }
         },
@@ -53,7 +54,8 @@ basic(_) ->
          call => #{
                    filename => [split],
                    io => [format],
-                   other_lib => [foo],
+                   maps => [merge],
+                   other_lib => [foo, encode],
                    some_other_lib => [bar, baz, fizz]
                   }
         },
