@@ -11,7 +11,8 @@
 -endif.
 
 myfunc() ->
-    io:format("Hello~n", []).
+    io:format("Hello~n", []),
+    {ok, some_other_lib:fizz()}.
 
 main(_) ->
     myfunc(),
