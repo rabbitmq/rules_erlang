@@ -136,6 +136,10 @@ record_expression(E, {match, _, Lhs, Rhs} = _Match) ->
     %% io:format(standard_error, "Match: ~p~n", [Match]),
     record_expression(E, Lhs),
     record_expression(E, Rhs);
+record_expression(E, {tuple, _, Elements}) ->
+    lists:foreach(
+      fun (Element) -> record_expression(E, Element)end,
+      Elements);
 record_expression(_, _Exp) ->
     %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.
