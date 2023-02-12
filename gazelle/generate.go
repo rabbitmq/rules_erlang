@@ -13,6 +13,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
+	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
+	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 )
 
 const (
@@ -56,7 +58,7 @@ func filterOutDirectories(files []string) []string {
 	}
 	filtered := []string{}
 	for _, f := range files {
-		if !Contains(dirs, f) {
+		if !slices.Contains(dirs, f) {
 			filtered = append(filtered, f)
 		}
 	}
@@ -64,16 +66,16 @@ func filterOutDirectories(files []string) []string {
 }
 
 func isHexPmTar(regularFiles []string) bool {
-	return ContainsAll(regularFiles, hexPmFiles)
+	return slices.ContainsAll(regularFiles, hexPmFiles)
 }
 
 func isRebar(regularFiles []string) bool {
-	return Contains(regularFiles, rebarConfigFilename)
+	return slices.Contains(regularFiles, rebarConfigFilename)
 }
 
 func isProbablyBareErlang(args language.GenerateArgs) bool {
 	// if there is a src dir with .erl files in it
-	if Contains(args.Subdirs, "src") {
+	if slices.Contains(args.Subdirs, "src") {
 		hasErlFiles := false
 		err := filepath.WalkDir(filepath.Join(args.Config.RepoRoot, args.Rel, "src"),
 			func(path string, info os.DirEntry, err error) error {
@@ -142,7 +144,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 		return err
 	}
 
-	if Contains(hexMetadata.BuildTools, "rebar3") {
+	if slices.Contains(hexMetadata.BuildTools, "rebar3") {
 		err = importRebar(args, erlangApp)
 		if err != nil {
 			return err
@@ -175,7 +177,7 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 				if err != nil {
 					return err
 				}
-				if info.IsDir() && Contains(ignoredDirs, filepath.Base(path)) {
+				if info.IsDir() && slices.Contains(ignoredDirs, filepath.Base(path)) {
 					return filepath.SkipDir
 				}
 				rel, err := filepath.Rel(rebarAppPath, path)
@@ -206,7 +208,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 				return err
 			}
 			if info.IsDir() {
-				if Contains(ignoredDirs, filepath.Base(path)) {
+				if slices.Contains(ignoredDirs, filepath.Base(path)) {
 					return filepath.SkipDir
 				} else {
 					return nil
@@ -234,9 +236,9 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 }
 
 func mergeAttr(src, dst *rule.Rule, attr string) {
-	srcVals := NewMutableSet(src.AttrStrings(attr)...)
-	dstVals := NewMutableSet(dst.AttrStrings(attr)...)
-	mergedVals := Union(srcVals, dstVals)
+	srcVals := mutable_set.New(src.AttrStrings(attr)...)
+	dstVals := mutable_set.New(dst.AttrStrings(attr)...)
+	mergedVals := mutable_set.Union(srcVals, dstVals)
 	if mergedVals.IsEmpty() {
 		dst.DelAttr(attr)
 	} else {
@@ -304,7 +306,7 @@ func ensureLoad(name, symbol string, index int, f *rule.File) {
 	for _, load := range f.Loads {
 		if load.Name() == name {
 			needsLoad = false
-			if !Contains(load.Symbols(), symbol) {
+			if !slices.Contains(load.Symbols(), symbol) {
 				load.Add(symbol)
 			}
 		}
@@ -440,7 +442,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.Ebin.Any()), ".app")
 		props := (*dotApp)[erlangApp.Name]
 		for _, app := range props.Applications {
-			if !Contains([]string{"kernel", "stdlib"}, app) {
+			if !slices.Contains([]string{"kernel", "stdlib"}, app) {
 				erlangApp.ExtraApps.Add(app)
 			}
 		}
@@ -455,7 +457,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.AppSrc.Any()), ".app.src")
 		props := (*dotApp)[erlangApp.Name]
 		for _, app := range props.Applications {
-			if !Contains([]string{"kernel", "stdlib"}, app) {
+			if !slices.Contains([]string{"kernel", "stdlib"}, app) {
 				erlangApp.ExtraApps.Add(app)
 			}
 		}
@@ -595,7 +597,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	explicitFiles := erlangApp.RepoRoot != args.Config.RepoRoot
-	erlang_app := erlangApp.erlangAppRule(explicitFiles)
+	erlang_app := erlangApp.ErlangAppRule(args, explicitFiles)
 	maybeAppendRule(erlangConfig, erlang_app, &result)
 
 	alias := rule.NewRule("alias", erlangApp.Name)
@@ -605,7 +607,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	if !erlangConfig.NoTests {
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
-			test_erlang_app := erlangApp.testErlangAppRule(explicitFiles)
+			test_erlang_app := erlangApp.testErlangAppRule(args, explicitFiles)
 			maybeAppendRule(erlangConfig, test_erlang_app, &result)
 		}
 

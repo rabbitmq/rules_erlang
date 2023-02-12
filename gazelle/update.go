@@ -121,6 +121,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 
 	cmd.Args = append(cmd.Args, "--verbose")
 	cmd.Args = append(cmd.Args, "--no_tests")
+	cmd.Args = append(cmd.Args, "--compact")
 	if explicitName {
 		cmd.Args = append(cmd.Args, "--app_name", name)
 	}
@@ -278,6 +279,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 
 	cmd.Args = append(cmd.Args, "--verbose")
 	cmd.Args = append(cmd.Args, "--no_tests")
+	cmd.Args = append(cmd.Args, "--compact")
 	if explicitName {
 		cmd.Args = append(cmd.Args, "--app_name", name)
 	}

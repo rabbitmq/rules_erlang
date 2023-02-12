@@ -72,6 +72,9 @@ def _impl(ctx):
     erl_libs_path = path_join(package, erl_libs_dir)
 
     pa_args = []
+    if ctx.attr.target != None:
+        for dir in package_relative_dirnames(package, ctx.attr.target[ErlangAppInfo].beam):
+            pa_args.extend(["-pa", dir])
     for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
         pa_args.extend(["-pa", dir])
 
@@ -102,7 +105,7 @@ fi
 
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
-    {pa_args} \\
+    {pa_args} {extra_args} \\
     -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()"
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
@@ -110,6 +113,7 @@ set -x
             erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             package = package,
             pa_args = " ".join(pa_args),
+            extra_args = " ".join(ctx.attr.erl_extra_args),
             eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
@@ -133,13 +137,14 @@ if NOT [{package}] == [] cd {package}
 
 echo on
 "{erlang_home}\\bin\\erl" +A1 -noinput -boot no_dot_erlang ^
-    {pa_args} ^
+    {pa_args} {extra_args} ^
     -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
 """.format(
             package = package,
             erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             pa_args = " ".join(pa_args),
+            extra_args = " ".join(ctx.attr.erl_extra_args),
             eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
@@ -176,6 +181,7 @@ eunit_test = rule(
         ),
         "eunit_mods": attr.string_list(),
         "target": attr.label(providers = [ErlangAppInfo]),
+        "erl_extra_args": attr.string_list(),
         "eunit_opts": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),

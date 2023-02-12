@@ -3,17 +3,20 @@ package erlang
 import (
 	"os"
 
+	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 	"gopkg.in/yaml.v2"
 )
 
+type Moduleindex map[string][]string
+
 func MergeAppToModuleindex(moduleindexPath string, erlangApp *ErlangApp) error {
-	return MergeToModuleindex(moduleindexPath, map[string][]string{
+	return MergeToModuleindex(moduleindexPath, Moduleindex{
 		erlangApp.Name: erlangApp.modules(),
 	})
 }
 
-func MergeToModuleindex(moduleindexPath string, entries map[string][]string) error {
-	moduleindex := make(map[string][]string)
+func MergeToModuleindex(moduleindexPath string, entries Moduleindex) error {
+	moduleindex := make(Moduleindex)
 	moduleindexFile, err := os.OpenFile(moduleindexPath, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return err
@@ -43,8 +46,8 @@ func MergeToModuleindex(moduleindexPath string, entries map[string][]string) err
 	return encoder.Encode(moduleindex)
 }
 
-func ReadModuleindex(file string) (map[string][]string, error) {
-	moduleindex := make(map[string][]string)
+func ReadModuleindex(file string) (Moduleindex, error) {
+	moduleindex := make(Moduleindex)
 	reader, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -59,9 +62,9 @@ func ReadModuleindex(file string) (map[string][]string, error) {
 	return moduleindex, nil
 }
 
-func FindModule(moduleindex map[string][]string, module string) string {
+func FindModule(moduleindex Moduleindex, module string) string {
 	for app, modules := range moduleindex {
-		if Contains(modules, module) {
+		if slices.Contains(modules, module) {
 			return app
 		}
 	}

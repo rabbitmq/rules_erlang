@@ -136,13 +136,16 @@ record_expression(E, {'case', _, Arg, Expressions}) ->
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
       Expressions);
-record_expression(E, {'try', _, Expressions, _, Clauses, []}) ->
+record_expression(E, {'try', _, Expressions, _, Clauses, Afters}) ->
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
       Expressions),
     lists:foreach(
       fun (Clause) -> record_expression(E, Clause) end,
-      Clauses);
+      Clauses),
+    lists:foreach(
+      fun (After) -> record_expression(E, After) end,
+      Afters);
 record_expression(E, {match, _, Lhs, Rhs}) ->
     record_expression(E, Lhs),
     record_expression(E, Rhs);
