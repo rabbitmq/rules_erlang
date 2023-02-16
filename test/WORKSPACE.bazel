@@ -44,9 +44,6 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
 http_archive(
     name = "io_buildbuddy_buildbuddy_toolchain",
     sha256 = "a2a5cccec251211e2221b1587af2ce43c36d32a42f5d881737db3b546a536510",
@@ -110,7 +107,7 @@ load("@rules_erlang//:hex_pm.bzl", "hex_pm_erlang_app")
 
 hex_pm_erlang_app(
     name = "thoas",
-    build_file = "@//dot_app_to_json:BUILD.thoas",
+    build_file = "@//:BUILD.thoas",
     sha256 = "442296847aca11db8d25180693d7ca3073d6d7179f66952f07b16415306513b6",
     version = "0.4.0",
 )

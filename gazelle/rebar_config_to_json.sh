@@ -5,6 +5,10 @@
 
 -export([main/1]).
 
+-ifdef(TEST).
+-export([parse/1]).
+-endif.
+
 main(Args) ->
     case io:get_line("") of
         eof ->
@@ -27,21 +31,61 @@ parse_json_string("\"" ++ Tail) ->
 mapify_dep(Name) when is_atom(Name) ->
     #{name => Name,
       kind => hex};
-mapify_dep({Name, _, {git = Kind, Remote, Ref}}) ->
+mapify_dep({Name, Version}) when is_list(Version) ->
+    #{name => Name,
+      kind => hex,
+      version => Version};
+mapify_dep({Name, Version, {git = Kind, Remote, Ref}}) ->
+    #{name => Name,
+      kind => Kind,
+      version => Version,
+      remote => Remote,
+      ref => Ref};
+mapify_dep({Name, {git = Kind, Remote, Ref}}) ->
     #{name => Name,
       kind => Kind,
       remote => Remote,
       ref => Ref};
-mapify_dep({Name, Version}) ->
+mapify_dep({Name, {hg = Kind, Remote, Ref}}) ->
     #{name => Name,
-      kind => hex,
-      version => Version}.
+      kind => Kind,
+      remote => Remote,
+      ref => Ref};
+%% legacy formats
+mapify_dep({Name, {git = Kind, Remote}}) ->
+    #{name => Name,
+      kind => Kind,
+      remote => Remote};
+mapify_dep({Name, Version, {git = Kind, Remote}}) ->
+    #{name => Name,
+      kind => Kind,
+      version => Version,
+      remote => Remote};
+mapify_dep({Name, Version, {git = Kind, Remote, Ref}, [raw]}) ->
+    #{name => Name,
+      kind => Kind,
+      version => Version,
+      remote => Remote,
+      ref => Ref}.
+
+conformErlOpt(Opt) when is_atom(Opt)->
+    #{kind => erlc,
+      value => Opt};
+conformErlOpt({i, Include}) ->
+    #{kind => include,
+      value => Include};
+conformErlOpt({platform_define, _Platform, _Key}) ->
+    #{kind => platform_define,
+      value => ignored};
+conformErlOpt({platform_define, _Platform, _Key, _Value}) ->
+    #{kind => platform_define,
+      value => ignored}.
 
 conformConfig(List) ->
     maps:map(
         fun
             (erl_opts, Opts) ->
-                Opts;
+                [conformErlOpt(O) || O <- Opts];
             (deps, Deps) ->
                 [mapify_dep(D) || D <- Deps];
             (_, _) ->

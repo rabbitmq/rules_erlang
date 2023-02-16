@@ -166,8 +166,10 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	}
 
 	if rebarConfig.ErlOpts != nil {
-		for _, o := range *rebarConfig.ErlOpts {
-			erlangApp.ErlcOpts.Add("+" + o)
+		for _, opt := range *rebarConfig.ErlOpts {
+			if opt.Kind == "erlc" {
+				erlangApp.ErlcOpts.Add("+" + opt.Value)
+			}
 		}
 	}
 
