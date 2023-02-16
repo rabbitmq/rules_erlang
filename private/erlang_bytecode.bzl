@@ -61,7 +61,9 @@ def _impl(ctx):
 
     dest_dir = beam_files[0].dirname
 
-    include_args = ["-I", package_dir]
+    include_args = []
+    if package_dir != "":
+        include_args.extend(["-I", package_dir])
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 

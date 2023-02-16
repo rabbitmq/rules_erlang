@@ -63,7 +63,9 @@ def _impl(ctx):
         fail(ctx.attr.outs, "do not share a common parent directory")
     out_dir = out_dirs[0]
 
-    include_args = ["-I", package_dir]
+    include_args = []
+    if package_dir != "":
+        include_args.extend(["-I", package_dir])
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
 
