@@ -475,10 +475,10 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	}
 
 	if args.Rel == "" {
-		erlc_opts := erlangApp.ErlcOptsRule()
+		erlc_opts := erlangApp.ErlcOptsRule(args)
 		maybeAppendRule(erlangConfig, erlc_opts, &result)
 
-		test_erlc_opts := erlangApp.testErlcOptsRule()
+		test_erlc_opts := erlangApp.testErlcOptsRule(args)
 		if !erlangConfig.NoTests {
 			maybeAppendRule(erlangConfig, test_erlc_opts, &result)
 		}

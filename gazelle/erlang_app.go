@@ -144,16 +144,20 @@ func erlcOptsWithSelect(opts mutable_set.MutableSet[string]) rule.SelectStringLi
 	}
 }
 
-func (erlangApp *ErlangApp) ErlcOptsRule() *rule.Rule {
+func (erlangApp *ErlangApp) ErlcOptsRule(args language.GenerateArgs) *rule.Rule {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 	erlc_opts := rule.NewRule(erlcOptsKind, erlcOptsRuleName)
-	erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.ErlcOpts))
+	erlc_opts.SetAttr("values",
+		erlcOptsWithSelect(mutable_set.Union(erlangConfig.ErlcOpts, erlangApp.ErlcOpts)))
 	erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return erlc_opts
 }
 
-func (erlangApp *ErlangApp) testErlcOptsRule() *rule.Rule {
+func (erlangApp *ErlangApp) testErlcOptsRule(args language.GenerateArgs) *rule.Rule {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 	test_erlc_opts := rule.NewRule(erlcOptsKind, testErlcOptsRuleName)
-	test_erlc_opts.SetAttr("values", erlcOptsWithSelect(erlangApp.TestErlcOpts))
+	test_erlc_opts.SetAttr("values",
+		erlcOptsWithSelect(mutable_set.Union(erlangConfig.TestErlcOpts, erlangApp.TestErlcOpts)))
 	test_erlc_opts.SetAttr("visibility", []string{":__subpackages__"})
 	return test_erlc_opts
 }

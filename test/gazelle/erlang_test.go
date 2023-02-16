@@ -84,16 +84,21 @@ var _ = Describe("an ErlangApp", func() {
 
 	Describe("ErlcOptsRule", func() {
 		BeforeEach(func() {
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ErlcOpts.Add("+warn_shadow_vars")
+
 			app.ErlcOpts.Add("+warn_export_all")
 		})
 
 		It("wraps the opts with a select based on the :debug_build setting", func() {
-			r := app.ErlcOptsRule()
+			r := app.ErlcOptsRule(args)
 			Expect(r.Name()).To(Equal("erlc_opts"))
 			values := build.FormatString(r.Attr("values"))
 			Expect(values).To(ContainSubstring("select("))
 			Expect(values).To(ContainSubstring("+deterministic"))
 			Expect(values).To(ContainSubstring("+warn_export_all"))
+			Expect(values).To(ContainSubstring("+warn_shadow_vars"))
 		})
 	})
 
