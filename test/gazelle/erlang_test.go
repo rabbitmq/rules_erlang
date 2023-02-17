@@ -167,6 +167,25 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(app.Deps.Values(strings.Compare)).To(
 				ConsistOf("baz_app", "fuzz_app"))
 		})
+
+		It("honors erlc opts from directives", func() {
+			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					IncludeLib: []string{"foo.hrl"},
+				},
+			})
+
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ErlcOpts.Add("-DCUSTOM")
+
+			app.BeamFilesRules(args, fakeParser)
+
+			Expect(fakeParser.Calls).To(HaveLen(1))
+
+			Expect(fakeParser.Calls[0].macros).To(
+				Equal(erlang.ErlParserMacros{"CUSTOM": nil}))
+		})
 	})
 
 	Describe("Tests Rules", func() {
