@@ -313,7 +313,8 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		moduleindex = Moduleindex{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
-	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.ErlcOpts, erlangApp.Srcs)
+	erlcOpts := mutable_set.Union(erlangConfig.ErlcOpts, erlangApp.ErlcOpts)
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlcOpts, erlangApp.Srcs)
 
 	if erlangConfig.GenerateFewerBytecodeRules {
 		transforms := mutable_set.New[string]()
@@ -442,7 +443,8 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		moduleindex = map[string][]string{erlangApp.Name: ownModules.Values(strings.Compare)}
 	}
 
-	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, erlangApp.TestErlcOpts, erlangApp.Srcs)
+	testErlcOpts := mutable_set.Union(erlangConfig.TestErlcOpts, erlangApp.TestErlcOpts)
+	erlAttrsBySrc := erlangApp.parseSrcs(args, erlParser, testErlcOpts, erlangApp.Srcs)
 
 	if erlangConfig.GenerateFewerBytecodeRules {
 		transforms := mutable_set.New[string]()
