@@ -88,7 +88,10 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 
 	erlangConfig := erlangConfigForRel(config, "")
 	buildFileName := "BUILD." + name
-	buildFile := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), erlangConfig.BuildFilesDir, buildFileName)
+	buildFile := filepath.Join(
+		os.Getenv("BUILD_WORKSPACE_DIRECTORY"),
+		erlangConfig.GlobalConfig.BuildFilesDir,
+		buildFileName)
 	if _, err := os.Stat(buildFile); !os.IsNotExist(err) {
 		// we should not probably not ovewrite an existing BUILD.bazel
 		// if there is one in the download (and maybe we don't, as we
@@ -108,10 +111,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		)
 	}
 
-	// TODO: Add an optional flag to tell update-repos what to recurse with.
-	//       Currently this only works if the rule that was used for update-repos
-	//       was called "gazelle" too
-	gazelleRunfile, err := bazel.Runfile("gazelle")
+	gazelleRunfile, err := bazel.Runfile(erlangConfig.GlobalConfig.GazellePath)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 		r.SetAttr("pkg", pkg)
 	}
 	r.SetAttr("version", version)
-	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.BuildFilesDir, buildFileName))
+	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.GlobalConfig.BuildFilesDir, buildFileName))
 
 	err = copyFile(
 		moduleindexPath,
@@ -251,7 +251,10 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 
 	erlangConfig := erlangConfigForRel(config, "")
 	buildFileName := "BUILD." + name
-	buildFile := filepath.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), erlangConfig.BuildFilesDir, buildFileName)
+	buildFile := filepath.Join(
+		os.Getenv("BUILD_WORKSPACE_DIRECTORY"),
+		erlangConfig.GlobalConfig.BuildFilesDir,
+		buildFileName)
 	if _, err := os.Stat(buildFile); !os.IsNotExist(err) {
 		copyFile(
 			buildFile,
@@ -268,8 +271,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 		)
 	}
 
-	// TODO: add an optional flag to tell update-repos what to recurse with
-	gazelleRunfile, err := bazel.Runfile("gazelle")
+	gazelleRunfile, err := bazel.Runfile(erlangConfig.GlobalConfig.GazellePath)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +324,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	}
 	r.SetAttr("ref", ref)
 	r.SetAttr("version", version)
-	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.BuildFilesDir, buildFileName))
+	r.SetAttr("build_file", "@//:"+filepath.Join(erlangConfig.GlobalConfig.BuildFilesDir, buildFileName))
 
 	err = copyFile(
 		moduleindexPath,

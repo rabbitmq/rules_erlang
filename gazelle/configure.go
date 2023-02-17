@@ -80,11 +80,16 @@ var (
 	defaultTestErlcOpts = mutable_set.New("+debug_info", "-DTEST=1")
 )
 
+type ErlangGlobalConfig struct {
+	Verbose       bool
+	BuildFilesDir string
+	GazellePath   string
+}
+
 type ErlangConfig struct {
+	GlobalConfig                    *ErlangGlobalConfig
 	Rel                             string
-	Verbose                         bool
 	NoTests                         bool
-	BuildFilesDir                   string
 	AppsDirs                        mutable_set.MutableSet[string]
 	ModuleMappings                  map[string]string
 	ExcludeWhenRuleOfKindExists     mutable_set.MutableSet[string]
@@ -104,12 +109,11 @@ type ErlangConfig struct {
 
 type ErlangConfigs map[string]*ErlangConfig
 
-func (erlang *Configurer) defaultErlangConfig(rel string) *ErlangConfig {
+func (erlang *Configurer) defaultErlangConfig(globalConfig *ErlangGlobalConfig) *ErlangConfig {
 	return &ErlangConfig{
-		Rel:                             rel,
-		Verbose:                         erlang.verbose,
+		GlobalConfig:                    globalConfig,
+		Rel:                             "",
 		NoTests:                         erlang.noTests,
-		BuildFilesDir:                   erlang.buildFilesDir,
 		AppsDirs:                        mutable_set.New(erlang.appsDir),
 		ModuleMappings:                  make(map[string]string),
 		ExcludeWhenRuleOfKindExists:     mutable_set.New[string](),
@@ -138,10 +142,9 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 		}
 		parentConfig := configs[parentRel]
 		configs[rel] = &ErlangConfig{
+			GlobalConfig:                    parentConfig.GlobalConfig,
 			Rel:                             rel,
-			Verbose:                         parentConfig.Verbose,
 			NoTests:                         parentConfig.NoTests,
-			BuildFilesDir:                   parentConfig.BuildFilesDir,
 			AppsDirs:                        mutable_set.Copy(parentConfig.AppsDirs),
 			ModuleMappings:                  CopyMap(parentConfig.ModuleMappings),
 			ExcludeWhenRuleOfKindExists:     mutable_set.Copy(parentConfig.ExcludeWhenRuleOfKindExists),
@@ -170,6 +173,7 @@ type Configurer struct {
 	compact       bool
 	appsDir       string
 	buildFilesDir string
+	gazellePath   string
 }
 
 func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
@@ -183,12 +187,17 @@ func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.
 	}
 	if cmd == "update-repos" {
 		fs.StringVar(&erlang.buildFilesDir, "build_files_dir", "", "directory to place BUILD.lib_name files when running update-repos")
+		fs.StringVar(&erlang.gazellePath, "recurse_with", "gazelle", "label for the gazelle rule used to analyze imported repos")
 	}
 }
 
 func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	configs := make(ErlangConfigs)
-	configs[""] = erlang.defaultErlangConfig("")
+	configs[""] = erlang.defaultErlangConfig(&ErlangGlobalConfig{
+		Verbose:       erlang.verbose,
+		BuildFilesDir: erlang.buildFilesDir,
+		GazellePath:   erlang.gazellePath,
+	})
 	c.Exts[languageName] = configs
 	return nil
 }
