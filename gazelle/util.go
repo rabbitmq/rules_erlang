@@ -26,7 +26,7 @@ func Keys[K comparable](m map[K]any) []K {
 
 func Log(c *config.Config, a ...interface{}) (n int, err error) {
 	rootConfig := c.Exts[languageName].(ErlangConfigs)[""]
-	if rootConfig.Verbose {
+	if rootConfig.GlobalConfig.Verbose {
 		return fmt.Println(a...)
 	}
 	return 0, nil
