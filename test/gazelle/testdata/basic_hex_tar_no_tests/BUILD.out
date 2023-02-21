@@ -61,7 +61,6 @@ erlang_bytecode(
         "ebin/aten_sup.beam",
     ],
     app_name = "aten",
-    beam = [],
     erlc_opts = "//:erlc_opts",
 )
 

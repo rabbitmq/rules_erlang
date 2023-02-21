@@ -395,8 +395,9 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 				othersRule.SetAttr("hdrs", hdrs)
 			}
 			othersRule.SetAttr("outs", mutable_set.Map(others, beamFile).Values(strings.Compare))
-
-			othersRule.SetAttr("beam", beamFilesGroupRules)
+			if len(beamFilesGroupRules) > 0 {
+				othersRule.SetAttr("beam", beamFilesGroupRules)
+			}
 			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
 			if !othersDeps.Deps.IsEmpty() {
 				othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
