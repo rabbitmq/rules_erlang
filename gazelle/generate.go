@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -13,7 +12,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
-	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 )
 
@@ -237,35 +235,12 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	return nil
 }
 
-func mergeAttr(src, dst *rule.Rule, attr string) {
-	srcVals := mutable_set.New(src.AttrStrings(attr)...)
-	dstVals := mutable_set.New(dst.AttrStrings(attr)...)
-	mergedVals := mutable_set.Union(srcVals, dstVals)
-	if mergedVals.IsEmpty() {
-		dst.DelAttr(attr)
-	} else {
-		dst.SetAttr(attr, mergedVals.Values(strings.Compare))
+func mergeRule(c *config.Config, src, dst *rule.Rule, filename string) {
+	if src.Kind() != dst.Kind() {
+		Log(c, "        Ignoring merge of rule", src.Name(), "and", dst.Name(), "as their types do not match")
+		return
 	}
-}
-
-func mergeRule(src, dst *rule.Rule) {
-	dst.SetName(src.Name())
-	dst.SetAttr("srcs", src.AttrStrings("srcs"))
-	if dst.Kind() == erlangBytecodeKind {
-		dst.SetAttr("outs", src.AttrStrings("outs"))
-
-		if src.Attr("erlc_opts") != nil {
-			dst.SetAttr("erlc_opts", src.Attr("erlc_opts"))
-		}
-
-		if src.Attr("app_name") != nil {
-			dst.SetAttr("app_name", src.Attr("app_name"))
-		}
-
-		mergeAttr(src, dst, "hdrs")
-		mergeAttr(src, dst, "beam")
-		mergeAttr(src, dst, "deps")
-	}
+	rule.MergeRules(src, dst, NewLanguage().Kinds()[src.Kind()].MergeableAttrs, filename)
 }
 
 func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename string) {
@@ -288,7 +263,7 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 	for _, oldRule := range f.Rules {
 		if newRule, ok := oldToNew[oldRule]; ok {
 			resolveErlangDeps(c, f.Pkg, newRule)
-			mergeRule(newRule, oldRule)
+			mergeRule(c, newRule, oldRule, filename)
 		} else {
 			oldRule.Delete()
 		}
@@ -297,10 +272,6 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 		resolveErlangDeps(c, f.Pkg, newRule)
 		newRule.Insert(f)
 	}
-	// TODO: fix the sort to actully do something
-	sort.SliceStable(f.Rules, func(i, j int) bool {
-		return f.Rules[i].Name() < f.Rules[j].Name()
-	})
 }
 
 func ensureLoad(name, symbol string, index int, f *rule.File) {
