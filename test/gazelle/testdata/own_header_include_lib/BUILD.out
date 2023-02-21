@@ -74,7 +74,9 @@ filegroup(
 
 filegroup(
     name = "public_hdrs",
-    srcs = ["include/own_header_include_lib.hrl"],
+    srcs = [
+        "include/own_header_include_lib.hrl",
+    ],
 )
 
 filegroup(
