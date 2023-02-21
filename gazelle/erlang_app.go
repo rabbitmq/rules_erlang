@@ -11,6 +11,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/buildtools/build"
 	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 )
 
@@ -111,6 +112,17 @@ func testBeamFile(src string) string {
 func ruleName(f string) string {
 	r := strings.ReplaceAll(f, string(filepath.Separator), "_")
 	return strings.ReplaceAll(r, ".", "_")
+}
+
+func multilineList[T any](values []T) build.Expr {
+	list := make([]build.Expr, len(values))
+	for i, v := range values {
+		list[i] = rule.ExprFromValue(v)
+	}
+	return &build.ListExpr{
+		List:           list,
+		ForceMultiLine: len(values) > 0,
+	}
 }
 
 func (erlangApp *ErlangApp) pathFor(from, include string) string {
@@ -349,14 +361,14 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			xformsRule = rule.NewRule(erlangBytecodeKind, "parse_transforms")
 			xformsRule.SetAttr("app_name", erlangApp.Name)
 			xformsRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
-			xformsRule.SetAttr("srcs", transforms.Values(strings.Compare))
+			xformsRule.SetAttr("srcs", multilineList(transforms.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				xformsRule.SetAttr("hdrs", hdrs)
+				xformsRule.SetAttr("hdrs", multilineList(hdrs))
 			}
-			xformsRule.SetAttr("outs", mutable_set.Map(transforms, beamFile).Values(strings.Compare))
+			xformsRule.SetAttr("outs", multilineList(mutable_set.Map(transforms, beamFile).Values(strings.Compare)))
 			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
 			if !xformsDeps.Deps.IsEmpty() {
-				xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+				xformsRule.SetAttr("deps", multilineList(xformsDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.Deps.Union(xformsDeps.Deps)
 			erlangApp.Deps.Union(xformsDeps.RuntimeDeps)
@@ -368,17 +380,17 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			behavioursRule = rule.NewRule(erlangBytecodeKind, "behaviours")
 			behavioursRule.SetAttr("app_name", erlangApp.Name)
 			behavioursRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
-			behavioursRule.SetAttr("srcs", behaviours.Values(strings.Compare))
+			behavioursRule.SetAttr("srcs", multilineList(behaviours.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				behavioursRule.SetAttr("hdrs", hdrs)
+				behavioursRule.SetAttr("hdrs", multilineList(hdrs))
 			}
-			behavioursRule.SetAttr("outs", mutable_set.Map(behaviours, beamFile).Values(strings.Compare))
+			behavioursRule.SetAttr("outs", multilineList(mutable_set.Map(behaviours, beamFile).Values(strings.Compare)))
 			if len(beamFilesGroupRules) > 0 {
 				behavioursRule.SetAttr("beam", beamFilesGroupRules)
 			}
 			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
 			if !behavioursDeps.Deps.IsEmpty() {
-				behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+				behavioursRule.SetAttr("deps", multilineList(behavioursDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.Deps.Union(behavioursDeps.Deps)
 			erlangApp.Deps.Union(behavioursDeps.RuntimeDeps)
@@ -390,17 +402,17 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			othersRule = rule.NewRule(erlangBytecodeKind, "other_beam")
 			othersRule.SetAttr("app_name", erlangApp.Name)
 			othersRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
-			othersRule.SetAttr("srcs", others.Values(strings.Compare))
+			othersRule.SetAttr("srcs", multilineList(others.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				othersRule.SetAttr("hdrs", hdrs)
+				othersRule.SetAttr("hdrs", multilineList(hdrs))
 			}
-			othersRule.SetAttr("outs", mutable_set.Map(others, beamFile).Values(strings.Compare))
+			othersRule.SetAttr("outs", multilineList(mutable_set.Map(others, beamFile).Values(strings.Compare)))
 			if len(beamFilesGroupRules) > 0 {
 				othersRule.SetAttr("beam", beamFilesGroupRules)
 			}
 			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
 			if !othersDeps.Deps.IsEmpty() {
-				othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+				othersRule.SetAttr("deps", multilineList(othersDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.Deps.Union(othersDeps.Deps)
 			erlangApp.Deps.Union(othersDeps.RuntimeDeps)
@@ -495,14 +507,14 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			xformsRule.SetAttr("testonly", true)
 			xformsRule.SetAttr("app_name", erlangApp.Name)
 			xformsRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
-			xformsRule.SetAttr("srcs", transforms.Values(strings.Compare))
+			xformsRule.SetAttr("srcs", multilineList(transforms.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				xformsRule.SetAttr("hdrs", hdrs)
+				xformsRule.SetAttr("hdrs", multilineList(hdrs))
 			}
-			xformsRule.SetAttr("outs", mutable_set.Map(transforms, testBeamFile).Values(strings.Compare))
+			xformsRule.SetAttr("outs", multilineList(mutable_set.Map(transforms, testBeamFile).Values(strings.Compare)))
 			xformsDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, transforms.ValuesUnordered()...)
 			if !xformsDeps.Deps.IsEmpty() {
-				xformsRule.SetAttr("deps", xformsDeps.Deps.Values(strings.Compare))
+				xformsRule.SetAttr("deps", multilineList(xformsDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.TestDeps.Union(xformsDeps.Deps)
 			erlangApp.TestDeps.Union(xformsDeps.RuntimeDeps)
@@ -515,17 +527,17 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			behavioursRule.SetAttr("testonly", true)
 			behavioursRule.SetAttr("app_name", erlangApp.Name)
 			behavioursRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
-			behavioursRule.SetAttr("srcs", behaviours.Values(strings.Compare))
+			behavioursRule.SetAttr("srcs", multilineList(behaviours.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				behavioursRule.SetAttr("hdrs", hdrs)
+				behavioursRule.SetAttr("hdrs", multilineList(hdrs))
 			}
-			behavioursRule.SetAttr("outs", mutable_set.Map(behaviours, testBeamFile).Values(strings.Compare))
+			behavioursRule.SetAttr("outs", multilineList(mutable_set.Map(behaviours, testBeamFile).Values(strings.Compare)))
 			if len(beamFilesGroupRules) > 0 {
 				behavioursRule.SetAttr("beam", beamFilesGroupRules)
 			}
 			behavioursDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, behaviours.ValuesUnordered()...)
 			if !behavioursDeps.Deps.IsEmpty() {
-				behavioursRule.SetAttr("deps", behavioursDeps.Deps.Values(strings.Compare))
+				behavioursRule.SetAttr("deps", multilineList(behavioursDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.TestDeps.Union(behavioursDeps.Deps)
 			erlangApp.TestDeps.Union(behavioursDeps.RuntimeDeps)
@@ -538,9 +550,9 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			othersRule.SetAttr("testonly", true)
 			othersRule.SetAttr("app_name", erlangApp.Name)
 			othersRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
-			othersRule.SetAttr("srcs", others.Values(strings.Compare))
+			othersRule.SetAttr("srcs", multilineList(others.Values(strings.Compare)))
 			if len(hdrs) > 0 {
-				othersRule.SetAttr("hdrs", hdrs)
+				othersRule.SetAttr("hdrs", multilineList(hdrs))
 			}
 			othersRule.SetAttr("outs", mutable_set.Map(others, testBeamFile).Values(strings.Compare))
 			if len(beamFilesGroupRules) > 0 {
@@ -548,7 +560,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			}
 			othersDeps := erlangApp.dependencies(args.Config, erlangConfig, moduleindex, erlAttrsBySrc, others.ValuesUnordered()...)
 			if !othersDeps.Deps.IsEmpty() {
-				othersRule.SetAttr("deps", othersDeps.Deps.Values(strings.Compare))
+				othersRule.SetAttr("deps", multilineList(othersDeps.Deps.Values(strings.Compare)))
 			}
 			erlangApp.TestDeps.Union(othersDeps.Deps)
 			erlangApp.TestDeps.Union(othersDeps.RuntimeDeps)
@@ -602,23 +614,23 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	var rules []*rule.Rule
 
 	srcs := rule.NewRule("filegroup", "srcs")
-	srcs.SetAttr("srcs", mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare))
+	srcs.SetAttr("srcs", multilineList(mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare)))
 	rules = append(rules, srcs)
 
 	private_hdrs := rule.NewRule("filegroup", "private_hdrs")
-	private_hdrs.SetAttr("srcs", erlangApp.PrivateHdrs.Values(strings.Compare))
+	private_hdrs.SetAttr("srcs", multilineList(erlangApp.PrivateHdrs.Values(strings.Compare)))
 	rules = append(rules, private_hdrs)
 
 	public_hdrs := rule.NewRule("filegroup", "public_hdrs")
-	public_hdrs.SetAttr("srcs", erlangApp.PublicHdrs.Values(strings.Compare))
+	public_hdrs.SetAttr("srcs", multilineList(erlangApp.PublicHdrs.Values(strings.Compare)))
 	rules = append(rules, public_hdrs)
 
 	priv := rule.NewRule("filegroup", "priv")
-	priv.SetAttr("srcs", erlangApp.Priv.Values(strings.Compare))
+	priv.SetAttr("srcs", multilineList(erlangApp.Priv.Values(strings.Compare)))
 	rules = append(rules, priv)
 
 	licenses := rule.NewRule("filegroup", "licenses")
-	licenses.SetAttr("srcs", erlangApp.LicenseFiles.Values(strings.Compare))
+	licenses.SetAttr("srcs", multilineList(erlangApp.LicenseFiles.Values(strings.Compare)))
 	rules = append(rules, licenses)
 
 	hdrs := rule.NewRule("filegroup", "public_and_private_hdrs")
