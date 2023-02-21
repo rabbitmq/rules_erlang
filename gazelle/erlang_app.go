@@ -944,7 +944,9 @@ func (erlangApp *ErlangApp) CtSuiteRules(testDirBeamFilesRules []*rule.Rule) []*
 			})
 			deps := []string{":test_erlang_app"}
 			deps = append(deps, runtimeDeps(beamFilesRule)...)
-			r.SetAttr("deps", deps)
+			if len(deps) > 0 {
+				r.SetAttr("deps", deps)
+			}
 
 			rules = append(rules, r)
 		}
