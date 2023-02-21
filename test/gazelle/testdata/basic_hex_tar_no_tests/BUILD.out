@@ -60,9 +60,7 @@ erlang_bytecode(
         "ebin/aten_sink.beam",
         "ebin/aten_sup.beam",
     ],
-    hdrs = [],
     app_name = "aten",
-    beam = [],
     erlc_opts = "//:erlc_opts",
 )
 

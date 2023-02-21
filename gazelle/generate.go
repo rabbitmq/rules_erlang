@@ -5,15 +5,14 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
-	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 )
 
@@ -237,58 +236,31 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	return nil
 }
 
-func mergeAttr(src, dst *rule.Rule, attr string) {
-	srcVals := mutable_set.New(src.AttrStrings(attr)...)
-	dstVals := mutable_set.New(dst.AttrStrings(attr)...)
-	mergedVals := mutable_set.Union(srcVals, dstVals)
-	if mergedVals.IsEmpty() {
-		dst.DelAttr(attr)
-	} else {
-		dst.SetAttr(attr, mergedVals.Values(strings.Compare))
+func mergeRule(c *config.Config, src, dst *rule.Rule, mergeable map[string]bool, filename string) {
+	if src.Kind() != dst.Kind() {
+		Log(c, "        Ignoring merge of rule", src.Name(), "and", dst.Name(), "as their types do not match")
+		return
 	}
+	rule.MergeRules(src, dst, mergeable, filename)
 }
 
-func mergeRule(src, dst *rule.Rule) {
-	dst.SetName(src.Name())
-	dst.SetAttr("srcs", src.AttrStrings("srcs"))
-	if dst.Kind() == erlangBytecodeKind {
-		dst.SetAttr("outs", src.AttrStrings("outs"))
-
-		if src.Attr("erlc_opts") != nil {
-			dst.SetAttr("erlc_opts", src.Attr("erlc_opts"))
-		}
-
-		if src.Attr("app_name") != nil {
-			dst.SetAttr("app_name", src.Attr("app_name"))
-		}
-
-		mergeAttr(src, dst, "hdrs")
-		mergeAttr(src, dst, "beam")
-		mergeAttr(src, dst, "deps")
-	}
-}
-
-func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename string) {
+func (erlang *erlangLang) updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename string) {
+	kinds := erlang.Kinds()
 	oldToNew := make(map[*rule.Rule]*rule.Rule)
 	var strictlyNew []*rule.Rule
 
 	for _, newRule := range rules {
-		matched := false
-		for _, oldRule := range f.Rules {
-			if oldRule.Name() == newRule.Name() {
-				oldToNew[oldRule] = newRule
-				matched = true
-				break
-			}
-		}
-		if !matched {
+		oldRule, _ := merger.Match(f.Rules, newRule, kinds[newRule.Kind()])
+		if oldRule != nil {
+			oldToNew[oldRule] = newRule
+		} else {
 			strictlyNew = append(strictlyNew, newRule)
 		}
 	}
 	for _, oldRule := range f.Rules {
 		if newRule, ok := oldToNew[oldRule]; ok {
 			resolveErlangDeps(c, f.Pkg, newRule)
-			mergeRule(newRule, oldRule)
+			mergeRule(c, newRule, oldRule, kinds[newRule.Kind()].MergeableAttrs, filename)
 		} else {
 			oldRule.Delete()
 		}
@@ -297,10 +269,6 @@ func updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename st
 		resolveErlangDeps(c, f.Pkg, newRule)
 		newRule.Insert(f)
 	}
-	// TODO: fix the sort to actully do something
-	sort.SliceStable(f.Rules, func(i, j int) bool {
-		return f.Rules[i].Name() < f.Rules[j].Name()
-	})
 }
 
 func ensureLoad(name, symbol string, index int, f *rule.File) {
@@ -522,7 +490,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		updateRules(args.Config, beamFilesMacro, beamFilesRules, appBzlFile)
+		erlang.updateRules(args.Config, beamFilesMacro, beamFilesRules, appBzlFile)
 		ensureLoad("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", 0, beamFilesMacro)
 		// NOTE: for some reason, LoadMacroFile ignores any "native.filegroup" rules
 		//       present in the macro. Therefore, we use our own "alias" of the
@@ -538,7 +506,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
+		erlang.updateRules(args.Config, testBeamFilesMacro, testBeamFilesRules, appBzlFile)
 		testBeamFilesMacro.Save(appBzlFile)
 
 		testDirBeamFilesMacro, err := macroFile(appBzlFile, testSuiteBeamFilesKind)
@@ -546,7 +514,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		updateRules(args.Config, testDirBeamFilesMacro, testDirBeamFilesRules, appBzlFile)
+		erlang.updateRules(args.Config, testDirBeamFilesMacro, testDirBeamFilesRules, appBzlFile)
 		testDirBeamFilesMacro.Save(appBzlFile)
 
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
@@ -566,7 +534,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
+		erlang.updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
 		allSrcsMacro.Save(appBzlFile)
 
 		appBzl, err := rule.LoadFile(appBzlFile, "")
