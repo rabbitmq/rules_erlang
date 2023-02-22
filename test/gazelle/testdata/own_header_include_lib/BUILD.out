@@ -67,10 +67,7 @@ filegroup(
     ],
 )
 
-filegroup(
-    name = "private_hdrs",
-    srcs = [],
-)
+filegroup(name = "private_hdrs")
 
 filegroup(
     name = "public_hdrs",
@@ -79,15 +76,9 @@ filegroup(
     ],
 )
 
-filegroup(
-    name = "priv",
-    srcs = [],
-)
+filegroup(name = "priv")
 
-filegroup(
-    name = "licenses",
-    srcs = [],
-)
+filegroup(name = "licenses")
 
 filegroup(
     name = "public_and_private_hdrs",

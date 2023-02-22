@@ -614,23 +614,34 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	var rules []*rule.Rule
 
 	srcs := rule.NewRule("filegroup", "srcs")
-	srcs.SetAttr("srcs", multilineList(mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare)))
+	srcsSrcs := mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare)
+	if len(srcsSrcs) > 0 {
+		srcs.SetAttr("srcs", multilineList(srcsSrcs))
+	}
 	rules = append(rules, srcs)
 
 	private_hdrs := rule.NewRule("filegroup", "private_hdrs")
-	private_hdrs.SetAttr("srcs", multilineList(erlangApp.PrivateHdrs.Values(strings.Compare)))
+	if !erlangApp.PrivateHdrs.IsEmpty() {
+		private_hdrs.SetAttr("srcs", multilineList(erlangApp.PrivateHdrs.Values(strings.Compare)))
+	}
 	rules = append(rules, private_hdrs)
 
 	public_hdrs := rule.NewRule("filegroup", "public_hdrs")
-	public_hdrs.SetAttr("srcs", multilineList(erlangApp.PublicHdrs.Values(strings.Compare)))
+	if !erlangApp.PublicHdrs.IsEmpty() {
+		public_hdrs.SetAttr("srcs", multilineList(erlangApp.PublicHdrs.Values(strings.Compare)))
+	}
 	rules = append(rules, public_hdrs)
 
 	priv := rule.NewRule("filegroup", "priv")
-	priv.SetAttr("srcs", multilineList(erlangApp.Priv.Values(strings.Compare)))
+	if !erlangApp.Priv.IsEmpty() {
+		priv.SetAttr("srcs", multilineList(erlangApp.Priv.Values(strings.Compare)))
+	}
 	rules = append(rules, priv)
 
 	licenses := rule.NewRule("filegroup", "licenses")
-	licenses.SetAttr("srcs", multilineList(erlangApp.LicenseFiles.Values(strings.Compare)))
+	if !erlangApp.LicenseFiles.IsEmpty() {
+		licenses.SetAttr("srcs", multilineList(erlangApp.LicenseFiles.Values(strings.Compare)))
+	}
 	rules = append(rules, licenses)
 
 	hdrs := rule.NewRule("filegroup", "public_and_private_hdrs")
