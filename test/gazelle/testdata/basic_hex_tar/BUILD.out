@@ -144,20 +144,11 @@ filegroup(
     ],
 )
 
-filegroup(
-    name = "private_hdrs",
-    srcs = [],
-)
+filegroup(name = "private_hdrs")
 
-filegroup(
-    name = "public_hdrs",
-    srcs = [],
-)
+filegroup(name = "public_hdrs")
 
-filegroup(
-    name = "priv",
-    srcs = [],
-)
+filegroup(name = "priv")
 
 filegroup(
     name = "licenses",
