@@ -85,8 +85,10 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 				"visibility": true,
 			},
 			SubstituteAttrs: map[string]bool{},
-			MergeableAttrs:  map[string]bool{},
-			ResolveAttrs:    map[string]bool{},
+			MergeableAttrs: map[string]bool{
+				"values": true,
+			},
+			ResolveAttrs: map[string]bool{},
 		},
 		erlangBytecodeKind: {
 			MatchAttrs: []string{
