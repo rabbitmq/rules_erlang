@@ -64,7 +64,11 @@ func appsDirApps(c *config.Config, rel string) map[string]string {
 			}
 			for _, d := range dirs {
 				if d.IsDir() {
-					result[d.Name()] = filepath.Join(appsDir, d.Name())
+					configs := c.Exts[languageName].(ErlangConfigs)
+					dRel := filepath.Join(appsDir, d.Name())
+					if _, ok := configs[dRel]; ok {
+						result[d.Name()] = dRel
+					}
 				}
 			}
 		}
