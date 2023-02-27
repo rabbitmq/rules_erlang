@@ -673,6 +673,12 @@ func (erlangApp *ErlangApp) ErlangAppRule(args language.GenerateArgs, explicitFi
 	if erlangApp.Description != "" {
 		r.SetAttr("app_description", erlangApp.Description)
 	}
+	extraApps := erlangApp.ExtraApps.Clone()
+	extraApps.Subtract(erlangConfig.ExcludedDeps)
+	extraApps.Subtract(erlangApp.Deps)
+	if !extraApps.IsEmpty() {
+		r.SetAttr("extra_apps", extraApps.Values(strings.Compare))
+	}
 
 	r.SetAttr("beam_files", []string{":beam_files"})
 	if !erlangApp.PublicHdrs.IsEmpty() {
@@ -690,12 +696,6 @@ func (erlangApp *ErlangApp) ErlangAppRule(args language.GenerateArgs, explicitFi
 		r.SetAttr("deps", deps.Values(strings.Compare))
 	}
 
-	extraApps := erlangApp.ExtraApps.Clone()
-	extraApps.Subtract(deps)
-	if !extraApps.IsEmpty() {
-		r.SetAttr("extra_apps", extraApps.Values(strings.Compare))
-	}
-
 	return r
 }
 
@@ -709,6 +709,12 @@ func (erlangApp *ErlangApp) testErlangAppRule(args language.GenerateArgs, explic
 	}
 	if erlangApp.Description != "" {
 		r.SetAttr("app_description", erlangApp.Description)
+	}
+	extraApps := erlangApp.ExtraApps.Clone()
+	extraApps.Subtract(erlangConfig.ExcludedDeps)
+	extraApps.Subtract(erlangApp.Deps)
+	if !extraApps.IsEmpty() {
+		r.SetAttr("extra_apps", extraApps.Values(strings.Compare))
 	}
 
 	r.SetAttr("beam_files", []string{":test_beam_files"})
@@ -725,12 +731,6 @@ func (erlangApp *ErlangApp) testErlangAppRule(args language.GenerateArgs, explic
 	deps.Subtract(erlangConfig.ExcludedDeps)
 	if !deps.IsEmpty() {
 		r.SetAttr("deps", deps.Values(strings.Compare))
-	}
-
-	extraApps := erlangApp.ExtraApps.Clone()
-	extraApps.Subtract(deps)
-	if !extraApps.IsEmpty() {
-		r.SetAttr("extra_apps", extraApps.Values(strings.Compare))
 	}
 
 	return r

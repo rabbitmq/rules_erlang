@@ -108,10 +108,6 @@ var _ = Describe("an ErlangApp", func() {
 		BeforeEach(func() {
 			app.AddFile("src/foo.erl")
 
-			// ExtraApps might be populated by the parsing of a
-			// precompiled .app file in the ebin dir
-			app.ExtraApps.Add("bar_lib")
-
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{
 					Call: map[string][]string{
@@ -123,9 +119,14 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
 			erlangConfig := erlangConfigs[args.Rel]
 			erlangConfig.ModuleMappings["bar_lib"] = "bar_lib"
+			erlangConfig.ExcludedDeps.Add("other_lib")
 		})
 
 		It("Does not contain extra_apps that are deps", func() {
+			// ExtraApps might be populated by the parsing of a
+			// precompiled .app file in the ebin dir
+			app.ExtraApps.Add("bar_lib")
+
 			app.BeamFilesRules(args, fakeParser)
 			r := app.ErlangAppRule(args, false)
 
@@ -135,6 +136,18 @@ var _ = Describe("an ErlangApp", func() {
 			)
 			Expect(r.AttrStrings("deps")).To(
 				ContainElement("bar_lib"),
+			)
+		})
+
+		It("Does not contain extra_apps that are excluded", func() {
+			app.ExtraApps.Add("other_lib")
+
+			app.BeamFilesRules(args, fakeParser)
+			r := app.ErlangAppRule(args, false)
+
+			Expect(r.Name()).To(Equal("erlang_app"))
+			Expect(r.AttrStrings("extra_apps")).ToNot(
+				ContainElement("other_lib"),
 			)
 		})
 	})
