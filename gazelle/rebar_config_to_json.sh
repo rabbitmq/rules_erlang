@@ -79,7 +79,13 @@ conformErlOpt({platform_define, _Platform, _Key}) ->
       value => ignored};
 conformErlOpt({platform_define, _Platform, _Key, _Value}) ->
     #{kind => platform_define,
-      value => ignored}.
+      value => ignored};
+conformErlOpt({src_dirs, _SrcDirs}) ->
+    #{kind => src_dirs,
+      value => ignored};
+conformErlOpt(Opt) ->
+    #{kind => unknown,
+      value => Opt}.
 
 conformConfig(List) ->
     maps:map(
