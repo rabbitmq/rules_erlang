@@ -102,6 +102,56 @@ var _ = Describe("an ErlangApp", func() {
 		})
 	})
 
+	Describe("ErlangAppRule", func() {
+		var fakeParser erlang.ErlParser
+
+		BeforeEach(func() {
+			app.AddFile("src/foo.erl")
+
+			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
+				"src/foo.erl": &erlang.ErlAttrs{
+					Call: map[string][]string{
+						"bar_lib": []string{"make_test_thing"},
+					},
+				},
+			})
+
+			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
+			erlangConfig := erlangConfigs[args.Rel]
+			erlangConfig.ModuleMappings["bar_lib"] = "bar_lib"
+			erlangConfig.ExcludedDeps.Add("other_lib")
+		})
+
+		It("Does not contain extra_apps that are deps", func() {
+			// ExtraApps might be populated by the parsing of a
+			// precompiled .app file in the ebin dir
+			app.ExtraApps.Add("bar_lib")
+
+			app.BeamFilesRules(args, fakeParser)
+			r := app.ErlangAppRule(args, false)
+
+			Expect(r.Name()).To(Equal("erlang_app"))
+			Expect(r.AttrStrings("extra_apps")).ToNot(
+				ContainElement("bar_lib"),
+			)
+			Expect(r.AttrStrings("deps")).To(
+				ContainElement("bar_lib"),
+			)
+		})
+
+		It("Does not contain extra_apps that are excluded", func() {
+			app.ExtraApps.Add("other_lib")
+
+			app.BeamFilesRules(args, fakeParser)
+			r := app.ErlangAppRule(args, false)
+
+			Expect(r.Name()).To(Equal("erlang_app"))
+			Expect(r.AttrStrings("extra_apps")).ToNot(
+				ContainElement("other_lib"),
+			)
+		})
+	})
+
 	Describe("BeamFilesRules", func() {
 		BeforeEach(func() {
 			app.AddFile("src/foo.erl")
