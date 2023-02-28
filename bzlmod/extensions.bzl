@@ -245,6 +245,8 @@ def _erlang_package(ctx):
         for dep in mod.tags.hex_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
+            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
+                fail("testonly has no effect when build_file or build_file_content is set:", dep.name)
             packages.append(hex_package(
                 ctx,
                 module = mod,
@@ -255,10 +257,13 @@ def _erlang_package(ctx):
                 build_file = dep.build_file,
                 build_file_content = dep.build_file_content,
                 patch_cmds = dep.patch_cmds,
+                testonly = dep.testonly,
             ))
         for dep in mod.tags.git_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
+            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
+                fail("testonly has no effect when build_file or build_file_content is set:", dep.remote, dep.repository)
             packages.append(git_package(
                 ctx,
                 module = mod,
@@ -291,6 +296,7 @@ hex_package_tag = tag_class(attrs = {
     "build_file": attr.label(),
     "build_file_content": attr.string(),
     "patch_cmds": attr.string_list(),
+    "testonly": attr.bool(),
 })
 
 git_package_tag = tag_class(attrs = {
@@ -303,6 +309,7 @@ git_package_tag = tag_class(attrs = {
     "build_file": attr.label(),
     "build_file_content": attr.string(),
     "patch_cmds": attr.string_list(),
+    "testonly": attr.bool(),
 })
 
 erlang_package = module_extension(

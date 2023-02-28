@@ -41,7 +41,7 @@ def _impl(ctx):
     stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                     ctx.attr.private_stamp_detect)
 
-    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     app_file_tool_path = ctx.attr.app_file_tool[DefaultInfo].files_to_run.executable.path
 
