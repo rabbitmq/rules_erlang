@@ -21,6 +21,7 @@ HexPackage = provider(fields = [
     "build_file",
     "build_file_content",
     "patch_cmds",
+    "testonly",
     "deps",
     "requirements",
     "f_fetch",
@@ -38,6 +39,7 @@ GitPackage = provider(fields = [
     "build_file",
     "build_file_content",
     "patch_cmds",
+    "testonly",
     "f_fetch",
 ])
 
@@ -70,6 +72,7 @@ def hex_tree(
         sha256 = sha256,
         build_file_content = "",
         patch_cmds = [],
+        testonly = False,
         deps = deps,
         requirements = requirements,
         f_fetch = _hex_package_repo,
@@ -84,7 +87,8 @@ def hex_package(
         sha256 = None,
         build_file = None,
         build_file_content = None,
-        patch_cmds = None):
+        patch_cmds = None,
+        testonly = False):
     return HexPackage(
         module = module,
         name = name,
@@ -94,6 +98,7 @@ def hex_package(
         build_file = build_file,
         build_file_content = build_file_content,
         patch_cmds = patch_cmds,
+        testonly = testonly,
         deps = None,
         requirements = [],
         f_fetch = _hex_package_repo,
@@ -144,6 +149,7 @@ def git_package(
         build_file = dep.build_file,
         build_file_content = dep.build_file_content,
         patch_cmds = dep.patch_cmds,
+        testonly = dep.testonly,
         f_fetch = _git_package_repo,
     )
 
@@ -167,16 +173,18 @@ def without_requirement(name, package):
             build_file = package.build_file,
             build_file_content = package.build_file_content,
             patch_cmds = package.patch_cmds,
+            testonly = package.testonly,
             deps = package.deps,
             requirements = new_requirements,
             f_fetch = package.f_fetch,
         )
 
 def _hex_package_repo(hex_package):
+    package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name
     if hex_package.build_file != None:
         hex_archive(
             name = hex_package.name,
-            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
+            package_name = package_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file = hex_package.build_file,
@@ -185,7 +193,7 @@ def _hex_package_repo(hex_package):
     elif hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
-            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
+            package_name = package_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = hex_package.build_file_content,
@@ -199,13 +207,14 @@ def _hex_package_repo(hex_package):
 
         hex_archive(
             name = hex_package.name,
-            package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name,
+            package_name = package_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
                 name = hex_package.name,
                 version = hex_package.version,
                 deps = deps,
+                testonly = hex_package.testonly,
             )],
         )
 
@@ -241,6 +250,7 @@ def _git_package_repo(git_package):
                 name = git_package.name,
                 version = "",
                 deps = [],
+                testonly = git_package.testonly,
             )],
         )
 
@@ -279,6 +289,7 @@ erlang_app(
         "//conditions:default": ["+deterministic", "+debug_info"],
     }}),
     stamp = 0,
+    testonly = {testonly},
 )
 endef
 
@@ -312,6 +323,7 @@ erlang_app(
     }}),
     deps = {deps},
     stamp = 0,
+    testonly = {testonly},
 )
 EOF
         fi
@@ -332,6 +344,7 @@ erlang_app(
         "//conditions:default": ["+deterministic", "+debug_info"],
     }}),
     stamp = 0,
+    testonly = {testonly},
 )
 EOF
     fi
@@ -349,12 +362,8 @@ erlang_app(
         "//conditions:default": ["+deterministic", "+debug_info"],
     }}),
     stamp = 0,
+    testonly = {testonly},
 )
 EOF
 fi
-"""
-
-PATCH_AUTO_BUILD_BAZEL_WINDOWS = """REM bzlmod+windows dependency autobuild not yet supported
-REM you may use 'build_file_content' instead
-EXIT /B 1
 """

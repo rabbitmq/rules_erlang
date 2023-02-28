@@ -49,6 +49,7 @@ def _erlang_app(
         deps = [],
         runtime_deps = [],
         stamp = None,
+        testonly = False,
         # new attrs for gazelle extension
         beam_files = None,
         hdrs = None,
@@ -109,7 +110,7 @@ def _erlang_app(
             erlc_opts = erlc_opts,
             dest = "ebin" if not test else "test",
             deps = build_deps + deps,
-            testonly = test,
+            testonly = test or testonly,
         )
 
         beam_files = [":beam_files" if not test else ":test_beam_files"]
@@ -131,6 +132,7 @@ def _erlang_app(
                 deps = deps + runtime_deps,
                 dest = "ebin",
                 stamp = stamp,
+                testonly = testonly,
             )
         app = ":app_file"
     else:
@@ -151,7 +153,7 @@ def _erlang_app(
         srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],
-        testonly = test,
+        testonly = test or testonly,
     )
 
 def erlang_app(**kwargs):

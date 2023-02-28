@@ -372,6 +372,9 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			}
 			erlangApp.Deps.Union(xformsDeps.Deps)
 			erlangApp.Deps.Union(xformsDeps.RuntimeDeps)
+			if erlangConfig.Testonly {
+				xformsRule.SetAttr("testonly", true)
+			}
 			beamFilesRules = append(beamFilesRules, xformsRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+xformsRule.Name())
 		}
@@ -394,6 +397,9 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			}
 			erlangApp.Deps.Union(behavioursDeps.Deps)
 			erlangApp.Deps.Union(behavioursDeps.RuntimeDeps)
+			if erlangConfig.Testonly {
+				behavioursRule.SetAttr("testonly", true)
+			}
 			beamFilesRules = append(beamFilesRules, behavioursRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+behavioursRule.Name())
 		}
@@ -416,12 +422,18 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			}
 			erlangApp.Deps.Union(othersDeps.Deps)
 			erlangApp.Deps.Union(othersDeps.RuntimeDeps)
+			if erlangConfig.Testonly {
+				othersRule.SetAttr("testonly", true)
+			}
 			beamFilesRules = append(beamFilesRules, othersRule)
 			beamFilesGroupRules = append(beamFilesGroupRules, ":"+othersRule.Name())
 		}
 
 		beam_files := rule.NewRule("filegroup", "beam_files")
 		beam_files.SetAttr("srcs", beamFilesGroupRules)
+		if erlangConfig.Testonly {
+			beam_files.SetAttr("testonly", true)
+		}
 		beamFilesRules = append(beamFilesRules, beam_files)
 	} else {
 		outs := mutable_set.New[string]()
@@ -448,12 +460,18 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			if !deps.Deps.IsEmpty() {
 				erlang_bytecode.SetAttr("deps", deps.Deps.Values(strings.Compare))
 			}
+			if erlangConfig.Testonly {
+				erlang_bytecode.SetAttr("testonly", true)
+			}
 
 			beamFilesRules = append(beamFilesRules, erlang_bytecode)
 		}
 
 		beam_files := rule.NewRule("filegroup", "beam_files")
 		beam_files.SetAttr("srcs", outs.Values(strings.Compare))
+		if erlangConfig.Testonly {
+			beam_files.SetAttr("testonly", true)
+		}
 		beamFilesRules = append(beamFilesRules, beam_files)
 	}
 
@@ -610,13 +628,16 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 	return
 }
 
-func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
-	var rules []*rule.Rule
+func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*rule.Rule) {
+	erlangConfig := erlangConfigForRel(args.Config, args.Rel)
 
 	srcs := rule.NewRule("filegroup", "srcs")
 	srcsSrcs := mutable_set.Union(erlangApp.Srcs, erlangApp.AppSrc).Values(strings.Compare)
 	if len(srcsSrcs) > 0 {
 		srcs.SetAttr("srcs", multilineList(srcsSrcs))
+	}
+	if erlangConfig.Testonly {
+		srcs.SetAttr("testonly", true)
 	}
 	rules = append(rules, srcs)
 
@@ -624,11 +645,17 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	if !erlangApp.PrivateHdrs.IsEmpty() {
 		private_hdrs.SetAttr("srcs", multilineList(erlangApp.PrivateHdrs.Values(strings.Compare)))
 	}
+	if erlangConfig.Testonly {
+		private_hdrs.SetAttr("testonly", true)
+	}
 	rules = append(rules, private_hdrs)
 
 	public_hdrs := rule.NewRule("filegroup", "public_hdrs")
 	if !erlangApp.PublicHdrs.IsEmpty() {
 		public_hdrs.SetAttr("srcs", multilineList(erlangApp.PublicHdrs.Values(strings.Compare)))
+	}
+	if erlangConfig.Testonly {
+		public_hdrs.SetAttr("testonly", true)
 	}
 	rules = append(rules, public_hdrs)
 
@@ -636,11 +663,17 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 	if !erlangApp.Priv.IsEmpty() {
 		priv.SetAttr("srcs", multilineList(erlangApp.Priv.Values(strings.Compare)))
 	}
+	if erlangConfig.Testonly {
+		priv.SetAttr("testonly", true)
+	}
 	rules = append(rules, priv)
 
 	licenses := rule.NewRule("filegroup", "licenses")
 	if !erlangApp.LicenseFiles.IsEmpty() {
 		licenses.SetAttr("srcs", multilineList(erlangApp.LicenseFiles.Values(strings.Compare)))
+	}
+	if erlangConfig.Testonly {
+		licenses.SetAttr("testonly", true)
 	}
 	rules = append(rules, licenses)
 
@@ -649,6 +682,9 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 		":private_hdrs",
 		":public_hdrs",
 	})
+	if erlangConfig.Testonly {
+		hdrs.SetAttr("testonly", true)
+	}
 	rules = append(rules, hdrs)
 
 	all_srcs := rule.NewRule("filegroup", "all_srcs")
@@ -657,6 +693,9 @@ func (erlangApp *ErlangApp) allSrcsRules() []*rule.Rule {
 		":public_and_private_hdrs",
 		// ":priv",
 	})
+	if erlangConfig.Testonly {
+		all_srcs.SetAttr("testonly", true)
+	}
 	rules = append(rules, all_srcs)
 
 	return rules
@@ -694,6 +733,10 @@ func (erlangApp *ErlangApp) ErlangAppRule(args language.GenerateArgs, explicitFi
 	deps.Subtract(erlangConfig.ExcludedDeps)
 	if !deps.IsEmpty() {
 		r.SetAttr("deps", deps.Values(strings.Compare))
+	}
+
+	if erlangConfig.Testonly {
+		r.SetAttr("testonly", true)
 	}
 
 	return r
