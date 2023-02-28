@@ -105,6 +105,7 @@ type ErlangConfig struct {
 	ExtraApps                       mutable_set.MutableSet[string]
 	ErlcOpts                        mutable_set.MutableSet[string]
 	TestErlcOpts                    mutable_set.MutableSet[string]
+	Testonly                        bool
 }
 
 type ErlangConfigs map[string]*ErlangConfig
@@ -129,6 +130,7 @@ func (erlang *Configurer) defaultErlangConfig(globalConfig *ErlangGlobalConfig) 
 		ExtraApps:                       mutable_set.New[string](),
 		ErlcOpts:                        mutable_set.Copy(defaultErlcOpts),
 		TestErlcOpts:                    mutable_set.Copy(defaultTestErlcOpts),
+		Testonly:                        erlang.testonly,
 	}
 }
 
@@ -160,6 +162,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			ExtraApps:                       mutable_set.New[string](),
 			ErlcOpts:                        mutable_set.Copy(defaultErlcOpts),
 			TestErlcOpts:                    mutable_set.Copy(defaultTestErlcOpts),
+			Testonly:                        parentConfig.Testonly,
 		}
 	}
 	return configs[rel]
@@ -167,6 +170,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 
 type Configurer struct {
 	verbose       bool
+	testonly      bool
 	appName       string
 	appVersion    string
 	noTests       bool
@@ -178,6 +182,7 @@ type Configurer struct {
 
 func (erlang *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.BoolVar(&erlang.verbose, "verbose", false, "when true, the erlang extension will log additional output")
+	fs.BoolVar(&erlang.testonly, "testonly", false, "when true, all rules are marked testonly")
 	if cmd == "update" || cmd == "fix" {
 		fs.StringVar(&erlang.appName, "app_name", "", "sets the application name, overriding inferred values")
 		fs.StringVar(&erlang.appVersion, "app_version", "", "sets the application version, overriding inferred values")

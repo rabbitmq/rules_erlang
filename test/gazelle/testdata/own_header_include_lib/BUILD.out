@@ -47,6 +47,7 @@ plt(
 
 erlang_bytecode(
     name = "ebin_own_header_include_lib_beam",
+    testonly = True,
     srcs = ["src/own_header_include_lib.erl"],
     outs = ["ebin/own_header_include_lib.beam"],
     hdrs = ["include/own_header_include_lib.hrl"],
@@ -56,32 +57,45 @@ erlang_bytecode(
 
 filegroup(
     name = "beam_files",
+    testonly = True,
     srcs = ["ebin/own_header_include_lib.beam"],
 )
 
 filegroup(
     name = "srcs",
+    testonly = True,
     srcs = [
         "src/own_header_include_lib.app.src",
         "src/own_header_include_lib.erl",
     ],
 )
 
-filegroup(name = "private_hdrs")
+filegroup(
+    name = "private_hdrs",
+    testonly = True,
+)
 
 filegroup(
     name = "public_hdrs",
+    testonly = True,
     srcs = [
         "include/own_header_include_lib.hrl",
     ],
 )
 
-filegroup(name = "priv")
+filegroup(
+    name = "priv",
+    testonly = True,
+)
 
-filegroup(name = "licenses")
+filegroup(
+    name = "licenses",
+    testonly = True,
+)
 
 filegroup(
     name = "public_and_private_hdrs",
+    testonly = True,
     srcs = [
         ":private_hdrs",
         ":public_hdrs",
@@ -90,6 +104,7 @@ filegroup(
 
 filegroup(
     name = "all_srcs",
+    testonly = True,
     srcs = [
         ":public_and_private_hdrs",
         ":srcs",
@@ -98,6 +113,7 @@ filegroup(
 
 erlang_app(
     name = "erlang_app",
+    testonly = True,
     srcs = [":all_srcs"],
     hdrs = [":public_hdrs"],
     app_name = "own_header_include_lib",

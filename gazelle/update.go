@@ -120,6 +120,9 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
 	cmd.Args = append(cmd.Args, "--verbose")
+	if erlangConfig.Testonly {
+		cmd.Args = append(cmd.Args, "--testonly")
+	}
 	cmd.Args = append(cmd.Args, "--no_tests")
 	cmd.Args = append(cmd.Args, "--compact")
 	if explicitName {
@@ -280,6 +283,9 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
 	cmd.Args = append(cmd.Args, "--verbose")
+	if erlangConfig.Testonly {
+		cmd.Args = append(cmd.Args, "--testonly")
+	}
 	cmd.Args = append(cmd.Args, "--no_tests")
 	cmd.Args = append(cmd.Args, "--compact")
 	if explicitName {

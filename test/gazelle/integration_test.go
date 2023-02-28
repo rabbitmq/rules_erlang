@@ -147,7 +147,9 @@ func testPath(t *testing.T, name string, files []bazel.RunfileEntry) {
 
 		workspaceRoot := filepath.Join(testdataDir, name)
 
-		args := []string{"-build_file_name=BUILD,BUILD.bazel"}
+		args := append(
+			[]string{"-build_file_name=BUILD,BUILD.bazel"},
+			config.Args...)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -203,6 +205,7 @@ func mustFindGazelle() string {
 }
 
 type testYAML struct {
+	Args   []string `json:"args"`
 	Expect struct {
 		ExitCode int    `json:"exit_code"`
 		Stdout   string `json:"stdout"`
