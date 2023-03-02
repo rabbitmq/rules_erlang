@@ -14,12 +14,14 @@ DIALYZE_TAG = "dialyze"
 def plt(
         for_target = None,
         apps = None,
+        testonly = True,
         **kwargs):
     if for_target == None and apps == None:
         apps = DEFAULT_PLT_APPS
     _plt(
         for_target = for_target,
         apps = apps,
+        testonly = testonly,
         **kwargs
     )
 
