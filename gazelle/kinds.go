@@ -42,6 +42,7 @@ func erlangAppKindInfo(l *erlangLang) rule.KindInfo {
 			"hdrs":        true,
 			"srcs":        true,
 			"extra_apps":  true,
+			"testonly":    true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,

@@ -20,6 +20,7 @@ const (
 	generateTestBeamUnconditionally      = "erlang_always_generate_test_beam_files"
 	generateSkipRules                    = "erlang_skip_rules"
 	localAppsDirsDirective               = "erlang_apps_dirs"
+	erlangAppTestonlyDirective           = "erlang_app_testonly"
 	erlangAppDepDirective                = "erlang_app_dep"
 	erlangAppDepIgnoreDirective          = "erlang_app_dep_ignore"
 	erlangAppDepBuildOnlyDirective       = "erlang_app_dep_exclude"
@@ -216,6 +217,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		generateTestBeamUnconditionally,
 		generateSkipRules,
 		localAppsDirsDirective,
+		erlangAppTestonlyDirective,
 		erlangAppDepDirective,
 		erlangAppDepIgnoreDirective,
 		erlangAppDepBuildOnlyDirective,
@@ -264,6 +266,8 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 					return filepath.Join(rel, d)
 				}, filepath.SplitList(d.Value))
 				erlangConfig.AppsDirs.Add(dirs...)
+			case erlangAppTestonlyDirective:
+				erlangConfig.Testonly = boolValue(d)
 			case erlangAppDepDirective:
 				erlangConfig.Deps.Add(d.Value)
 			case erlangAppDepIgnoreDirective:
