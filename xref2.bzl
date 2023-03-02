@@ -29,6 +29,7 @@ def xref(
     )
     xref_query(
         name = name + "-query",
+        testonly = True,
         target = target,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
