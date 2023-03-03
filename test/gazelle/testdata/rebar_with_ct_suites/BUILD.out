@@ -54,8 +54,11 @@ all_srcs(name = "all_srcs")
 erlang_app(
     name = "erlang_app",
     srcs = [":all_srcs"],
+    hdrs = [":public_hdrs"],
     app_name = "rebar_with_ct_suites",
     beam_files = [":beam_files"],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 alias(
@@ -70,6 +73,8 @@ test_erlang_app(
     hdrs = [":public_and_private_hdrs"],
     app_name = "rebar_with_ct_suites",
     beam_files = [":test_beam_files"],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 xref(

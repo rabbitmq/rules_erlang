@@ -54,14 +54,20 @@ def _erlang_app(
         beam_files = None,
         hdrs = None,
         srcs = None,
+        priv = None,
+        license_files = None,
         test = False):
-    if beam_files != None or hdrs != None or srcs != None:
+    if beam_files != None or hdrs != None or srcs != None or priv != None or license_files != None:
         if erlc_opts != None:
-            fail("Cannot set beam_files, hdrs or srcs AND erlc_opts")
+            fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND erlc_opts")
         if len(extra_hdrs) > 0:
-            fail("Cannot set beam_files, hdrs or srcs AND extra_hdrs")
+            fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND extra_hdrs")
         if len(extra_srcs) > 0:
-            fail("Cannot set beam_files, hdrs or srcs AND extra_srcs")
+            fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND extra_srcs")
+        if len(extra_priv) > 0:
+            fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND extra_priv")
+        if len(extra_license_files) > 0:
+            fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND extra_license_files")
         if len(build_deps) > 0:
             print("Warning: build_deps are ignored when beam_files is set")
         if len(runtime_deps) > 0:
@@ -138,6 +144,18 @@ def _erlang_app(
     else:
         app = "ebin/{}.app".format(app_name)
 
+    if priv == None:
+        priv = native.glob(
+            ["priv/**/*"],
+            exclude = extra_priv,
+        ) + extra_priv
+
+    if license_files == None:
+        license_files = native.glob(
+            ["LICENSE*"],
+            exclude = extra_license_files,
+        ) + extra_license_files
+
     erlang_app_info(
         name = name,
         app_name = app_name,
@@ -145,11 +163,8 @@ def _erlang_app(
         hdrs = hdrs,
         app = app,
         beam = beam_files,
-        priv = native.glob(["priv/**/*"]) + extra_priv,
-        license_files = native.glob(
-            ["LICENSE*"],
-            exclude = extra_license_files,
-        ) + extra_license_files,
+        priv = priv,
+        license_files = license_files,
         srcs = srcs,
         deps = deps + runtime_deps,
         visibility = ["//visibility:public"],

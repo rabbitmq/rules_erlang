@@ -1,12 +1,14 @@
 package erlang_test
 
 import (
+	"fmt"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 	erlang "github.com/rabbitmq/rules_erlang/gazelle"
 	"strings"
 	"testing"
@@ -20,7 +22,7 @@ func TestUpdate(t *testing.T) {
 var _ = Describe("an ErlangApp", func() {
 	var c *config.Config
 	var args language.GenerateArgs
-	var app *erlang.ErlangApp
+	var appBuilder *erlang.ErlangAppBuilder
 
 	BeforeEach(func() {
 		configurer := erlang.Configurer{}
@@ -31,64 +33,75 @@ var _ = Describe("an ErlangApp", func() {
 			Config: c,
 		}
 
-		app = erlang.NewErlangApp(args.Config.RepoRoot, args.Rel)
+		appBuilder = erlang.NewErlangAppBuilder(args.Config.RepoRoot, args.Rel)
 	})
 
 	Describe("AddFile", func() {
 		BeforeEach(func() {
-			app.AddFile("src/foo.app.src")
-			app.AddFile("src/foo.erl")
-			app.AddFile("src/foo.hrl")
-			app.AddFile("include/bar.hrl")
-			app.AddFile("test/foo_SUITE.erl")
-			app.AddFile("priv/foo.img")
-			app.AddFile("LICENSE")
-			app.AddFile("src/bar.png")
+			appBuilder.AddFile("src/foo.app.src", false)
+			appBuilder.AddFile("src/foo.erl", false)
+			appBuilder.AddFile("src/foo.hrl", false)
+			appBuilder.AddFile("include/bar.hrl", false)
+			appBuilder.AddFile("test/foo_SUITE.erl", false)
+			appBuilder.AddFile("priv/foo.img", false)
+			appBuilder.AddFile("LICENSE", false)
+			appBuilder.AddFile("src/bar.png", false)
 		})
 
 		It("puts .app.src files in AppSrc", func() {
-			Expect(app.AppSrc).To(HaveLen(1))
-			Expect(app.AppSrc.Contains("src/foo.app.src")).To(BeTrue())
+			Expect(appBuilder.AppSrc).To(HaveLen(1))
+			Expect(appBuilder.AppSrc).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("src/foo.app.src")))
 		})
 
 		It("puts src files in Srcs", func() {
-			Expect(app.Srcs).To(HaveLen(1))
-			Expect(app.Srcs.Contains("src/foo.erl")).To(BeTrue())
+			Expect(appBuilder.Srcs).To(HaveLen(1))
+			Expect(appBuilder.Srcs).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("src/foo.erl")))
 		})
 
 		It("puts private hdrs in PrivateHdrs", func() {
-			Expect(app.PrivateHdrs).To(HaveLen(1))
-			Expect(app.PrivateHdrs.Contains("src/foo.hrl")).To(BeTrue())
+			Expect(appBuilder.PrivateHdrs).To(HaveLen(1))
+			Expect(appBuilder.PrivateHdrs).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("src/foo.hrl")))
 		})
 
 		It("puts public hdrs in PublicHdrs", func() {
-			Expect(app.PublicHdrs).To(HaveLen(1))
-			Expect(app.PublicHdrs.Contains("include/bar.hrl")).To(BeTrue())
+			Expect(appBuilder.PublicHdrs).To(HaveLen(1))
+			Expect(appBuilder.PublicHdrs).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("include/bar.hrl")))
 		})
 
 		It("puts test srcs in TestSrcs", func() {
-			Expect(app.TestSrcs).To(HaveLen(1))
-			Expect(app.TestSrcs.Contains("test/foo_SUITE.erl")).To(BeTrue())
+			Expect(appBuilder.TestSrcs).To(HaveLen(1))
+			Expect(appBuilder.TestSrcs).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("test/foo_SUITE.erl")))
 		})
 
 		It("puts priv in Priv", func() {
-			Expect(app.Priv).To(HaveLen(1))
-			Expect(app.Priv.Contains("priv/foo.img")).To(BeTrue())
+			Expect(appBuilder.Priv).To(HaveLen(1))
+			Expect(appBuilder.Priv).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("priv/foo.img")))
 		})
 
 		It("puts license files in LicenseFiles", func() {
-			Expect(app.LicenseFiles).To(HaveLen(1))
-			Expect(app.LicenseFiles.Contains("LICENSE")).To(BeTrue())
+			Expect(appBuilder.LicenseFiles).To(HaveLen(1))
+			Expect(appBuilder.LicenseFiles).To(
+				MutableSetContains[*erlang.ErlangAppFile](MatchPath("LICENSE")))
 		})
 	})
 
 	Describe("ErlcOptsRule", func() {
+		var app *erlang.ErlangApp
+
 		BeforeEach(func() {
 			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
 			erlangConfig := erlangConfigs[args.Rel]
 			erlangConfig.ErlcOpts.Add("+warn_shadow_vars")
 
-			app.ErlcOpts.Add("+warn_export_all")
+			appBuilder.ErlcOpts.Add("+warn_export_all")
+
+			app = appBuilder.Build(args, nil)
 		})
 
 		It("wraps the opts with a select based on the :debug_build setting", func() {
@@ -104,9 +117,10 @@ var _ = Describe("an ErlangApp", func() {
 
 	Describe("ErlangAppRule", func() {
 		var fakeParser erlang.ErlParser
+		var app *erlang.ErlangApp
 
 		BeforeEach(func() {
-			app.AddFile("src/foo.erl")
+			appBuilder.AddFile("src/foo.erl", false)
 
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{
@@ -120,6 +134,8 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfig := erlangConfigs[args.Rel]
 			erlangConfig.ModuleMappings["bar_lib"] = "bar_lib"
 			erlangConfig.ExcludedDeps.Add("other_lib")
+
+			app = appBuilder.Build(args, fakeParser)
 		})
 
 		It("Does not contain extra_apps that are deps", func() {
@@ -128,7 +144,7 @@ var _ = Describe("an ErlangApp", func() {
 			app.ExtraApps.Add("bar_lib")
 
 			app.BeamFilesRules(args, fakeParser)
-			r := app.ErlangAppRule(args, false)
+			r := app.ErlangAppRule(args)
 
 			Expect(r.Name()).To(Equal("erlang_app"))
 			Expect(r.AttrStrings("extra_apps")).ToNot(
@@ -143,7 +159,7 @@ var _ = Describe("an ErlangApp", func() {
 			app.ExtraApps.Add("other_lib")
 
 			app.BeamFilesRules(args, fakeParser)
-			r := app.ErlangAppRule(args, false)
+			r := app.ErlangAppRule(args)
 
 			Expect(r.Name()).To(Equal("erlang_app"))
 			Expect(r.AttrStrings("extra_apps")).ToNot(
@@ -154,8 +170,8 @@ var _ = Describe("an ErlangApp", func() {
 
 	Describe("BeamFilesRules", func() {
 		BeforeEach(func() {
-			app.AddFile("src/foo.erl")
-			app.AddFile("src/foo.hrl")
+			appBuilder.AddFile("src/foo.erl", false)
+			appBuilder.AddFile("src/foo.hrl", false)
 		})
 
 		It("include_lib behaves like include if a file simply exists", func() {
@@ -164,6 +180,8 @@ var _ = Describe("an ErlangApp", func() {
 					IncludeLib: []string{"foo.hrl"},
 				},
 			})
+
+			app := appBuilder.Build(args, fakeParser)
 
 			rules := app.BeamFilesRules(args, fakeParser)
 			Expect(rules).NotTo(BeEmpty())
@@ -174,13 +192,15 @@ var _ = Describe("an ErlangApp", func() {
 		})
 
 		It("resolves parse_transforms", func() {
-			app.AddFile("src/bar.erl")
+			appBuilder.AddFile("src/bar.erl", false)
 
 			fakeParser := fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{
 					ParseTransform: []string{"bar"},
 				},
 			})
+
+			app := appBuilder.Build(args, fakeParser)
 
 			rules := app.BeamFilesRules(args, fakeParser)
 			Expect(rules).NotTo(BeEmpty())
@@ -207,6 +227,8 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfig.ModuleMappings["baz"] = "baz_app"
 			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
 
+			app := appBuilder.Build(args, fakeParser)
+
 			rules := app.BeamFilesRules(args, fakeParser)
 			Expect(rules).NotTo(BeEmpty())
 
@@ -229,25 +251,32 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfig := erlangConfigs[args.Rel]
 			erlangConfig.ErlcOpts.Add("-DCUSTOM")
 
+			app := appBuilder.Build(args, fakeParser)
+
 			app.BeamFilesRules(args, fakeParser)
 
-			Expect(fakeParser.Calls).To(HaveLen(1))
+			Expect(fakeParser.Calls).To(HaveLen(2))
 
 			Expect(fakeParser.Calls[0].macros).To(
 				Equal(erlang.ErlParserMacros{"CUSTOM": nil}))
+
+			one := "1"
+			Expect(fakeParser.Calls[1].macros).To(
+				Equal(erlang.ErlParserMacros{"TEST": &one}))
 		})
 	})
 
 	Describe("Tests Rules", func() {
 		var fakeParser erlang.ErlParser
+		var app *erlang.ErlangApp
 		var testDirRules []*rule.Rule
 
 		BeforeEach(func() {
-			app.AddFile("src/foo.erl")
-			app.AddFile("src/bar.erl")
-			app.AddFile("test/foo_SUITE.erl")
-			app.AddFile("test/foo_helper.erl")
-			app.AddFile("test/bar_tests.erl")
+			appBuilder.AddFile("src/foo.erl", false)
+			appBuilder.AddFile("src/bar.erl", false)
+			appBuilder.AddFile("test/foo_SUITE.erl", false)
+			appBuilder.AddFile("test/foo_helper.erl", false)
+			appBuilder.AddFile("test/bar_tests.erl", false)
 
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"test/foo_SUITE.erl": &erlang.ErlAttrs{
@@ -263,11 +292,13 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfig := erlangConfigs[args.Rel]
 			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
 
-			testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
+			app = appBuilder.Build(args, fakeParser)
 		})
 
 		Describe("TestDirBeamFilesRules", func() {
 			It("Adds runtime deps to the suite", func() {
+				testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
+
 				Expect(testDirRules).To(HaveLen(3))
 
 				Expect(testDirRules[0].Name()).To(Equal("test_bar_tests_beam"))
@@ -306,7 +337,8 @@ var _ = Describe("an ErlangApp", func() {
 	})
 
 	Describe("Compact BeamFilesRules", func() {
-		var fakeParser *erlParserFake
+		var fakeParser erlang.ErlParser
+		var app *erlang.ErlangApp
 
 		BeforeEach(func() {
 			erlangConfigs := args.Config.Exts["erlang"].(erlang.ErlangConfigs)
@@ -314,12 +346,12 @@ var _ = Describe("an ErlangApp", func() {
 			erlangConfig.ModuleMappings["fuzz"] = "fuzz_app"
 			erlangConfig.GenerateFewerBytecodeRules = true
 
-			app.Name = "foo"
-			app.AddFile("src/foo.erl")
-			app.AddFile("src/bar.erl")
-			app.AddFile("src/baz.erl")
-			app.AddFile("src/xform.erl")
-			app.AddFile("include/foo.hrl")
+			appBuilder.Name = "foo"
+			appBuilder.AddFile("src/foo.erl", false)
+			appBuilder.AddFile("src/bar.erl", false)
+			appBuilder.AddFile("src/baz.erl", false)
+			appBuilder.AddFile("src/xform.erl", false)
+			appBuilder.AddFile("include/foo.hrl", false)
 
 			fakeParser = fakeErlParser(map[string]*erlang.ErlAttrs{
 				"src/foo.erl": &erlang.ErlAttrs{
@@ -331,6 +363,8 @@ var _ = Describe("an ErlangApp", func() {
 					},
 				},
 			})
+
+			app = appBuilder.Build(args, fakeParser)
 		})
 
 		It("produces a smaller set of bytecode compilation rules", func() {
@@ -343,9 +377,7 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[0].AttrStrings("srcs")).To(
 				ConsistOf("src/xform.erl"),
 			)
-			Expect(rules[0].AttrStrings("outs")).To(
-				ConsistOf("ebin/xform.beam"),
-			)
+			Expect(rules[0].AttrString("dest")).To(Equal("ebin"))
 
 			Expect(rules[1].Name()).To(Equal("behaviours"))
 			Expect(rules[1].AttrString("app_name")).To(Equal(app.Name))
@@ -353,9 +385,7 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[1].AttrStrings("srcs")).To(
 				ConsistOf("src/bar.erl", "src/baz.erl"),
 			)
-			Expect(rules[1].AttrStrings("outs")).To(
-				ConsistOf("ebin/bar.beam", "ebin/baz.beam"),
-			)
+			Expect(rules[1].AttrString("dest")).To(Equal("ebin"))
 			Expect(rules[1].AttrStrings("beam")).To(
 				ConsistOf(":parse_transforms"),
 			)
@@ -363,12 +393,12 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[2].Name()).To(Equal("other_beam"))
 			Expect(rules[2].AttrString("app_name")).To(Equal(app.Name))
 			Expect(rules[2].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
-			Expect(rules[2].AttrStrings("srcs")).To(
-				ConsistOf("src/foo.erl"),
+			Expect(strings.NewReplacer("\n", "", " ", "").Replace(
+				build.FormatString(rules[2].Attr("srcs"))),
+			).To(
+				Equal("glob([\"src/**/*.erl\"],exclude=[\"src/bar.erl\",\"src/baz.erl\",\"src/xform.erl\",],)"),
 			)
-			Expect(rules[2].AttrStrings("outs")).To(
-				ConsistOf("ebin/foo.beam"),
-			)
+			Expect(rules[2].AttrString("dest")).To(Equal("ebin"))
 			Expect(rules[2].AttrStrings("beam")).To(
 				ConsistOf(":parse_transforms", ":behaviours"),
 			)
@@ -388,7 +418,7 @@ var _ = Describe("an ErlangApp", func() {
 
 		It("Adds discoverd deps to the application", func() {
 			app.BeamFilesRules(args, fakeParser)
-			r := app.ErlangAppRule(args, true)
+			r := app.ErlangAppRule(args)
 
 			Expect(r.Name()).To(Equal("erlang_app"))
 			Expect(r.AttrStrings("deps")).To(
@@ -408,7 +438,7 @@ var _ = Describe("an ErlangApp", func() {
 				ConsistOf("other"),
 			)
 
-			r := app.ErlangAppRule(args, true)
+			r := app.ErlangAppRule(args)
 
 			Expect(r.Name()).To(Equal("erlang_app"))
 			Expect(r.AttrStrings("deps")).To(
@@ -417,3 +447,34 @@ var _ = Describe("an ErlangApp", func() {
 		})
 	})
 })
+
+type PathMatcher struct {
+	path string
+}
+
+func MatchPath(expected string) types.GomegaMatcher {
+	return &PathMatcher{path: expected}
+}
+
+func (pm *PathMatcher) Match(actual interface{}) (bool, error) {
+	if f, ok := actual.(*erlang.ErlangAppFile); ok {
+		if f.Path != pm.path {
+			return false, fmt.Errorf("Wrong Path")
+		}
+		return true, nil
+	} else if f, ok := actual.(*erlang.ErlangAppFileParsed); ok {
+		if f.Path != pm.path {
+			return false, fmt.Errorf("Wrong Path")
+		}
+		return true, nil
+	}
+	return false, fmt.Errorf("Not an ErlangAppFile or ErlangAppFileParsed")
+}
+
+func (pm *PathMatcher) FailureMessage(actual interface{}) string {
+	return "Path of Expected and received string not equal"
+}
+
+func (pm *PathMatcher) NegatedFailureMessage(actual interface{}) string {
+	return "Path of Expected and received string not equal"
+}

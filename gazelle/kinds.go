@@ -53,8 +53,12 @@ func erlangAppKindInfo(l *erlangLang) rule.KindInfo {
 func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"alias": {
-			NonEmptyAttrs:  map[string]bool{"actual": true},
-			MergeableAttrs: map[string]bool{"actual": true},
+			NonEmptyAttrs: map[string]bool{
+				"actual": true,
+			},
+			MergeableAttrs: map[string]bool{
+				"actual": true,
+			},
 		},
 		"filegroup": {
 			NonEmptyAttrs: map[string]bool{
@@ -111,6 +115,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 				"hdrs":     true,
 				"beam":     true,
 				"outs":     true,
+				"dest":     true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,

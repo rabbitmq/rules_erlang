@@ -171,7 +171,7 @@ filegroup(name = "public_hdrs")
 filegroup(name = "priv")
 
 filegroup(
-    name = "licenses",
+    name = "license_files",
     srcs = [
         "LICENSE",
         "LICENSE-APACHE2",
@@ -198,12 +198,15 @@ filegroup(
 erlang_app(
     name = "erlang_app",
     srcs = [":all_srcs"],
+    hdrs = [":public_hdrs"],
     app_name = "seshat",
     beam_files = [":beam_files"],
     extra_apps = [
         "crypto",
         "sasl",
     ],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 alias(
@@ -215,12 +218,15 @@ alias(
 test_erlang_app(
     name = "test_erlang_app",
     srcs = [":all_srcs"],
+    hdrs = [":public_and_private_hdrs"],
     app_name = "seshat",
     beam_files = [":test_beam_files"],
     extra_apps = [
         "crypto",
         "sasl",
     ],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 xref(

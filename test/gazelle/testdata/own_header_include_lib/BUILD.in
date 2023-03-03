@@ -1,1 +1,10 @@
 # gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
+
+genrule(
+    name = "generate_hrl",
+    srcs = [],
+    outs = ["include/own_header_include_lib.hrl"],
+    cmd = """\
+echo "-define(WHY, who_knows)." > $@
+""",
+)

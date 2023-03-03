@@ -50,17 +50,9 @@ erlang_bytecode(
         "src/aten_emitter.erl",
         "src/aten_sink.erl",
         "src/aten_sup.erl",
-    ],
-    outs = [
-        "ebin/aten.beam",
-        "ebin/aten_app.beam",
-        "ebin/aten_detect.beam",
-        "ebin/aten_detector.beam",
-        "ebin/aten_emitter.beam",
-        "ebin/aten_sink.beam",
-        "ebin/aten_sup.beam",
-    ],
+    ] + glob(["src/**/*.erl"]),
     app_name = "aten",
+    dest = "ebin",
     erlc_opts = "//:erlc_opts",
 )
 
@@ -72,7 +64,6 @@ filegroup(
 filegroup(
     name = "srcs",
     srcs = [
-        "src/aten.app.src",
         "src/aten.erl",
         "src/aten_app.erl",
         "src/aten_detect.erl",
@@ -80,22 +71,34 @@ filegroup(
         "src/aten_emitter.erl",
         "src/aten_sink.erl",
         "src/aten_sup.erl",
-    ],
+    ] + glob([
+        "src/**/*.app.src",
+        "src/**/*.erl",
+    ]),
 )
 
-filegroup(name = "private_hdrs")
-
-filegroup(name = "public_hdrs")
-
-filegroup(name = "priv")
+filegroup(
+    name = "private_hdrs",
+    srcs = glob(["src/**/*.hrl"]),
+)
 
 filegroup(
-    name = "licenses",
+    name = "public_hdrs",
+    srcs = glob(["include/**/*.hrl"]),
+)
+
+filegroup(
+    name = "priv",
+    srcs = glob(["priv/**/*"]),
+)
+
+filegroup(
+    name = "license_files",
     srcs = [
         "LICENSE",
         "LICENSE-APACHE2",
         "LICENSE-MPL-RabbitMQ",
-    ],
+    ] + glob(["LICENSE*"]),
 )
 
 filegroup(
@@ -117,6 +120,7 @@ filegroup(
 erlang_app(
     name = "erlang_app",
     srcs = [":all_srcs"],
+    hdrs = [":public_hdrs"],
     app_description = "Erlang node failure detector",
     app_name = "aten",
     app_version = "0.5.8",
@@ -125,11 +129,8 @@ erlang_app(
         "crypto",
         "sasl",
     ],
-    extra_license_files = [
-        "LICENSE",
-        "LICENSE-APACHE2",
-        "LICENSE-MPL-RabbitMQ",
-    ],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 alias(
