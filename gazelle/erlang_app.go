@@ -213,8 +213,6 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 		transforms := mutable_set.New[*ErlangAppFileParsed]()
 		behaviours := mutable_set.New[*ErlangAppFileParsed]()
 
-		hdrs := erlangApp.Hdrs()
-
 		srcByModuleName := mutable_set.Index(erlangApp.Srcs, func(src *ErlangAppFileParsed) string {
 			return src.moduleName()
 		})
@@ -247,9 +245,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			xformsRule.SetAttr("app_name", erlangApp.Name)
 			xformsRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 			xformsRule.SetAttr("srcs", multilineList(transforms.Values(comparePaths)))
-			if len(hdrs) > 0 {
-				xformsRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			xformsRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			xformsRule.SetAttr("dest", "ebin")
 			xformsDeps := jointDeps(mutable_set.Map(transforms, func(src *ErlangAppFileParsed) *ErlangAppFileInfo {
 				return &src.Info
@@ -271,9 +267,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 			behavioursRule.SetAttr("app_name", erlangApp.Name)
 			behavioursRule.SetAttr("erlc_opts", "//:"+erlcOptsRuleName)
 			behavioursRule.SetAttr("srcs", multilineList(behaviours.Values(comparePaths)))
-			if len(hdrs) > 0 {
-				behavioursRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			behavioursRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			behavioursRule.SetAttr("dest", "ebin")
 			if len(beamFilesGroupRules) > 0 {
 				behavioursRule.SetAttr("beam", beamFilesGroupRules)
@@ -308,9 +302,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 					Excludes: otherSrcsExcludes,
 				},
 			))
-			if len(hdrs) > 0 {
-				othersRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			othersRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			othersRule.SetAttr("dest", "ebin")
 			if len(beamFilesGroupRules) > 0 {
 				othersRule.SetAttr("beam", beamFilesGroupRules)
@@ -386,8 +378,6 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 		transforms := mutable_set.New[*ErlangAppFileParsed]()
 		behaviours := mutable_set.New[*ErlangAppFileParsed]()
 
-		hdrs := erlangApp.Hdrs()
-
 		srcByModuleName := mutable_set.Index(erlangApp.Srcs, func(src *ErlangAppFileParsed) string {
 			return src.moduleName()
 		})
@@ -421,9 +411,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			xformsRule.SetAttr("app_name", erlangApp.Name)
 			xformsRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 			xformsRule.SetAttr("srcs", multilineList(transforms.Values(comparePaths)))
-			if len(hdrs) > 0 {
-				xformsRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			xformsRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			xformsRule.SetAttr("dest", "test")
 			xformsDeps := jointDeps(mutable_set.Map(transforms, func(src *ErlangAppFileParsed) *ErlangAppFileInfo {
 				return &src.TestInfo
@@ -443,9 +431,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 			behavioursRule.SetAttr("app_name", erlangApp.Name)
 			behavioursRule.SetAttr("erlc_opts", "//:"+testErlcOptsRuleName)
 			behavioursRule.SetAttr("srcs", multilineList(behaviours.Values(comparePaths)))
-			if len(hdrs) > 0 {
-				behavioursRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			behavioursRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			behavioursRule.SetAttr("dest", "test")
 			if len(beamFilesGroupRules) > 0 {
 				behavioursRule.SetAttr("beam", beamFilesGroupRules)
@@ -478,9 +464,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 					Excludes: otherSrcsExcludes,
 				},
 			))
-			if len(hdrs) > 0 {
-				othersRule.SetAttr("hdrs", multilineList(hdrs))
-			}
+			othersRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			othersRule.SetAttr("dest", "test")
 			if len(beamFilesGroupRules) > 0 {
 				othersRule.SetAttr("beam", beamFilesGroupRules)

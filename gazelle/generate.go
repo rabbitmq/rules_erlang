@@ -465,17 +465,29 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		return result
 	}
 
+	allSrcsRules := erlangApp.allSrcsRules(args)
+
 	beamFilesRules := erlangApp.BeamFilesRules(args, erlParser)
 
 	testBeamFilesRules := erlangApp.testBeamFilesRules(args, erlParser)
-
-	allSrcsRules := erlangApp.allSrcsRules(args)
 
 	testDirBeamFilesRules := erlangApp.TestDirBeamFilesRules(args, erlParser)
 
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
 		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
+
+		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		erlang.updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
+		allSrcsMacro.Save(appBzlFile)
+
+		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
+		maybeAppendRule(erlangConfig, allSrcsCall, &result)
+
 		beamFilesMacro, err := macroFile(appBzlFile, allBeamFilesKind)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
@@ -520,26 +532,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 		}
 
-		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
-		}
-
-		erlang.updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
-		allSrcsMacro.Save(appBzlFile)
-
 		appBzl, err := rule.LoadFile(appBzlFile, "")
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
+		addNameArg(appBzl, allSrcsKind)
 		addNameArg(appBzl, allBeamFilesKind)
 		addNameArg(appBzl, allTestBeamFilesKind)
 		addNameArg(appBzl, testSuiteBeamFilesKind)
-		addNameArg(appBzl, allSrcsKind)
 		appBzl.Save(appBzlFile)
-
-		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
-		maybeAppendRule(erlangConfig, allSrcsCall, &result)
 	} else {
 		for i := range beamFilesRules {
 			maybeAppendRule(erlangConfig, beamFilesRules[i], &result)

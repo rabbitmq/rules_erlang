@@ -51,6 +51,7 @@ erlang_bytecode(
         "src/aten_sink.erl",
         "src/aten_sup.erl",
     ] + glob(["src/**/*.erl"]),
+    hdrs = [":public_and_private_hdrs"],
     app_name = "aten",
     dest = "ebin",
     erlc_opts = "//:erlc_opts",

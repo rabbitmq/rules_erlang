@@ -43,13 +43,13 @@ plt(
     visibility = [":__subpackages__"],
 )
 
+all_srcs(name = "all_srcs")
+
 all_beam_files(name = "all_beam_files")
 
 all_test_beam_files(name = "all_test_beam_files")
 
 test_suite_beam_files(name = "test_suite_beam_files")
-
-all_srcs(name = "all_srcs")
 
 erlang_app(
     name = "erlang_app",

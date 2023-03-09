@@ -53,6 +53,7 @@ plt(
 erlang_bytecode(
     name = "other_beam",
     srcs = glob(["src/**/*.erl"]),
+    hdrs = [":public_and_private_hdrs"],
     app_name = "seshat",
     dest = "ebin",
     erlc_opts = "//:erlc_opts",
@@ -62,6 +63,7 @@ erlang_bytecode(
     name = "test_other_beam",
     testonly = True,
     srcs = glob(["src/**/*.erl"]),
+    hdrs = [":public_and_private_hdrs"],
     app_name = "seshat",
     dest = "test",
     erlc_opts = "//:test_erlc_opts",
