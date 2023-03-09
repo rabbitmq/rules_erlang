@@ -71,6 +71,16 @@ func (s MutableSet[T]) Clone() MutableSet[T] {
 	return r
 }
 
+func (s MutableSet[T]) Filter(pred func(v T) bool) MutableSet[T] {
+	r := make(MutableSet[T])
+	for item, present := range s {
+		if present && pred(item) {
+			r[item] = true
+		}
+	}
+	return r
+}
+
 func GroupBy[T, K comparable](s MutableSet[T], f func(v T) K) map[K][]T {
 	r := make(map[K][]T, len(s))
 	s.ForEach(func(v T) {

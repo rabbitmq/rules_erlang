@@ -15,6 +15,7 @@ go_library(
         "erl_parser.go",
         "erl_parser_impl.go",
         "erlang_app.go",
+        "erlang_app_builder.go",
         "fix.go",
         "generate.go",
         "hex_metadata_parser.go",

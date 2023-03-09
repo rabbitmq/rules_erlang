@@ -151,7 +151,7 @@ filegroup(name = "public_hdrs")
 filegroup(name = "priv")
 
 filegroup(
-    name = "licenses",
+    name = "license_files",
     srcs = [
         "LICENSE",
         "LICENSE-APACHE2",
@@ -178,6 +178,7 @@ filegroup(
 erlang_app(
     name = "erlang_app",
     srcs = [":all_srcs"],
+    hdrs = [":public_hdrs"],
     app_description = "Erlang node failure detector",
     app_name = "aten",
     app_version = "0.5.8",
@@ -186,11 +187,8 @@ erlang_app(
         "crypto",
         "sasl",
     ],
-    extra_license_files = [
-        "LICENSE",
-        "LICENSE-APACHE2",
-        "LICENSE-MPL-RabbitMQ",
-    ],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 alias(

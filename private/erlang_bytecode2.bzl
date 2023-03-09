@@ -122,7 +122,7 @@ erlang_bytecode = rule(
     attrs = {
         "app_name": attr.string(),
         "hdrs": attr.label_list(
-            allow_files = [".hrl"],
+            allow_files = True,
         ),
         "srcs": attr.label_list(
             mandatory = True,

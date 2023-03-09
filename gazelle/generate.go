@@ -95,7 +95,7 @@ func isProbablyBareErlang(args language.GenerateArgs) bool {
 	return false
 }
 
-func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *ErlangApp) error {
+func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult, erlangApp *ErlangAppBuilder) error {
 	Log(args.Config, "    Importing Hex.pm archive from", filepath.Join(args.Config.RepoRoot, args.Rel))
 
 	hexMetadataParser := newHexMetadataParser(args.Config.RepoRoot, args.Rel)
@@ -119,7 +119,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	maybeAppendRule(erlangConfig, untar, result)
 
 	for _, f := range hexMetadata.Files {
-		erlangApp.AddFile(f)
+		erlangApp.AddFile(f, true)
 	}
 
 	for _, req := range hexMetadata.Requirements {
@@ -153,7 +153,7 @@ func importHexPmTar(args language.GenerateArgs, result *language.GenerateResult,
 	return nil
 }
 
-func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
+func importRebar(args language.GenerateArgs, erlangApp *ErlangAppBuilder) error {
 	rebarAppPath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel)
 	Log(args.Config, "    Importing Rebar from",
 		filepath.Join(rebarAppPath, rebarConfigFilename))
@@ -185,7 +185,7 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 				if err != nil {
 					return err
 				}
-				erlangApp.AddFile(rel)
+				erlangApp.AddFile(rel, false)
 				return nil
 			})
 		if err != nil {
@@ -199,7 +199,7 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	return nil
 }
 
-func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
+func importBareErlang(args language.GenerateArgs, erlangApp *ErlangAppBuilder) error {
 	appPath := filepath.Join(args.Config.RepoRoot, args.Rel)
 	Log(args.Config, "    Importing bare erlang from", appPath)
 
@@ -222,7 +222,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 			if rel != filepath.Base(rel) && args.Config.IsValidBuildFileName(info.Name()) {
 				return filepath.SkipDir
 			}
-			erlangApp.AddFile(rel)
+			erlangApp.AddFile(rel, false)
 			return nil
 		})
 	if err != nil {
@@ -230,7 +230,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangApp) error {
 	}
 	for _, f := range args.GenFiles {
 		// Log(args.Config, "        ", f)
-		erlangApp.AddFile(f)
+		erlangApp.AddFile(f, true)
 	}
 
 	return nil
@@ -365,36 +365,25 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	var result language.GenerateResult
 	result.Gen = make([]*rule.Rule, 0)
 
-	erlangApp := NewErlangApp(args.Config.RepoRoot, args.Rel)
-	for dep := range erlangConfig.Deps {
-		erlangApp.Deps.Add(dep)
-	}
-
-	for app := range erlangConfig.ExtraApps {
-		erlangApp.ExtraApps.Add(app)
-	}
-
-	for opt := range erlangConfig.ErlcOpts {
-		erlangApp.ErlcOpts.Add(opt)
-	}
-
-	for opt := range erlangConfig.TestErlcOpts {
-		erlangApp.TestErlcOpts.Add(opt)
-	}
+	erlangAppBuilder := NewErlangAppBuilder(args.Config.RepoRoot, args.Rel)
+	erlangAppBuilder.Deps.Union(erlangConfig.Deps)
+	erlangAppBuilder.ExtraApps.Union(erlangConfig.ExtraApps)
+	erlangAppBuilder.ErlcOpts.Union(erlangConfig.ErlcOpts)
+	erlangAppBuilder.TestErlcOpts.Union(erlangConfig.TestErlcOpts)
 
 	if isHexPmTar(args.RegularFiles) {
-		err := importHexPmTar(args, &result, erlangApp)
+		err := importHexPmTar(args, &result, erlangAppBuilder)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
-		defer os.RemoveAll(erlangApp.RepoRoot)
+		defer os.RemoveAll(erlangAppBuilder.RepoRoot)
 	} else if isRebar(args.RegularFiles) {
-		err := importRebar(args, erlangApp)
+		err := importRebar(args, erlangAppBuilder)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
 	} else if isProbablyBareErlang(args) {
-		err := importBareErlang(args, erlangApp)
+		err := importBareErlang(args, erlangAppBuilder)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
@@ -402,47 +391,60 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	// TODO: handle when the filename does not match the contents, or when
 	//       ebin has other files
-	if !erlangApp.Ebin.IsEmpty() {
-		dotAppParser := newDotAppParser(erlangApp.RepoRoot, args.Rel)
-		dotApp, err := dotAppParser.parseAppSrc(erlangApp.Ebin.Any())
+	if !erlangAppBuilder.Ebin.IsEmpty() {
+		dotAppParser := newDotAppParser(erlangAppBuilder.RepoRoot, args.Rel)
+		dotApp, err := dotAppParser.parseAppSrc(erlangAppBuilder.Ebin.Any().Path)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.Ebin.Any()), ".app")
-		props := (*dotApp)[erlangApp.Name]
+		erlangAppBuilder.Name = strings.TrimSuffix(filepath.Base(erlangAppBuilder.Ebin.Any().Path), ".app")
+		props := (*dotApp)[erlangAppBuilder.Name]
 		for _, app := range props.Applications {
 			if !slices.Contains([]string{"kernel", "stdlib"}, app) {
-				erlangApp.ExtraApps.Add(app)
+				erlangAppBuilder.ExtraApps.Add(app)
 			}
 		}
-		erlangApp.ExtraApps.Subtract(erlangApp.Deps)
-	} else if !erlangApp.AppSrc.IsEmpty() {
-		dotAppParser := newDotAppParser(erlangApp.RepoRoot, args.Rel)
-		dotApp, err := dotAppParser.parseAppSrc(erlangApp.AppSrc.Any())
+		erlangAppBuilder.ExtraApps.Subtract(erlangAppBuilder.Deps)
+	} else if !erlangAppBuilder.AppSrc.IsEmpty() {
+		dotAppParser := newDotAppParser(erlangAppBuilder.RepoRoot, args.Rel)
+		dotApp, err := dotAppParser.parseAppSrc(erlangAppBuilder.AppSrc.Any().Path)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
 
-		erlangApp.Name = strings.TrimSuffix(filepath.Base(erlangApp.AppSrc.Any()), ".app.src")
-		props := (*dotApp)[erlangApp.Name]
+		erlangAppBuilder.Name = strings.TrimSuffix(filepath.Base(erlangAppBuilder.AppSrc.Any().Path), ".app.src")
+		props := (*dotApp)[erlangAppBuilder.Name]
 		for _, app := range props.Applications {
 			if !slices.Contains([]string{"kernel", "stdlib"}, app) {
-				erlangApp.ExtraApps.Add(app)
+				erlangAppBuilder.ExtraApps.Add(app)
 			}
 		}
-		erlangApp.ExtraApps.Subtract(erlangApp.Deps)
+		erlangAppBuilder.ExtraApps.Subtract(erlangAppBuilder.Deps)
 	} else {
-		erlangApp.Name = filepath.Base(filepath.Join(
-			erlangApp.RepoRoot, erlangApp.Rel))
+		erlangAppBuilder.Name = filepath.Base(filepath.Join(
+			erlangAppBuilder.RepoRoot, erlangAppBuilder.Rel))
 	}
 
 	if erlangConfig.AppName != "" {
-		erlangApp.Name = erlangConfig.AppName
+		erlangAppBuilder.Name = erlangConfig.AppName
 	}
 	if erlangConfig.AppVersion != "" {
-		erlangApp.Version = erlangConfig.AppVersion
+		erlangAppBuilder.Version = erlangConfig.AppVersion
 	}
+
+	Log(args.Config, "    Application properties:")
+	Log(args.Config, "        name:", erlangAppBuilder.Name)
+	Log(args.Config, "        version:", erlangAppBuilder.Version)
+	Log(args.Config, "        description:", erlangAppBuilder.Description)
+	Log(args.Config, "        extra_apps:", erlangAppBuilder.ExtraApps.Values(strings.Compare))
+	Log(args.Config, "        deps:", erlangAppBuilder.Deps.Values(strings.Compare))
+
+	Log(args.Config, "    Analyzing sources...")
+
+	erlParser := newErlParser()
+
+	erlangApp := erlangAppBuilder.Build(args, erlParser)
 
 	if args.Rel == "" {
 		erlc_opts := erlangApp.ErlcOptsRule(args)
@@ -459,32 +461,33 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	if erlangApp.Srcs.IsEmpty() {
+	if erlangAppBuilder.Srcs.IsEmpty() {
 		return result
 	}
 
-	Log(args.Config, "    Application properties:")
-	Log(args.Config, "        name:", erlangApp.Name)
-	Log(args.Config, "        version:", erlangApp.Version)
-	Log(args.Config, "        description:", erlangApp.Description)
-	Log(args.Config, "        extra_apps:", erlangApp.ExtraApps.Values(strings.Compare))
-	Log(args.Config, "        deps:", erlangApp.Deps.Values(strings.Compare))
-
-	Log(args.Config, "    Analyzing sources...")
-
-	erlParser := newErlParser()
+	allSrcsRules := erlangApp.allSrcsRules(args)
 
 	beamFilesRules := erlangApp.BeamFilesRules(args, erlParser)
 
 	testBeamFilesRules := erlangApp.testBeamFilesRules(args, erlParser)
-
-	allSrcsRules := erlangApp.allSrcsRules(args)
 
 	testDirBeamFilesRules := erlangApp.TestDirBeamFilesRules(args, erlParser)
 
 	if erlangConfig.GenerateBeamFilesMacro {
 		Log(args.Config, "    Adding/updating app.bzl")
 		appBzlFile := filepath.Join(args.Config.RepoRoot, args.Rel, macroFileName)
+
+		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+
+		erlang.updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
+		allSrcsMacro.Save(appBzlFile)
+
+		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
+		maybeAppendRule(erlangConfig, allSrcsCall, &result)
+
 		beamFilesMacro, err := macroFile(appBzlFile, allBeamFilesKind)
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
@@ -529,26 +532,15 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 			}
 		}
 
-		allSrcsMacro, err := macroFile(appBzlFile, allSrcsKind)
-		if err != nil {
-			log.Fatalf("ERROR: %v\n", err)
-		}
-
-		erlang.updateRules(args.Config, allSrcsMacro, allSrcsRules, appBzlFile)
-		allSrcsMacro.Save(appBzlFile)
-
 		appBzl, err := rule.LoadFile(appBzlFile, "")
 		if err != nil {
 			log.Fatalf("ERROR: %v\n", err)
 		}
+		addNameArg(appBzl, allSrcsKind)
 		addNameArg(appBzl, allBeamFilesKind)
 		addNameArg(appBzl, allTestBeamFilesKind)
 		addNameArg(appBzl, testSuiteBeamFilesKind)
-		addNameArg(appBzl, allSrcsKind)
 		appBzl.Save(appBzlFile)
-
-		allSrcsCall := rule.NewRule(allSrcsKind, allSrcsKind)
-		maybeAppendRule(erlangConfig, allSrcsCall, &result)
 	} else {
 		for i := range beamFilesRules {
 			maybeAppendRule(erlangConfig, beamFilesRules[i], &result)
@@ -566,8 +558,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 	}
 
-	explicitFiles := erlangApp.RepoRoot != args.Config.RepoRoot
-	erlang_app := erlangApp.ErlangAppRule(args, explicitFiles)
+	erlang_app := erlangApp.ErlangAppRule(args)
 	maybeAppendRule(erlangConfig, erlang_app, &result)
 
 	alias := rule.NewRule("alias", erlangApp.Name)
@@ -577,7 +568,7 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 
 	if !erlangConfig.NoTests {
 		if erlangApp.hasTestSuites() || erlangConfig.GenerateTestBeamUnconditionally {
-			test_erlang_app := erlangApp.testErlangAppRule(args, explicitFiles)
+			test_erlang_app := erlangApp.testErlangAppRule(args)
 			maybeAppendRule(erlangConfig, test_erlang_app, &result)
 		}
 
@@ -609,6 +600,9 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 	if err != nil {
 		log.Fatalf("ERROR: %v\n", err)
 	}
+
+	// TODO: if this is the root (rel == "") then declare a filegroup
+	//       of **/* to be use in "source-dist" type aggregates
 
 	// Log(args.Config, "    result.Gen", Map(func(r *rule.Rule) string {
 	// 	return r.Kind() + "/" + r.Name()

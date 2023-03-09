@@ -1,12 +1,11 @@
-load("@rules_erlang//:erlang_bytecode2.bzl", "erlc_opts")
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
 load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
 load("@rules_erlang//:xref2.bzl", "xref")
 load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
 load("@rules_erlang//:eunit2.bzl", "eunit")
 load("@rules_erlang//:ct.bzl", "assert_suites2")
-load(":app.bzl", "all_beam_files", "all_srcs", "all_test_beam_files", "test_suite_beam_files")
 
-# gazelle:erlang_generate_beam_files_macro
+# gazelle:erlang_generate_fewer_bytecode_rules
 
 erlc_opts(
     name = "erlc_opts",
@@ -51,13 +50,95 @@ plt(
     visibility = [":__subpackages__"],
 )
 
-all_srcs(name = "all_srcs")
+erlang_bytecode(
+    name = "other_beam",
+    srcs = glob(["src/**/*.erl"]),
+    hdrs = [":public_and_private_hdrs"],
+    app_name = "seshat",
+    dest = "ebin",
+    erlc_opts = "//:erlc_opts",
+)
 
-all_beam_files(name = "all_beam_files")
+erlang_bytecode(
+    name = "test_other_beam",
+    testonly = True,
+    srcs = glob(["src/**/*.erl"]),
+    hdrs = [":public_and_private_hdrs"],
+    app_name = "seshat",
+    dest = "test",
+    erlc_opts = "//:test_erlc_opts",
+)
 
-all_test_beam_files(name = "all_test_beam_files")
+filegroup(
+    name = "beam_files",
+    srcs = [":other_beam"],
+)
 
-test_suite_beam_files(name = "test_suite_beam_files")
+filegroup(
+    name = "test_beam_files",
+    testonly = True,
+    srcs = [":test_other_beam"],
+)
+
+erlang_bytecode(
+    name = "test_seshat_counters_server_test_beam",
+    testonly = True,
+    srcs = ["test/seshat_counters_server_test.erl"],
+    outs = ["test/seshat_counters_server_test.beam"],
+    erlc_opts = "//:test_erlc_opts",
+)
+
+erlang_bytecode(
+    name = "test_seshat_test_beam",
+    testonly = True,
+    srcs = ["test/seshat_test.erl"],
+    outs = ["test/seshat_test.beam"],
+    erlc_opts = "//:test_erlc_opts",
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "src/**/*.app.src",
+        "src/**/*.erl",
+    ]),
+)
+
+filegroup(
+    name = "private_hdrs",
+    srcs = glob(["src/**/*.hrl"]),
+)
+
+filegroup(
+    name = "public_hdrs",
+    srcs = glob(["include/**/*.hrl"]),
+)
+
+filegroup(
+    name = "priv",
+    srcs = glob(["priv/**/*"]),
+)
+
+filegroup(
+    name = "license_files",
+    srcs = glob(["LICENSE*"]),
+)
+
+filegroup(
+    name = "public_and_private_hdrs",
+    srcs = [
+        ":private_hdrs",
+        ":public_hdrs",
+    ],
+)
+
+filegroup(
+    name = "all_srcs",
+    srcs = [
+        ":public_and_private_hdrs",
+        ":srcs",
+    ],
+)
 
 erlang_app(
     name = "erlang_app",

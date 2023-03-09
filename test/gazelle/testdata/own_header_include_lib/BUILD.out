@@ -6,6 +6,15 @@ load("@rules_erlang//:ct.bzl", "assert_suites2")
 
 # gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
 
+genrule(
+    name = "generate_hrl",
+    srcs = [],
+    outs = ["include/own_header_include_lib.hrl"],
+    cmd = """\
+echo "-define(WHY, who_knows)." > $@
+""",
+)
+
 erlc_opts(
     name = "erlc_opts",
     values = select({
@@ -89,7 +98,7 @@ filegroup(
 )
 
 filegroup(
-    name = "licenses",
+    name = "license_files",
     testonly = True,
 )
 
@@ -118,6 +127,8 @@ erlang_app(
     hdrs = [":public_hdrs"],
     app_name = "own_header_include_lib",
     beam_files = [":beam_files"],
+    license_files = [":license_files"],
+    priv = [":priv"],
 )
 
 alias(
