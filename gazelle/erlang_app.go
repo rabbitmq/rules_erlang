@@ -115,7 +115,7 @@ func multilineList[T any](values []T) build.Expr {
 	}
 }
 
-func multilineGlob(glob rule.GlobValue) build.Expr {
+func multilineGlob(glob rule.GlobValue, macro bool) build.Expr {
 	var patternsValue build.Expr
 	if len(glob.Patterns) < 2 {
 		patternsValue = rule.ExprFromValue(glob.Patterns)
@@ -131,22 +131,30 @@ func multilineGlob(glob rule.GlobValue) build.Expr {
 			RHS: excludesValue,
 		})
 	}
+	token := "glob"
+	if macro {
+		token = "native.glob"
+	}
 	return &build.CallExpr{
-		X:              &build.LiteralExpr{Token: "glob"},
+		X:              &build.LiteralExpr{Token: token},
 		List:           globArgs,
 		ForceMultiLine: len(glob.Excludes) > 0,
 	}
 }
 
-func explicitPlusGlobExpr(explicit []string, glob rule.GlobValue) build.Expr {
+func explicitPlusGlobExpr(
+	explicit []string,
+	glob rule.GlobValue,
+	macro bool,
+) build.Expr {
 	if len(explicit) == 0 {
-		return multilineGlob(glob)
+		return multilineGlob(glob, macro)
 	}
 
 	return &build.BinaryExpr{
 		X:  multilineList(explicit),
 		Op: "+",
-		Y:  multilineGlob(glob),
+		Y:  multilineGlob(glob, macro),
 	}
 }
 
@@ -319,6 +327,7 @@ func (erlangApp *ErlangApp) BeamFilesRules(args language.GenerateArgs, erlParser
 					Patterns: []string{"src/**/*.erl"},
 					Excludes: otherSrcsExcludes,
 				},
+				erlangConfig.GenerateBeamFilesMacro,
 			))
 			othersRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			othersRule.SetAttr("dest", "ebin")
@@ -481,6 +490,7 @@ func (erlangApp *ErlangApp) testBeamFilesRules(args language.GenerateArgs, erlPa
 					Patterns: []string{"src/**/*.erl"},
 					Excludes: otherSrcsExcludes,
 				},
+				erlangConfig.GenerateBeamFilesMacro,
 			))
 			othersRule.SetAttr("hdrs", []string{":public_and_private_hdrs"})
 			othersRule.SetAttr("dest", "test")
@@ -557,6 +567,7 @@ func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*r
 					"src/**/*.app.src",
 				},
 			},
+			erlangConfig.GenerateBeamFilesMacro,
 		))
 	} else {
 		srcsSrcs := mutable_set.Union(
@@ -582,6 +593,7 @@ func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*r
 			rule.GlobValue{
 				Patterns: []string{"src/**/*.hrl"},
 			},
+			erlangConfig.GenerateBeamFilesMacro,
 		))
 	} else {
 		if !erlangApp.PrivateHdrs.IsEmpty() {
@@ -604,6 +616,7 @@ func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*r
 			rule.GlobValue{
 				Patterns: []string{"include/**/*.hrl"},
 			},
+			erlangConfig.GenerateBeamFilesMacro,
 		))
 	} else {
 		if !erlangApp.PublicHdrs.IsEmpty() {
@@ -627,6 +640,7 @@ func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*r
 			rule.GlobValue{
 				Patterns: []string{"priv/**/*"},
 			},
+			erlangConfig.GenerateBeamFilesMacro,
 		))
 	} else {
 		if !erlangApp.Priv.IsEmpty() {
@@ -649,6 +663,7 @@ func (erlangApp *ErlangApp) allSrcsRules(args language.GenerateArgs) (rules []*r
 			rule.GlobValue{
 				Patterns: []string{"LICENSE*"},
 			},
+			erlangConfig.GenerateBeamFilesMacro,
 		))
 	} else {
 		if !erlangApp.LicenseFiles.IsEmpty() {
