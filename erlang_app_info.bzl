@@ -60,7 +60,7 @@ erlang_app_info = rule(
     attrs = {
         "app_name": attr.string(mandatory = True),
         "extra_apps": attr.string_list(),
-        "hdrs": attr.label_list(allow_files = [".hrl"]),
+        "hdrs": attr.label_list(allow_files = True),
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(allow_files = [".beam", ".appup"]),
         "priv": attr.label_list(allow_files = True),
