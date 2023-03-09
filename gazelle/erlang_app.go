@@ -115,20 +115,38 @@ func multilineList[T any](values []T) build.Expr {
 	}
 }
 
+func multilineGlob(glob rule.GlobValue) build.Expr {
+	var patternsValue build.Expr
+	if len(glob.Patterns) < 2 {
+		patternsValue = rule.ExprFromValue(glob.Patterns)
+	} else {
+		patternsValue = multilineList(glob.Patterns)
+	}
+	globArgs := []build.Expr{patternsValue}
+	if len(glob.Excludes) > 0 {
+		excludesValue := multilineList(glob.Excludes)
+		globArgs = append(globArgs, &build.AssignExpr{
+			LHS: &build.LiteralExpr{Token: "exclude"},
+			Op:  "=",
+			RHS: excludesValue,
+		})
+	}
+	return &build.CallExpr{
+		X:              &build.LiteralExpr{Token: "glob"},
+		List:           globArgs,
+		ForceMultiLine: len(glob.Excludes) > 0,
+	}
+}
+
 func explicitPlusGlobExpr(explicit []string, glob rule.GlobValue) build.Expr {
 	if len(explicit) == 0 {
-		return rule.ExprFromValue(glob)
+		return multilineGlob(glob)
 	}
-	list := make([]build.Expr, len(explicit))
-	for i, f := range explicit {
-		list[i] = rule.ExprFromValue(f)
-	}
-	listExpr := &build.ListExpr{List: list}
 
 	return &build.BinaryExpr{
-		X:  listExpr,
+		X:  multilineList(explicit),
 		Op: "+",
-		Y:  rule.ExprFromValue(glob),
+		Y:  multilineGlob(glob),
 	}
 }
 
