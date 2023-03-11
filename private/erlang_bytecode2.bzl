@@ -68,6 +68,8 @@ def _impl(ctx):
         include_args.extend(["-I", package_dir])
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
+    if erl_libs_path != "":
+        include_args.extend(["-I", "${ERL_LIBS}"])
 
     pa_args = []
     for dir in unique_dirnames(ctx.files.beam):
