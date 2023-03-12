@@ -66,7 +66,11 @@ mapify_dep({Name, Version, {git = Kind, Remote, Ref}, [raw]}) ->
       kind => Kind,
       version => Version,
       remote => Remote,
-      ref => Ref}.
+      ref => Ref};
+%% other formats
+mapify_dep({Name, {pkg, _}}) ->
+    #{name => Name,
+      kind => hex}.
 
 conformErlOpt(Opt) when is_atom(Opt)->
     #{kind => erlc,
