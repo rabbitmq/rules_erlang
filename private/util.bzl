@@ -31,7 +31,8 @@ def erl_libs_contents2(
     if headers and target_info != None:
         dep_path = path_join(dir, target_info.app_name)
         for hdr in target_info.include:
-            dest = ctx.actions.declare_file(path_join(dep_path, hdr.path))
+            rp = additional_file_dest_relative_path(ctx.label, hdr)
+            dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = hdr)
             erl_libs_files.append(dest)
     for dep in deps:
