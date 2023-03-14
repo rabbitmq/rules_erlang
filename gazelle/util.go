@@ -24,6 +24,15 @@ func Keys[K comparable](m map[K]any) []K {
 	return r
 }
 
+func SliceContains[T comparable](s []T, v T) bool {
+	for _, item := range s {
+		if item == v {
+			return true
+		}
+	}
+	return false
+}
+
 func Log(c *config.Config, a ...interface{}) (n int, err error) {
 	rootConfig := c.Exts[languageName].(ErlangConfigs)[""]
 	if rootConfig.GlobalConfig.Verbose {
