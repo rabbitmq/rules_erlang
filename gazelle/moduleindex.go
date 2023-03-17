@@ -2,6 +2,8 @@ package erlang
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 	"gopkg.in/yaml.v2"
@@ -9,9 +11,21 @@ import (
 
 type Moduleindex map[string][]string
 
+func compareBasenames(a, b *ErlangAppFileParsed) int {
+	return strings.Compare(filepath.Base(a.Path), filepath.Base(b.Path))
+}
+
+func modules(erlangApp *ErlangApp) []string {
+	modules := make([]string, len(erlangApp.Srcs))
+	for i, src := range erlangApp.Srcs.Values(compareBasenames) {
+		modules[i] = strings.TrimSuffix(filepath.Base(src.Path), ".erl")
+	}
+	return modules
+}
+
 func MergeAppToModuleindex(moduleindexPath string, erlangApp *ErlangApp) error {
 	return MergeToModuleindex(moduleindexPath, Moduleindex{
-		erlangApp.Name: erlangApp.modules(),
+		erlangApp.Name: modules(erlangApp),
 	})
 }
 

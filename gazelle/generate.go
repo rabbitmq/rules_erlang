@@ -222,7 +222,7 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangAppBuilder) e
 			if rel != filepath.Base(rel) && args.Config.IsValidBuildFileName(info.Name()) {
 				return filepath.SkipDir
 			}
-			if !SliceContains(args.GenFiles, rel) {
+			if !slices.Contains(args.GenFiles, rel) {
 				erlangApp.AddFile(rel, false)
 			}
 			return nil
