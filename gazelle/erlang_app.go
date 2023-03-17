@@ -1042,14 +1042,6 @@ func (erlangApp *ErlangApp) Hdrs() []string {
 	), (*ErlangAppFile).path).Values(strings.Compare)
 }
 
-func (erlangApp *ErlangApp) modules() []string {
-	modules := make([]string, len(erlangApp.Srcs))
-	for i, src := range erlangApp.Srcs.Values(comparePaths) {
-		modules[i] = strings.TrimSuffix(filepath.Base(src.Path), ".erl")
-	}
-	return modules
-}
-
 func runtimeBeam(r *rule.Rule) []string {
 	return r.PrivateAttr("runtime_beam").([]string)
 }
