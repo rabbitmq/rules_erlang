@@ -43,6 +43,17 @@ GitPackage = provider(fields = [
     "f_fetch",
 ])
 
+LocalPackage = provider(fields = [
+    "module",
+    "name",
+    "version",
+    "path",
+    "build_file",
+    "build_file_content",
+    "testonly",
+    "f_fetch",
+])
+
 def log(ctx, msg):
     ctx.execute(["echo", "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
 
@@ -153,6 +164,25 @@ def git_package(
         f_fetch = _git_package_repo,
     )
 
+def local_package(
+        _ctx,
+        module = None,
+        name = None,
+        path = None,
+        build_file = None,
+        build_file_content = None,
+        testonly = False):
+    return LocalPackage(
+        module = module,
+        name = name,
+        version = "local->" + path,
+        path = path,
+        build_file = build_file,
+        build_file_content = build_file_content,
+        testonly = testonly,
+        f_fetch = _local_package_repo,
+    )
+
 def without_requirement(name, package):
     requirements = getattr(package, "requirements", [])
     if len(requirements) == 0:
@@ -252,6 +282,27 @@ def _git_package_repo(git_package):
                 deps = [],
                 testonly = git_package.testonly,
             )],
+        )
+
+def _local_package_repo(local_package):
+    if local_package.build_file != None and local_package.build_file_content != None:
+        fail("Cannot set both build_file and build_file_content", local_package)
+    if local_package.build_file != None:
+        native.new_local_repository(
+            name = local_package.name,
+            path = local_package.path,
+            build_file = local_package.build_file,
+        )
+    elif local_package.build_file_content != None:
+        native.new_local_repository(
+            name = local_package.name,
+            path = local_package.path,
+            build_file_content = local_package.build_file_content,
+        )
+    else:
+        native.local_repository(
+            name = local_package.name,
+            path = local_package.path,
         )
 
 PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail

@@ -8,6 +8,7 @@ load(
     "git_package",
     "hex_package",
     "hex_tree",
+    "local_package",
     "log",
     "without_requirement",
 )
@@ -269,6 +270,16 @@ def _erlang_package(ctx):
                 module = mod,
                 dep = dep,
             ))
+        for dep in mod.tags.local_package:
+            packages.append(local_package(
+                ctx,
+                module = mod,
+                name = dep.name,
+                path = dep.path,
+                build_file = dep.build_file,
+                build_file_content = dep.build_file_content,
+                testonly = dep.testonly,
+            ))
 
     deduped = _resolve_local(packages)
 
@@ -312,11 +323,34 @@ git_package_tag = tag_class(attrs = {
     "testonly": attr.bool(),
 })
 
+local_package_tag = tag_class(attrs = {
+    "name": attr.string(),
+    "path": attr.string(),
+    "build_file": attr.label(),
+    "build_file_content": attr.string(),
+    "testonly": attr.bool(),
+})
+
 erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
         "hex_package": hex_package_tag,
         "hex_package_tree": hex_package_tree_tag,
         "git_package": git_package_tag,
+        "local_package": local_package_tag,
     },
 )
+
+def default_build_file_content(app_name = None, testonly = False):
+    return """load("@rules_erlang//:erlang_app.bzl", "erlang_app")
+
+erlang_app(
+    app_name = "{app_name}",
+    erlc_opts = select({{
+        "@rules_erlang//:debug_build": ["+debug_info"],
+        "//conditions:default": ["+deterministic", "+debug_info"],
+    }}),
+    stamp = 0,
+    testonly = {testonly},
+)
+""".format(app_name = app_name, testonly = testonly)
