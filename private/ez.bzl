@@ -28,6 +28,10 @@ def _impl(ctx):
     workspace = ctx.actions.declare_directory(ctx.label.name)
     archive = ctx.actions.declare_file("%s.ez" % lib_info.app_name)
 
+    stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
+                                    ctx.attr.private_stamp_detect)
+    epoch = "1980-01-01T00:00:00"
+
     build_directory_commands = [
         'mkdir "{workspace}/{app_name}-$VERSION"'.format(
             workspace = workspace.path,
@@ -39,32 +43,39 @@ def _impl(ctx):
             ctx.attr.app.label,
             f,
         )
+        dest = "{workspace}/{app_name}-$VERSION/{rp}".format(
+            workspace = workspace.path,
+            app_name = lib_info.app_name,
+            rp = rp,
+        )
         build_directory_commands.extend([
-            "mkdir -p $(dirname \"{workspace}/{app_name}-$VERSION/{rp}\")".format(
-                workspace = workspace.path,
-                app_name = lib_info.app_name,
-                rp = rp,
-            ),
-            "cp {f} {workspace}/{app_name}-$VERSION/{rp}".format(
-                f = f.path,
-                workspace = workspace.path,
-                app_name = lib_info.app_name,
-                rp = rp,
-            ),
+            'mkdir -p $(dirname "{dest}")'.format(dest = dest),
+            'cp -p "{f}" "{dest}"'.format(f = f.path, dest = dest),
         ])
+        if not stamp:
+            build_directory_commands.extend([
+                'touch -a -m -d {} "{}"'.format(epoch, dest),
+                'touch -a -m -d {} "$(dirname "{}")"'.format(epoch, dest),
+            ])
+    if not stamp:
+        build_directory_commands.append(
+            'touch -a -m -d {epoch} "{workspace}/{app_name}-$VERSION"'.format(
+                epoch = epoch,
+                workspace = workspace.path,
+                app_name = lib_info.app_name,
+            ),
+        )
 
     ctx.actions.run_shell(
         inputs = inputs,
         outputs = [archive, workspace],
-        command = """set -euxo pipefail
+        command = """set -euo pipefail
 
 {maybe_install_erlang}
 
 VERSION=$({erlang_home}/bin/{extract_version})
 
 {build_directory_commands}
-
-tree "{workspace}"
 
 "{erlang_home}"/bin/erl \\
     -noshell \\
@@ -74,8 +85,6 @@ tree "{workspace}"
              {{compress, all}},
              {{uncompress, [\\".beam\\",\\".app\\"]}}]),
            halt()."
-
-tree "{workspace}"
 
 cp "{workspace}/{app_name}-$VERSION.ez" "{archive}"
 """.format(
@@ -99,6 +108,10 @@ ez = rule(
             providers = [ErlangAppInfo],
             mandatory = True,
         ),
+        "stamp": attr.int(default = -1),
+        # Is --stamp set on the command line?
+        # TODO(https://github.com/bazelbuild/rules_pkg/issues/340): Remove this.
+        "private_stamp_detect": attr.bool(default = False),
     },
     toolchains = ["//tools:toolchain_type"],
 )
