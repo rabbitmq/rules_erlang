@@ -33,6 +33,10 @@ load(
     "@rules_erlang//:source_tree.bzl",
     "source_tree",
 )
+load(
+    "@rules_erlang//:ez.bzl",
+    "ez",
+)
 
 APP_NAME = "shard_suite"
 
@@ -102,4 +106,9 @@ ct_suite(
 source_tree(
     name = "source_tree",
     deps = [":erlang_app"],
+)
+
+ez(
+    name = "shard_suite",
+    app = ":erlang_app",
 )
