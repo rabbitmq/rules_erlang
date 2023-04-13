@@ -7,6 +7,11 @@ load(
     "maybe_install_erlang",
 )
 
+_IGNORE_WARNINGS = """if [ $R -eq 2 ]; then
+    exit 0
+fi
+"""
+
 def _impl(ctx):
     logfile = ctx.actions.declare_file(ctx.outputs.plt.basename + ".log")
     home_dir = ctx.actions.declare_directory(ctx.label.name + "_home")
@@ -78,6 +83,8 @@ def _impl(ctx):
     args.add("--output_plt")
     args.add(ctx.outputs.plt)
 
+    args.add_all(ctx.attr.dialyzer_opts)
+
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     script = """set -euo pipefail
@@ -98,8 +105,10 @@ R=$?
 set +x
 set -e
 if [ ! $R -eq 0 ]; then
-    head {logfile}
+    echo "DIALYZER: There were warnings and/or errors"
 fi
+echo "DIALYZER: Output written to {logfile}"
+{ignore_warnings_clause}
 exit $R
 """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
@@ -107,6 +116,7 @@ exit $R
         home = home_dir.path,
         erl_libs_path = erl_libs_path,
         logfile = logfile.path,
+        ignore_warnings_clause = _IGNORE_WARNINGS if ctx.attr.ignore_warnings else "",
     )
 
     inputs = depset(
@@ -139,6 +149,8 @@ plt = rule(
         "for_target": attr.label(
             providers = [ErlangAppInfo],
         ),
+        "dialyzer_opts": attr.string_list(),
+        "ignore_warnings": attr.bool(),
     },
     outputs = {
         "plt": ".%{name}.plt",
