@@ -273,7 +273,7 @@ func (erlang *erlangLang) updateRules(c *config.Config, f *rule.File, rules []*r
 	}
 }
 
-func ensureLoad(name, symbol string, index int, f *rule.File) {
+func ensureLoad(name, symbol string, f *rule.File) {
 	needsLoad := true
 	for _, load := range f.Loads {
 		if load.Name() == name {
@@ -286,7 +286,7 @@ func ensureLoad(name, symbol string, index int, f *rule.File) {
 	if needsLoad {
 		l := rule.NewLoad(name)
 		l.Add(symbol)
-		l.Insert(f, index)
+		l.Insert(f, 0)
 	}
 }
 
@@ -496,11 +496,11 @@ func (erlang *erlangLang) GenerateRules(args language.GenerateArgs) language.Gen
 		}
 
 		erlang.updateRules(args.Config, beamFilesMacro, beamFilesRules, appBzlFile)
-		ensureLoad("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", 0, beamFilesMacro)
+		ensureLoad("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode", beamFilesMacro)
 		// NOTE: for some reason, LoadMacroFile ignores any "native.filegroup" rules
 		//       present in the macro. Therefore, we use our own "alias" of the
 		//       macro so that updates to the macro are stable
-		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", 1, beamFilesMacro)
+		ensureLoad("@rules_erlang//:filegroup.bzl", "filegroup", beamFilesMacro)
 		beamFilesMacro.Save(appBzlFile)
 
 		beamFilesCall := rule.NewRule(allBeamFilesKind, allBeamFilesKind)
