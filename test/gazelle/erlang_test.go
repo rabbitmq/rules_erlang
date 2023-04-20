@@ -272,8 +272,10 @@ var _ = Describe("an ErlangApp", func() {
 		var testDirRules []*rule.Rule
 
 		BeforeEach(func() {
+			appBuilder.Name = "test_app"
 			appBuilder.AddFile("src/foo.erl", false)
 			appBuilder.AddFile("src/bar.erl", false)
+			appBuilder.AddFile("src/bar.hrl", false)
 			appBuilder.AddFile("test/foo_SUITE.erl", false)
 			appBuilder.AddFile("test/foo_helper.erl", false)
 			appBuilder.AddFile("test/bar_tests.erl", false)
@@ -285,6 +287,7 @@ var _ = Describe("an ErlangApp", func() {
 						"foo_helper": []string{"make_test_thing"},
 						"fuzz":       []string{"create"},
 					},
+					IncludeLib: []string{"test_app/src/bar.hrl"},
 				},
 			})
 
@@ -296,18 +299,29 @@ var _ = Describe("an ErlangApp", func() {
 		})
 
 		Describe("TestDirBeamFilesRules", func() {
-			It("Adds runtime deps to the suite", func() {
+			It("generates rules for all the files", func() {
 				testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
 
 				Expect(testDirRules).To(HaveLen(3))
-
 				Expect(testDirRules[0].Name()).To(Equal("test_bar_tests_beam"))
+				Expect(testDirRules[1].Name()).To(Equal("foo_SUITE_beam_files"))
+				Expect(testDirRules[2].Name()).To(Equal("test_foo_helper_beam"))
+			})
+
+			It("tests can see their subject via -include_lib", func() {
+				testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
+
+				Expect(testDirRules[1].Name()).To(Equal("foo_SUITE_beam_files"))
+				Expect(testDirRules[1].AttrStrings("hdrs")).To(
+					ConsistOf("src/bar.hrl"))
+			})
+
+			It("Adds runtime deps to the suite", func() {
+				testDirRules = app.TestDirBeamFilesRules(args, fakeParser)
 
 				Expect(testDirRules[1].Name()).To(Equal("foo_SUITE_beam_files"))
 				Expect(testDirRules[1].AttrStrings("beam")).To(
 					ConsistOf("ebin/foo.beam"))
-
-				Expect(testDirRules[2].Name()).To(Equal("test_foo_helper_beam"))
 			})
 		})
 

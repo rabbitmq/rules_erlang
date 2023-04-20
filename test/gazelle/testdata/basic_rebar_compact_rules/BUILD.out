@@ -85,6 +85,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["test/seshat_counters_server_test.erl"],
     outs = ["test/seshat_counters_server_test.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 
@@ -93,6 +94,7 @@ erlang_bytecode(
     testonly = True,
     srcs = ["test/seshat_test.erl"],
     outs = ["test/seshat_test.beam"],
+    app_name = "seshat",
     erlc_opts = "//:test_erlc_opts",
 )
 

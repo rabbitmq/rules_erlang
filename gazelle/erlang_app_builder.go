@@ -211,11 +211,11 @@ func (builder *ErlangAppBuilder) Build(args language.GenerateArgs, erlParser Erl
 			var err error
 
 			testErlcOpts := mutable_set.Union(erlangConfig.TestErlcOpts, erlangApp.TestErlcOpts)
-			src.ErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts))
+			src.TestErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts))
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 			}
-			// src.Info = resolveTestFileDeps(args.Config, erlangConfig, moduleindex, &erlangApp, src.Path, src.ErlAttrs)
+			src.TestInfo = resolveTestFileDeps(args.Config, erlangConfig, moduleindex, &erlangApp, src)
 			Log(args.Config, "        Parsed (for test)", src.path(), "->", actualPath)
 		}
 	}
@@ -320,6 +320,109 @@ func resolveDeps(
 	}
 
 	for module := range erlAttrs.Call {
+		app := erlangConfig.ModuleMappings[module]
+		if app == "" {
+			app = FindModule(moduleindex, module)
+		}
+		if app == "" {
+			Log(config, "            ignoring call", module)
+		} else if app == erlangApp.Name {
+			Log(config, "            self call", module, "->", app)
+		} else if erlangConfig.IgnoredDeps.Contains(app) {
+			Log(config, "            ignoring call", module, "->", app, "(explicit ignore)")
+		} else {
+			Log(config, "            call", module, "->", app)
+			info.RuntimeDeps.Add(app)
+		}
+	}
+
+	return info
+}
+
+func resolveTestFileDeps(
+	config *config.Config,
+	erlangConfig *ErlangConfig,
+	moduleindex Moduleindex,
+	erlangApp *ErlangApp,
+	src *ErlangAppFileParsed,
+) ErlangAppFileInfo {
+	info := NewErlangAppFileInfo()
+
+	Log(config, "        Analyzing", src.path())
+
+	for _, include := range src.TestErlAttrs.Include {
+		path := erlangApp.testPathFor(src.path(), include)
+		if path != "" {
+			Log(config, "            include", path)
+			info.Hdrs.Add(path)
+		} else if !ignoredIncludeLoggingPattern.MatchString(include) {
+			Log(config, "            ignoring include",
+				include, "as it cannot be found")
+		}
+	}
+
+	for _, include := range src.TestErlAttrs.IncludeLib {
+		path := erlangApp.pathFor(src.path(), include)
+		if path != "" {
+			Log(config, "            include_lib", path)
+			info.Hdrs.Add(path)
+		} else if parts := strings.Split(include, string(os.PathSeparator)); len(parts) > 0 {
+			if parts[0] == erlangApp.Name {
+				path := erlangApp.pathFor(src.Path, strings.Join(parts[1:], string(os.PathSeparator)))
+				if path != "" {
+					Log(config, "            include_lib (self)", path)
+					info.Hdrs.Add(path)
+				} else {
+					Log(config, "            ignoring include_lib (self)",
+						include, "as it cannot be found")
+				}
+			} else if !erlangConfig.IgnoredDeps.Contains(parts[0]) {
+				Log(config, "            include_lib", include, "->", parts[0])
+				info.Deps.Add(parts[0])
+			} else {
+				Log(config, "            ignoring include_lib", include)
+			}
+		}
+	}
+
+	for _, module := range src.TestErlAttrs.modules() {
+		found := false
+		for _, other_src := range erlangApp.Srcs.Values(comparePaths) {
+			if moduleName(other_src.Path) == module {
+				Log(config, "            module", module, "->", beamFile(src.path()))
+				info.Beam.Add(beamFile(other_src.Path))
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		if dep, found := erlangConfig.ModuleMappings[module]; found {
+			Log(config, "            module", module, "->", dep)
+			info.Deps.Add(dep)
+			continue
+		}
+		if app := FindModule(moduleindex, module); app != "" && app != erlangApp.Name {
+			Log(config, "            module", module, "->", app)
+			info.Deps.Add(app)
+			continue
+		}
+	}
+
+	for module := range src.TestErlAttrs.Call {
+		found := false
+		for _, other_src := range erlangApp.TestSrcs.Values(comparePaths) {
+			if moduleName(other_src.Path) == module {
+				Log(config, "            module", module, "->", beamFile(src.Path))
+				info.RuntimeBeam.Add(strings.TrimSuffix(other_src.Path, ".erl") + ".beam")
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
 		app := erlangConfig.ModuleMappings[module]
 		if app == "" {
 			app = FindModule(moduleindex, module)

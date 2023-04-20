@@ -88,3 +88,21 @@ test_suite(
         "unit_suite",
     ],
 )
+
+# convenience for parsing an actual file somewhere
+# `bazel run //gazelle:erl_attrs_to_json -- /path/to/file.erl`
+genrule(
+    name = "erl_attrs_to_json",
+    outs = ["erl_attrs_to_json_wrapper.sh"],
+    cmd = """\
+cat << 'EOF' > $@
+jq -nc '{"path":"'$$1'","macros":{}}' \
+    | $(location @rules_erlang//gazelle:erl_attrs_to_json) \
+    | jq
+EOF
+""",
+    executable = True,
+    tools = [
+        "@rules_erlang//gazelle:erl_attrs_to_json",
+    ],
+)
