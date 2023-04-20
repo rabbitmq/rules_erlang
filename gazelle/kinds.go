@@ -43,6 +43,7 @@ func erlangAppKindInfo(l *erlangLang) rule.KindInfo {
 			"srcs":        true,
 			"extra_apps":  true,
 			"testonly":    true,
+			"deps":        true,
 		},
 		ResolveAttrs: map[string]bool{
 			"deps": true,
@@ -116,6 +117,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 				"beam":     true,
 				"outs":     true,
 				"dest":     true,
+				"deps":     true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,
@@ -143,6 +145,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 			SubstituteAttrs: map[string]bool{},
 			MergeableAttrs: map[string]bool{
 				"apps": true,
+				"deps": true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,
@@ -172,6 +175,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 			MergeableAttrs: map[string]bool{
 				"compiled_suites": true,
 				"target":          true,
+				"deps":            true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,
@@ -187,6 +191,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 			SubstituteAttrs: map[string]bool{},
 			MergeableAttrs: map[string]bool{
 				"compiled_suites": true,
+				"deps":            true,
 			},
 			ResolveAttrs: map[string]bool{
 				"deps": true,
