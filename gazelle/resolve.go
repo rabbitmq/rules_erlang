@@ -53,8 +53,7 @@ func (erlang *Resolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return make([]label.Label, 0)
 }
 
-func appsDirApps(c *config.Config, rel string) map[string]string {
-	result := make(map[string]string)
+func findAppsDirApp(c *config.Config, rel, app string) (bool, string) {
 	erlangConfig := erlangConfigForRel(c, rel)
 	for _, appsDir := range erlangConfig.AppsDirs.Values(strings.Compare) {
 		absDir := filepath.Join(c.RepoRoot, appsDir)
@@ -65,28 +64,27 @@ func appsDirApps(c *config.Config, rel string) map[string]string {
 			}
 			appsDirConfig := erlangConfigForRel(c, appsDir)
 			for _, d := range dirs {
-				if d.IsDir() {
+				if d.IsDir() && d.Name() == app {
 					dRel := filepath.Join(appsDir, d.Name())
 					var excluded bool
 					for _, pattern := range appsDirConfig.Excludes.Values(strings.Compare) {
 						if m, _ := doublestar.PathMatch(pattern, dRel); m {
+							Log(c, "        (ignoring", dRel, "as it matches the exclude", pattern, ")")
 							excluded = true
 							break
 						}
 					}
 					if !excluded {
-						result[d.Name()] = dRel
+						return true, dRel
 					}
 				}
 			}
 		}
 	}
-	return result
+	return false, ""
 }
 
 func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
-	apps := appsDirApps(c, rel)
-
 	originals := r.AttrStrings("deps")
 	if len(originals) > 0 {
 		resolved := make([]string, len(originals))
@@ -94,7 +92,7 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 			if strings.Contains(dep, ":") {
 				resolved[i] = dep
 			} else {
-				if pkg, ok := apps[dep]; ok {
+				if ok, pkg := findAppsDirApp(c, rel, dep); ok {
 					resolved[i] = fmt.Sprintf("//%s:erlang_app", pkg)
 				} else {
 					resolved[i] = fmt.Sprintf("@%s//:erlang_app", dep)
