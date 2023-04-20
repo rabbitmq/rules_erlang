@@ -1,4 +1,5 @@
 # gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
+# gazelle:erlang_resolve other_lib @foo_proj//apps/other_lib:erlang_app
 
 genrule(
     name = "generate_hrl",

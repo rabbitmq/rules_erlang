@@ -16,6 +16,7 @@ import (
 
 const (
 	excludeDirective                     = "exclude"
+	erlangResolveDirective               = "erlang_resolve"
 	moduleSourceDirective                = "erlang_module_source_lib"
 	excludeWhenRuleOfKindExistsDirective = "erlang_exclude_when_rule_of_kind_exists"
 	generateBeamFilesMacroDirective      = "erlang_generate_beam_files_macro"
@@ -96,6 +97,7 @@ type ErlangConfig struct {
 	NoTests                         bool
 	AppsDirs                        mutable_set.MutableSet[string]
 	Excludes                        mutable_set.MutableSet[string]
+	Resolves                        map[string]string
 	ModuleMappings                  map[string]string
 	ExcludeWhenRuleOfKindExists     mutable_set.MutableSet[string]
 	IgnoredDeps                     mutable_set.MutableSet[string]
@@ -122,6 +124,7 @@ func (erlang *Configurer) defaultErlangConfig(globalConfig *ErlangGlobalConfig) 
 		NoTests:                         erlang.noTests,
 		AppsDirs:                        mutable_set.New(erlang.appsDir),
 		Excludes:                        mutable_set.New[string](),
+		Resolves:                        make(map[string]string),
 		ModuleMappings:                  make(map[string]string),
 		ExcludeWhenRuleOfKindExists:     mutable_set.New[string](),
 		IgnoredDeps:                     defaultIgnoredDeps,
@@ -153,8 +156,9 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			GlobalConfig:                    parentConfig.GlobalConfig,
 			Rel:                             rel,
 			NoTests:                         parentConfig.NoTests,
-			Excludes:                        mutable_set.Copy(parentConfig.Excludes),
 			AppsDirs:                        mutable_set.Copy(parentConfig.AppsDirs),
+			Excludes:                        mutable_set.Copy(parentConfig.Excludes),
+			Resolves:                        CopyMap(parentConfig.Resolves),
 			ModuleMappings:                  CopyMap(parentConfig.ModuleMappings),
 			ExcludeWhenRuleOfKindExists:     mutable_set.Copy(parentConfig.ExcludeWhenRuleOfKindExists),
 			IgnoredDeps:                     mutable_set.Copy(parentConfig.IgnoredDeps),
@@ -217,6 +221,7 @@ func (erlang *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (erlang *Configurer) KnownDirectives() []string {
 	return []string{
 		excludeDirective,
+		erlangResolveDirective,
 		moduleSourceDirective,
 		excludeWhenRuleOfKindExistsDirective,
 		generateBeamFilesMacroDirective,
@@ -264,8 +269,19 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 					continue
 				}
 				erlangConfig.Excludes.Add(p)
+			case erlangResolveDirective:
+				parts := strings.SplitN(d.Value, " ", 2)
+				if len(parts) != 2 {
+					Log(c, "    the resolve pattern is not valid", d.Value)
+					continue
+				}
+				erlangConfig.Resolves[parts[0]] = parts[1]
 			case moduleSourceDirective:
-				parts := strings.Split(d.Value, ":")
+				parts := strings.SplitN(d.Value, ":", 2)
+				if len(parts) != 2 {
+					Log(c, "    the module mapping pattern is not valid", d.Value)
+					continue
+				}
 				behaviour := parts[0]
 				dep := parts[1]
 				erlangConfig.ModuleMappings[behaviour] = dep

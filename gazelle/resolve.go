@@ -92,7 +92,10 @@ func resolveErlangDeps(c *config.Config, rel string, r *rule.Rule) {
 			if strings.Contains(dep, ":") {
 				resolved[i] = dep
 			} else {
-				if ok, pkg := findAppsDirApp(c, rel, dep); ok {
+				erlangConfig := erlangConfigForRel(c, rel)
+				if r, ok := erlangConfig.Resolves[dep]; ok {
+					resolved[i] = r
+				} else if ok, pkg := findAppsDirApp(c, rel, dep); ok {
 					resolved[i] = fmt.Sprintf("//%s:erlang_app", pkg)
 				} else {
 					resolved[i] = fmt.Sprintf("@%s//:erlang_app", dep)
