@@ -13,6 +13,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rabbitmq/rules_erlang/gazelle/mutable_set"
 )
 
@@ -62,11 +63,18 @@ func appsDirApps(c *config.Config, rel string) map[string]string {
 			if err != nil {
 				log.Fatal(err)
 			}
+			appsDirConfig := erlangConfigForRel(c, appsDir)
 			for _, d := range dirs {
 				if d.IsDir() {
-					configs := c.Exts[languageName].(ErlangConfigs)
 					dRel := filepath.Join(appsDir, d.Name())
-					if _, ok := configs[dRel]; ok {
+					var excluded bool
+					for _, pattern := range appsDirConfig.Excludes.Values(strings.Compare) {
+						if m, _ := doublestar.PathMatch(pattern, dRel); m {
+							excluded = true
+							break
+						}
+					}
+					if !excluded {
 						result[d.Name()] = dRel
 					}
 				}
