@@ -5,6 +5,7 @@ load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
 load("@rules_erlang//:ct.bzl", "assert_suites2")
 
 # gazelle:erlang_erlc_opt -DBUILD_WITHOUT_FOO
+# gazelle:erlang_resolve other_lib @foo_proj//apps/other_lib:erlang_app
 
 genrule(
     name = "generate_hrl",
@@ -62,6 +63,7 @@ erlang_bytecode(
     hdrs = ["include/own_header_include_lib.hrl"],
     app_name = "own_header_include_lib",
     erlc_opts = "//:erlc_opts",
+    deps = ["@foo_proj//apps/other_lib:erlang_app"],
 )
 
 filegroup(
@@ -129,6 +131,7 @@ erlang_app(
     beam_files = [":beam_files"],
     license_files = [":license_files"],
     priv = [":priv"],
+    deps = ["@foo_proj//apps/other_lib:erlang_app"],
 )
 
 alias(
