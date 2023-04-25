@@ -1,1 +1,12 @@
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode")
+
 # gazelle:erlang_generate_fewer_bytecode_rules
+
+erlang_bytecode(
+    name = "other_beam",
+    srcs = glob(["src/**/*.erl"], exclude = ["src/seshat.erl"]),
+    hdrs = [":public_and_private_hdrs"],
+    app_name = "seshat",
+    dest = "ebin",
+    erlc_opts = "//:erlc_opts",
+)

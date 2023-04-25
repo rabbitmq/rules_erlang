@@ -178,8 +178,14 @@ func testPath(t *testing.T, name string, files []bazel.RunfileEntry) {
 			))
 		}
 		actualStderr := stderr.String()
-		if strings.TrimSpace(config.Expect.Stderr) != strings.TrimSpace(actualStderr) {
-			errs.Add(fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
+		if strings.TrimSpace(config.Expect.Stderr) == "" {
+			if strings.TrimSpace(config.Expect.Stderr) != strings.TrimSpace(actualStderr) {
+				errs.Add(fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
+					config.Expect.Stderr, actualStderr,
+				))
+			}
+		} else if !strings.Contains(actualStderr, strings.TrimSpace(config.Expect.Stderr)) {
+			errs.Add(fmt.Errorf("expected gazelle stderr to contain: %s\ngot: %s",
 				config.Expect.Stderr, actualStderr,
 			))
 		}

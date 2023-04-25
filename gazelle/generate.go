@@ -238,12 +238,61 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangAppBuilder) e
 	return nil
 }
 
+func hasGlobExpr(expr build.Expr) bool {
+	// fmt.Printf("%T %v\n", expr, expr)
+	if binaryExpr, ok := expr.(*build.BinaryExpr); ok {
+		if _, ok := binaryExpr.X.(*build.ListExpr); ok {
+			return hasGlobExpr(binaryExpr.Y)
+		}
+	} else if callExpr, ok := expr.(*build.CallExpr); ok {
+		if literalExpr, ok := callExpr.X.(*build.LiteralExpr); ok {
+			if literalExpr.Token == "glob" {
+				return true
+			} else if literalExpr.Token == "native.glob" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func deepShouldKeep(e build.Expr) bool {
+	if binaryExpr, ok := e.(*build.BinaryExpr); ok {
+		return deepShouldKeep(binaryExpr.X) || deepShouldKeep(binaryExpr.Y)
+	} else if callExpr, ok := e.(*build.CallExpr); ok {
+		shouldKeep := deepShouldKeep(callExpr.X)
+		for _, item := range callExpr.List {
+			shouldKeep = shouldKeep || deepShouldKeep(item)
+		}
+		return shouldKeep
+	} else {
+		return rule.ShouldKeep(e)
+	}
+}
+
 func mergeRule(c *config.Config, src, dst *rule.Rule, mergeable map[string]bool, filename string) {
 	if src.Kind() != dst.Kind() {
 		Log(c, "        Ignoring merge of rule", src.Name(), "and", dst.Name(), "as their types do not match")
 		return
 	}
+	var newSrcs build.Expr
+	srcHasGlob := hasGlobExpr(src.Attr("srcs"))
+	dstHasGlob := hasGlobExpr(dst.Attr("srcs"))
+	if srcHasGlob || dstHasGlob {
+		if !deepShouldKeep(dst.Attr("srcs")) {
+			newSrcs = src.Attr("srcs")
+			dst.DelAttr("srcs")
+			src.DelAttr("srcs")
+		} else {
+			Log(c, "        Skipping merge of", dst.Name(),
+				"srcs since a portion of the expression is marked with #keep")
+		}
+	}
 	rule.MergeRules(src, dst, mergeable, filename)
+	if srcHasGlob || dstHasGlob && newSrcs != nil {
+		dst.SetAttr("srcs", newSrcs)
+		src.SetAttr("srcs", newSrcs)
+	}
 }
 
 func (erlang *erlangLang) updateRules(c *config.Config, f *rule.File, rules []*rule.Rule, filename string) {
