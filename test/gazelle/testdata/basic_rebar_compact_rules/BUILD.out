@@ -52,12 +52,7 @@ plt(
 
 erlang_bytecode(
     name = "other_beam",
-    srcs = [
-        "src/seshat.erl",
-        "src/seshat_app.erl",
-        "src/seshat_counters_server.erl",
-        "src/seshat_sup.erl",
-    ],
+    srcs = glob(["src/**/*.erl"]),
     hdrs = [":public_and_private_hdrs"],
     app_name = "seshat",
     dest = "ebin",
@@ -67,12 +62,7 @@ erlang_bytecode(
 erlang_bytecode(
     name = "test_other_beam",
     testonly = True,
-    srcs = [
-        "src/seshat.erl",
-        "src/seshat_app.erl",
-        "src/seshat_counters_server.erl",
-        "src/seshat_sup.erl",
-    ],
+    srcs = glob(["src/**/*.erl"]),
     hdrs = [":public_and_private_hdrs"],
     app_name = "seshat",
     dest = "test",
@@ -110,28 +100,30 @@ erlang_bytecode(
 
 filegroup(
     name = "srcs",
-    srcs = [
-        "src/seshat.app.src",
-        "src/seshat.erl",
-        "src/seshat_app.erl",
-        "src/seshat_counters_server.erl",
-        "src/seshat_sup.erl",
-    ],
+    srcs = glob([
+        "src/**/*.app.src",
+        "src/**/*.erl",
+    ]),
 )
 
-filegroup(name = "private_hdrs")
+filegroup(
+    name = "private_hdrs",
+    srcs = glob(["src/**/*.hrl"]),
+)
 
-filegroup(name = "public_hdrs")
+filegroup(
+    name = "public_hdrs",
+    srcs = glob(["include/**/*.hrl"]),
+)
 
-filegroup(name = "priv")
+filegroup(
+    name = "priv",
+    srcs = glob(["priv/**/*"]),
+)
 
 filegroup(
     name = "license_files",
-    srcs = [
-        "LICENSE",
-        "LICENSE-APACHE2",
-        "LICENSE-MPL-RabbitMQ",
-    ],
+    srcs = glob(["LICENSE*"]),
 )
 
 filegroup(
