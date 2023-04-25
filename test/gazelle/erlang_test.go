@@ -407,10 +407,8 @@ var _ = Describe("an ErlangApp", func() {
 			Expect(rules[2].Name()).To(Equal("other_beam"))
 			Expect(rules[2].AttrString("app_name")).To(Equal(app.Name))
 			Expect(rules[2].AttrString("erlc_opts")).To(Equal("//:erlc_opts"))
-			Expect(strings.NewReplacer("\n", "", " ", "").Replace(
-				build.FormatString(rules[2].Attr("srcs"))),
-			).To(
-				Equal("glob([\"src/**/*.erl\"],exclude=[\"src/bar.erl\",\"src/baz.erl\",\"src/xform.erl\",],)"),
+			Expect(rules[2].AttrStrings("srcs")).To(
+				ConsistOf("src/foo.erl"),
 			)
 			Expect(rules[2].AttrString("dest")).To(Equal("ebin"))
 			Expect(rules[2].AttrStrings("beam")).To(

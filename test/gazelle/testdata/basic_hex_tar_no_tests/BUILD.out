@@ -50,7 +50,7 @@ erlang_bytecode(
         "src/aten_emitter.erl",
         "src/aten_sink.erl",
         "src/aten_sup.erl",
-    ] + glob(["src/**/*.erl"]),
+    ],
     hdrs = [":public_and_private_hdrs"],
     app_name = "aten",
     dest = "ebin",
@@ -65,6 +65,7 @@ filegroup(
 filegroup(
     name = "srcs",
     srcs = [
+        "src/aten.app.src",
         "src/aten.erl",
         "src/aten_app.erl",
         "src/aten_detect.erl",
@@ -72,26 +73,14 @@ filegroup(
         "src/aten_emitter.erl",
         "src/aten_sink.erl",
         "src/aten_sup.erl",
-    ] + glob([
-        "src/**/*.app.src",
-        "src/**/*.erl",
-    ]),
+    ],
 )
 
-filegroup(
-    name = "private_hdrs",
-    srcs = glob(["src/**/*.hrl"]),
-)
+filegroup(name = "private_hdrs")
 
-filegroup(
-    name = "public_hdrs",
-    srcs = glob(["include/**/*.hrl"]),
-)
+filegroup(name = "public_hdrs")
 
-filegroup(
-    name = "priv",
-    srcs = glob(["priv/**/*"]),
-)
+filegroup(name = "priv")
 
 filegroup(
     name = "license_files",
@@ -99,7 +88,7 @@ filegroup(
         "LICENSE",
         "LICENSE-APACHE2",
         "LICENSE-MPL-RabbitMQ",
-    ] + glob(["LICENSE*"]),
+    ],
 )
 
 filegroup(
