@@ -173,27 +173,11 @@ func importRebar(args language.GenerateArgs, erlangApp *ErlangAppBuilder) error 
 	}
 
 	if erlangApp.Srcs.IsEmpty() {
-		err := filepath.WalkDir(rebarAppPath,
-			func(path string, info os.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if info.IsDir() && slices.Contains(ignoredDirs, filepath.Base(path)) {
-					return filepath.SkipDir
-				}
-				rel, err := filepath.Rel(rebarAppPath, path)
-				if err != nil {
-					return err
-				}
-				erlangApp.AddFile(rel, false)
-				return nil
-			})
+		err := importBareErlang(args, erlangApp)
 		if err != nil {
-			log.Println(err)
-		}
-
-		for _, dep := range rebarConfig.Deps {
-			erlangApp.Deps.Add(dep["name"])
+			for _, dep := range rebarConfig.Deps {
+				erlangApp.Deps.Add(dep["name"])
+			}
 		}
 	}
 	return nil
@@ -231,7 +215,6 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangAppBuilder) e
 		log.Println(err)
 	}
 	for _, f := range args.GenFiles {
-		// Log(args.Config, "        ", f)
 		erlangApp.AddFile(f, true)
 	}
 
