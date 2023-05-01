@@ -31,7 +31,7 @@ halt().
         body = body,
     ))
 
-    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     inputs = depset(
         direct = ctx.files.src + ctx.files.beam,
@@ -67,12 +67,12 @@ escript_flat = rule(
         ),
         "beam": attr.label(
             allow_single_file = [".beam"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "out": attr.string(),
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
 )

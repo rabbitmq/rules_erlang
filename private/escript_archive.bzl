@@ -143,14 +143,14 @@ escript_archive = rule(
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "beam": attr.label_list(
             allow_files = [".beam"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "app": attr.label(providers = [ErlangAppInfo]),
         "flat": attr.bool(),
         "drop_hrl": attr.bool(),
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
+        # "_allowlist_function_transition": attr.label(
+        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        # ),
     },
     toolchains = ["//tools:toolchain_type"],
     executable = True,

@@ -16,6 +16,15 @@ ErlcOptsInfo = provider(
     },
 )
 
+def _transition_impl(settings, attr):
+    return {"//command_line_option:cpu": "beam"}
+
+transition = transition(
+    implementation = _transition_impl,
+    inputs = [],
+    outputs = ["//command_line_option:cpu"],
+)
+
 def _impl(ctx):
     if len(ctx.attr.outs) == 0:
         fail("attr outs must not be empty")
@@ -123,6 +132,7 @@ fi
 
 erlang_bytecode = rule(
     implementation = _impl,
+    cfg = transition,
     attrs = {
         "app_name": attr.string(),
         "hdrs": attr.label_list(
@@ -134,7 +144,7 @@ erlang_bytecode = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
-            cfg = beam_transition,
+            # cfg = beam_transition,
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
