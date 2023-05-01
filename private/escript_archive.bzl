@@ -13,6 +13,10 @@ load(
     "path_join",
 )
 load(
+    ":beam_transition.bzl",
+    "beam_transition",
+)
+load(
     ":util.bzl",
     "additional_file_dest_relative_path",
 )
@@ -137,10 +141,16 @@ escript_archive = rule(
         ),
         "srcs": attr.label_list(allow_files = [".erl"]),
         "hdrs": attr.label_list(allow_files = [".hrl"]),
-        "beam": attr.label_list(allow_files = [".beam"]),
+        "beam": attr.label_list(
+            allow_files = [".beam"],
+            cfg = beam_transition,
+        ),
         "app": attr.label(providers = [ErlangAppInfo]),
         "flat": attr.bool(),
         "drop_hrl": attr.bool(),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
     executable = True,

@@ -9,6 +9,10 @@ load(
     "windows_path",
 )
 load(
+    ":beam_transition.bzl",
+    "beam_transition",
+)
+load(
     ":util.bzl",
     "erl_libs_contents",
     "to_erlang_string_list",
@@ -222,6 +226,7 @@ eunit_test = rule(
         "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
+            cfg = beam_transition,
         ),
         "eunit_mods": attr.string_list(),
         "target": attr.label(providers = [ErlangAppInfo]),
@@ -234,6 +239,9 @@ eunit_test = rule(
         ),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
     test = True,

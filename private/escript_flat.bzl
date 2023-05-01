@@ -3,6 +3,10 @@ load(
     "erlang_dirs",
     "maybe_install_erlang",
 )
+load(
+    ":beam_transition.bzl",
+    "beam_transition",
+)
 
 def _impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.out if ctx.attr.out != "" else ctx.label.name)
@@ -63,8 +67,12 @@ escript_flat = rule(
         ),
         "beam": attr.label(
             allow_single_file = [".beam"],
+            cfg = beam_transition,
         ),
         "out": attr.string(),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
 )
