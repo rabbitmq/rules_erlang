@@ -1,6 +1,7 @@
 load(
-    "//private:erlang_bytecode.bzl",
+    "//:erlang_bytecode2.bzl",
     "erlang_bytecode",
+    "erlc_opts",
 )
 load(
     "//private:escript_flat.bzl",
@@ -13,10 +14,16 @@ load(
 
 exports_files(["src/shard_suite.erl"])
 
+erlc_opts(
+    name = "erlc_opts",
+    values = DEFAULT_ERLC_OPTS,
+)
+
 erlang_bytecode(
     name = "beam_files",
     srcs = glob(["src/*.erl"]),
-    erlc_opts = DEFAULT_ERLC_OPTS,
+    dest = "ebin",
+    erlc_opts = ":erlc_opts",
 )
 
 escript_flat(
