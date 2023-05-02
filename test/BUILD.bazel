@@ -5,6 +5,7 @@ platform(
     name = "erlang_internal_platform",
     constraint_values = [
         "@erlang_config//:erlang_internal",
+        "@erlang_config//:erlang_24",
     ],
     parents = ["@rbe//config:platform"],
 )
