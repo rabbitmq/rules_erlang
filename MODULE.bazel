@@ -57,6 +57,6 @@ use_repo(
 )
 
 register_toolchains(
-    "@erlang_config//external:toolchain",
-    "@erlang_config//external:toolchain2",
+    "@erlang_config//external:toolchain_major",
+    "@erlang_config//external:toolchain_major_minor",
 )
