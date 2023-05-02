@@ -21,15 +21,15 @@ def _impl(ctx):
         src = ""
 
     app_module = ctx.attr.app_module if ctx.attr.app_module != "" else ctx.attr.app_name + "_app"
-    if len([m for m in ctx.files.modules if m.basename == app_module + ".beam"]) != 1:
-        app_module = ""
-
-    modules = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
-
-    if len(ctx.attr.app_registered) > 0:
+    if len([m for m in ctx.files.modules if m.basename == app_module + ".beam"]) > 0:
         registered_list = "[" + ",".join([ctx.attr.app_name + "_sup"] + ctx.attr.app_registered) + "]"
     else:
+        app_module = ""
+        if len(ctx.attr.app_registered) > 0:
+            fail(app_module, "is not present, but app_registered was provided.")
         registered_list = ""
+
+    modules = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
 
     applications_list = ""
     if src == "" or len(ctx.attr.extra_apps) > 0 or len(ctx.attr.deps) > 0:
@@ -52,7 +52,7 @@ def _impl(ctx):
 if [ -n "{src}" ]; then
     cp {src} {out}
 else
-    echo "{{application,'{name}',[{{registered, ['{name}_sup']}},{{env, []}}]}}." > {out}
+    echo "{{application,'{name}',[{{registered, []}},{{env, []}}]}}." > {out}
 fi
 
 if [ -n '{description}' ]; then
