@@ -83,8 +83,8 @@ def _impl(repository_ctx):
     toolchains = []
     for name in erlang_installations.keys():
         toolchains.extend([
-            "@{}//{}:toolchain".format(repository_ctx.name, name),
-            "@{}//{}:toolchain2".format(repository_ctx.name, name),
+            "@{}//{}:toolchain_major".format(repository_ctx.name, name),
+            "@{}//{}:toolchain_major_minor".format(repository_ctx.name, name),
         ])
 
     repository_ctx.template(

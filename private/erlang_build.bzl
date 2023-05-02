@@ -92,7 +92,6 @@ fi
             build_log,
             release_dir_tar,
         ],
-        # tools = [zipper],
         command = """set -euo pipefail
 
 ABS_BUILD_DIR_TAR=$PWD/{build_path}
@@ -102,7 +101,6 @@ ABS_LOG=$PWD/{build_log}
 ABS_BUILD_DIR="$(mktemp -d)"
 ABS_DEST_DIR="$(mktemp -d)"
 
-# {zipper} x {archive_path} -d "$ABS_BUILD_DIR"
 tar --extract \\
     --transform 's/{strip_prefix}//' \\
     --file "{archive_path}" \\
@@ -127,7 +125,6 @@ tar --create \\
 """.format(
             archive_path = downloaded_archive.path,
             strip_prefix = strip_prefix,
-            zipper = "",  # zipper.path,
             build_path = build_dir_tar.path,
             release_path = release_dir_tar.path,
             install_path = install_path,
@@ -190,11 +187,6 @@ echo "$V" >> {version_file}
 erlang_build = rule(
     implementation = _erlang_build_impl,
     attrs = {
-        # "_zipper": attr.label(
-        #     default = Label("@bazel_tools//tools/zip:zipper"),
-        #     executable = True,
-        #     cfg = "exec",
-        # ),
         "version": attr.string(mandatory = True),
         "url": attr.string(mandatory = True),
         "strip_prefix": attr.string(),
