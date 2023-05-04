@@ -10,6 +10,11 @@ load(
 
 _DEFAULT_ERL_LIBS_DIR = "deps"
 
+def _app_name_from_ez(ez_file):
+    base = ez_file.basename.removesuffix(".ez")
+    (name, _, _version) = base.partition("-")
+    return name
+
 def additional_file_dest_relative_path(dep_label, f):
     if dep_label.workspace_root != "":
         workspace_root = dep_label.workspace_root.replace("external/", "../")
@@ -27,6 +32,7 @@ def erl_libs_contents2(
         deps = [],
         ez_deps = [],
         headers = False,
+        expand_ezs = False,
         dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
     if headers and target_info != None:
@@ -65,8 +71,20 @@ def erl_libs_contents2(
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
     for ez in ez_deps:
-        dest = ctx.actions.declare_file(path_join(dir, ez.basename))
-        ctx.actions.symlink(output = dest, target_file = ez)
+        if expand_ezs:
+            app_name = _app_name_from_ez(ez)
+            dest = ctx.actions.declare_directory(path_join(dir, app_name))
+            ctx.actions.run_shell(
+                inputs = [ez],
+                outputs = [dest],
+                command = "unzip -q {} -d {}".format(
+                    ez.path,
+                    dest.path,
+                ),
+            )
+        else:
+            dest = ctx.actions.declare_file(path_join(dir, ez.basename))
+            ctx.actions.symlink(output = dest, target_file = ez)
         erl_libs_files.append(dest)
     return erl_libs_files
 

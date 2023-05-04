@@ -45,6 +45,8 @@ def _impl(ctx):
         ctx,
         deps = deps,
         dir = target_files_dir,
+        expand_ezs = True,
+        ez_deps = ctx.files.ez_deps,
     )
 
     target_files_path = ""
@@ -145,6 +147,9 @@ plt = rule(
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
+        ),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
         ),
         "for_target": attr.label(
             providers = [ErlangAppInfo],
