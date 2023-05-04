@@ -4,7 +4,7 @@ load(
     "path_join",
     "windows_path",
 )
-load(":util.bzl", "erl_libs_contents2")
+load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -14,7 +14,7 @@ load(
 def _impl(ctx):
     erl_libs_dir = ctx.attr.name + "_deps"
 
-    erl_libs_files = erl_libs_contents2(
+    erl_libs_files = erl_libs_contents(
         ctx,
         deps = flat_deps(ctx.attr.deps),
         dir = erl_libs_dir,

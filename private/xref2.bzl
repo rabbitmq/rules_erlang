@@ -10,7 +10,7 @@ load(
 )
 load(
     ":util.bzl",
-    "erl_libs_contents2",
+    "erl_libs_contents",
     "to_erlang_atom_list",
     "to_erlang_string_list",
 )
@@ -33,7 +33,7 @@ def _expand_xref_erl(ctx, method = None, arg = None):
     target_info = ctx.attr.target[ErlangAppInfo]
 
     erl_libs_dir = ctx.label.name + "_deps"
-    erl_libs_files = erl_libs_contents2(
+    erl_libs_files = erl_libs_contents(
         ctx,
         deps = flat_deps(target_info.deps) + ctx.attr.additional_libs + ctx.attr.extra_apps,
         dir = erl_libs_dir,

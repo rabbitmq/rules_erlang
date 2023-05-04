@@ -7,7 +7,7 @@ load(
     "ErlangAppInfo",
     "flat_deps",
 )
-load(":util.bzl", "erl_libs_contents2")
+load(":util.bzl", "erl_libs_contents")
 load(
     ":eunit.bzl",
     "package_relative_dirnames",
@@ -61,7 +61,7 @@ def sname(ctx):
 def _impl(ctx):
     erl_libs_dir = ctx.label.name + "_deps"
 
-    erl_libs_files = erl_libs_contents2(
+    erl_libs_files = erl_libs_contents(
         ctx,
         deps = flat_deps(ctx.attr.deps),
         dir = erl_libs_dir,

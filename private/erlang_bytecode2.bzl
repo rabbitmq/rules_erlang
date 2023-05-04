@@ -1,7 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
 load(":erlang_bytecode.bzl", "unique_dirnames")
-load(":util.bzl", "erl_libs_contents2")
+load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -40,8 +40,8 @@ def _impl(ctx):
 
     # this actually just needs to be headers and behaviours, in the context of compiling,
     # though it must include the transitive headers and behaviors. Therefore this file
-    # could have it's own optimized version of `erl_libs_contents2`
-    erl_libs_files = erl_libs_contents2(
+    # could have it's own optimized version of `erl_libs_contents`
+    erl_libs_files = erl_libs_contents(
         ctx,
         target_info = target,
         headers = True,

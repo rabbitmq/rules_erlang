@@ -25,7 +25,7 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def erl_libs_contents2(
+def erl_libs_contents(
         ctx,
         target_info = None,
         deps = [],
