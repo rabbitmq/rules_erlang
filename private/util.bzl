@@ -1,7 +1,6 @@
 load(
     "//:erlang_app_info.bzl",
     "ErlangAppInfo",
-    "flat_deps",
 )
 load(
     "//:util.bzl",
@@ -87,18 +86,6 @@ def erl_libs_contents2(
             ctx.actions.symlink(output = dest, target_file = ez)
         erl_libs_files.append(dest)
     return erl_libs_files
-
-def erl_libs_contents(ctx, transitive = True, **kwargs):
-    if transitive:
-        deps = flat_deps(ctx.attr.deps)
-    else:
-        deps = ctx.attr.deps
-
-    return erl_libs_contents2(
-        ctx,
-        deps = deps,
-        **kwargs
-    )
 
 def to_erlang_string_list(strings):
     return "[" + ",".join(["\"{}\"".format(s) for s in strings]) + "]"

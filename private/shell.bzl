@@ -1,10 +1,10 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(
     "//:util.bzl",
     "path_join",
     "windows_path",
 )
-load(":util.bzl", "erl_libs_contents")
+load(":util.bzl", "erl_libs_contents2")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -14,7 +14,11 @@ load(
 def _impl(ctx):
     erl_libs_dir = ctx.attr.name + "_deps"
 
-    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
+    erl_libs_files = erl_libs_contents2(
+        ctx,
+        deps = flat_deps(ctx.attr.deps),
+        dir = erl_libs_dir,
+    )
 
     package = ctx.label.package
 

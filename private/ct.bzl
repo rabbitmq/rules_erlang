@@ -2,8 +2,12 @@ load(
     "@bazel_skylib//rules:common_settings.bzl",
     "BuildSettingInfo",
 )
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
-load(":util.bzl", "erl_libs_contents")
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
+load(":util.bzl", "erl_libs_contents2")
 load(
     ":eunit.bzl",
     "package_relative_dirnames",
@@ -57,7 +61,11 @@ def sname(ctx):
 def _impl(ctx):
     erl_libs_dir = ctx.label.name + "_deps"
 
-    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
+    erl_libs_files = erl_libs_contents2(
+        ctx,
+        deps = flat_deps(ctx.attr.deps),
+        dir = erl_libs_dir,
+    )
 
     package = ctx.label.package
 

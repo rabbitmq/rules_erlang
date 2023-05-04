@@ -1,6 +1,6 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
-load(":util.bzl", "erl_libs_contents")
+load(":util.bzl", "erl_libs_contents2")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -37,18 +37,19 @@ def _impl(ctx):
         ctx.label.package,
     )
 
-    erl_libs_files = erl_libs_contents(
+    erl_libs_files = erl_libs_contents2(
         ctx,
         target_info = target,
-        transitive = False,
         headers = True,
         dir = erl_libs_dir,
+        deps = ctx.attr.deps,
+        ez_deps = ctx.attr.ez_deps,
     )
 
     # it would be nice to properly compute the path, but ctx.bin_dir.path
     # does not appear to be the whole prefix
     if len(erl_libs_files) > 0:
-        (output_dir, _, path) = erl_libs_files[0].path.partition(erl_libs_dir)
+        (output_dir, _, _path) = erl_libs_files[0].path.partition(erl_libs_dir)
         if output_dir == "":
             fail("Could not compute the ERL_LIBS relative path from {}".format(
                 erl_libs_files[0].path,
