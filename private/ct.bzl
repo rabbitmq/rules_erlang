@@ -64,6 +64,7 @@ def _impl(ctx):
     erl_libs_files = erl_libs_contents(
         ctx,
         deps = flat_deps(ctx.attr.deps),
+        ez_deps = ctx.files.ez_deps,
         dir = erl_libs_dir,
     )
 
@@ -294,6 +295,9 @@ ct_test = rule(
         "ct_run_extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "tools": attr.label_list(cfg = "target"),
         "test_env": attr.string_dict(),
         "sharding_method": attr.string(

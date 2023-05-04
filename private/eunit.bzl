@@ -64,6 +64,7 @@ def _impl(ctx):
     erl_libs_files = erl_libs_contents(
         ctx,
         deps = deps,
+        ez_deps = ctx.files.ez_deps,
         dir = erl_libs_dir,
     )
 
@@ -185,6 +186,9 @@ eunit_test = rule(
         "eunit_opts": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
     },
