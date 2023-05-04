@@ -1,5 +1,5 @@
 load("//:app_file.bzl", "app_file")
-load("//:erlang_bytecode2.bzl", "erlang_bytecode", "erlc_opts")
+load("//:erlang_bytecode.bzl", "erlang_bytecode")
 load("//:erlang_app_info.bzl", "erlang_app_info")
 load("//:escript.bzl", "escript_archive")
 load(
@@ -7,16 +7,11 @@ load(
     "DEFAULT_ERLC_OPTS",
 )
 
-erlc_opts(
-    name = "erlc_opts",
-    values = DEFAULT_ERLC_OPTS,
-)
-
 erlang_bytecode(
     name = "getopt_beam_files",
     srcs = ["@getopt_src//:srcs"],
     dest = "ebin",
-    erlc_opts = ":erlc_opts",
+    erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 app_file(
@@ -37,7 +32,7 @@ erlang_bytecode(
     name = "xref_runner_beam_files",
     srcs = ["@xref_runner_src//:srcs"],
     dest = "ebin",
-    erlc_opts = ":erlc_opts",
+    erlc_opts = DEFAULT_ERLC_OPTS,
 )
 
 app_file(
