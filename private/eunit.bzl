@@ -4,7 +4,7 @@ load(
     "path_join",
     "windows_path",
 )
-load(":util.bzl", "erl_libs_contents2")
+load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -61,9 +61,10 @@ def _impl(ctx):
 
     erl_libs_dir = ctx.label.name + "_deps"
 
-    erl_libs_files = erl_libs_contents2(
+    erl_libs_files = erl_libs_contents(
         ctx,
         deps = deps,
+        ez_deps = ctx.files.ez_deps,
         dir = erl_libs_dir,
     )
 
@@ -185,6 +186,9 @@ eunit_test = rule(
         "eunit_opts": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "tools": attr.label_list(),
         "test_env": attr.string_dict(),
     },

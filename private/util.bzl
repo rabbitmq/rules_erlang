@@ -1,7 +1,6 @@
 load(
     "//:erlang_app_info.bzl",
     "ErlangAppInfo",
-    "flat_deps",
 )
 load(
     "//:util.bzl",
@@ -9,6 +8,11 @@ load(
 )
 
 _DEFAULT_ERL_LIBS_DIR = "deps"
+
+def _app_name_from_ez(ez_file):
+    base = ez_file.basename.removesuffix(".ez")
+    (name, _, _version) = base.partition("-")
+    return name
 
 def additional_file_dest_relative_path(dep_label, f):
     if dep_label.workspace_root != "":
@@ -21,11 +25,13 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def erl_libs_contents2(
+def erl_libs_contents(
         ctx,
         target_info = None,
         deps = [],
+        ez_deps = [],
         headers = False,
+        expand_ezs = False,
         dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
     if headers and target_info != None:
@@ -63,19 +69,23 @@ def erl_libs_contents2(
             dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
+    for ez in ez_deps:
+        if expand_ezs:
+            app_name = _app_name_from_ez(ez)
+            dest = ctx.actions.declare_directory(path_join(dir, app_name))
+            ctx.actions.run_shell(
+                inputs = [ez],
+                outputs = [dest],
+                command = "unzip -q {} -d {}".format(
+                    ez.path,
+                    dest.path,
+                ),
+            )
+        else:
+            dest = ctx.actions.declare_file(path_join(dir, ez.basename))
+            ctx.actions.symlink(output = dest, target_file = ez)
+        erl_libs_files.append(dest)
     return erl_libs_files
-
-def erl_libs_contents(ctx, transitive = True, **kwargs):
-    if transitive:
-        deps = flat_deps(ctx.attr.deps)
-    else:
-        deps = ctx.attr.deps
-
-    return erl_libs_contents2(
-        ctx,
-        deps = deps,
-        **kwargs
-    )
 
 def to_erlang_string_list(strings):
     return "[" + ",".join(["\"{}\"".format(s) for s in strings]) + "]"

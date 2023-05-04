@@ -2,7 +2,11 @@ load(
     "@bazel_skylib//rules:common_settings.bzl",
     "BuildSettingInfo",
 )
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
 load(":util.bzl", "erl_libs_contents")
 load(
     ":eunit.bzl",
@@ -57,7 +61,12 @@ def sname(ctx):
 def _impl(ctx):
     erl_libs_dir = ctx.label.name + "_deps"
 
-    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
+    erl_libs_files = erl_libs_contents(
+        ctx,
+        deps = flat_deps(ctx.attr.deps),
+        ez_deps = ctx.files.ez_deps,
+        dir = erl_libs_dir,
+    )
 
     package = ctx.label.package
 
@@ -286,6 +295,9 @@ ct_test = rule(
         "ct_run_extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "tools": attr.label_list(cfg = "target"),
         "test_env": attr.string_dict(),
         "sharding_method": attr.string(

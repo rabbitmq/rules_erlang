@@ -24,6 +24,10 @@ def _impl(ctx):
             dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             files.append(dest)
+    for ez in ctx.files.ez_deps:
+        dest = ctx.actions.declare_file(path_join(ctx.label.name, ez.basename))
+        ctx.actions.symlink(output = dest, target_file = ez)
+        files.append(dest)
 
     return [DefaultInfo(
         files = depset(files),
@@ -35,6 +39,9 @@ source_tree = rule(
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
             mandatory = True,
+        ),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
         ),
     },
 )

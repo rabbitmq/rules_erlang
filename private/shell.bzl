@@ -1,4 +1,4 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(
     "//:util.bzl",
     "path_join",
@@ -14,7 +14,12 @@ load(
 def _impl(ctx):
     erl_libs_dir = ctx.attr.name + "_deps"
 
-    erl_libs_files = erl_libs_contents(ctx, dir = erl_libs_dir)
+    erl_libs_files = erl_libs_contents(
+        ctx,
+        deps = flat_deps(ctx.attr.deps),
+        ez_deps = ctx.files.ez_deps,
+        dir = erl_libs_dir,
+    )
 
     package = ctx.label.package
 
@@ -72,6 +77,9 @@ shell = rule(
     attrs = {
         "is_windows": attr.bool(mandatory = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "extra_erl_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
     },

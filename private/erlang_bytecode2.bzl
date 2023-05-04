@@ -1,4 +1,4 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load(":util.bzl", "erl_libs_contents")
@@ -44,9 +44,10 @@ def _impl(ctx):
     erl_libs_files = erl_libs_contents(
         ctx,
         target_info = target,
-        transitive = True,
         headers = True,
         dir = erl_libs_dir,
+        deps = flat_deps(ctx.attr.deps),
+        ez_deps = ctx.attr.ez_deps,
     )
 
     erl_libs_path = ""
@@ -135,6 +136,9 @@ erlang_bytecode = rule(
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
+        ),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
         ),
         "erlc_opts": attr.label(
             providers = [ErlcOptsInfo],
