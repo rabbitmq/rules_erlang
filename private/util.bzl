@@ -25,6 +25,7 @@ def erl_libs_contents2(
         ctx,
         target_info = None,
         deps = [],
+        ez_deps = [],
         headers = False,
         dir = _DEFAULT_ERL_LIBS_DIR):
     erl_libs_files = []
@@ -63,6 +64,10 @@ def erl_libs_contents2(
             dest = ctx.actions.declare_file(path_join(dep_path, rp))
             ctx.actions.symlink(output = dest, target_file = src)
             erl_libs_files.append(dest)
+    for ez in ez_deps:
+        dest = ctx.actions.declare_file(path_join(dir, ez.basename))
+        ctx.actions.symlink(output = dest, target_file = ez)
+        erl_libs_files.append(dest)
     return erl_libs_files
 
 def erl_libs_contents(ctx, transitive = True, **kwargs):

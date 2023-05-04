@@ -168,6 +168,9 @@ erlang_bytecode = rule(
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
         ),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
+        ),
         "erlc_opts": attr.string_list(),
         "dest": attr.string(
             default = "ebin",

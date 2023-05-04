@@ -47,6 +47,7 @@ def _impl(ctx):
         transitive = True,
         headers = True,
         dir = erl_libs_dir,
+        ez_deps = ctx.attr.ez_deps,
     )
 
     erl_libs_path = ""
@@ -135,6 +136,9 @@ erlang_bytecode = rule(
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
+        ),
+        "ez_deps": attr.label_list(
+            allow_files = [".ez"],
         ),
         "erlc_opts": attr.label(
             providers = [ErlcOptsInfo],
