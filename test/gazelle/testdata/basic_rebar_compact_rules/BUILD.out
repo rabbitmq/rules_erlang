@@ -7,6 +7,8 @@ load("@rules_erlang//:ct.bzl", "assert_suites2")
 
 # gazelle:erlang_generate_fewer_bytecode_rules
 
+# gazelle:erlang_app_path_ignore test/foo.*
+
 erlc_opts(
     name = "erlc_opts",
     values = select({

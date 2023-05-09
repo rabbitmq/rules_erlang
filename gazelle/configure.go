@@ -28,6 +28,7 @@ const (
 	erlangAppDepDirective                = "erlang_app_dep"
 	erlangAppDepIgnoreDirective          = "erlang_app_dep_ignore"
 	erlangAppDepBuildOnlyDirective       = "erlang_app_dep_exclude"
+	erlangAppPathIgnoreDirective         = "erlang_app_path_ignore"
 	erlangAppExtraAppDirective           = "erlang_app_extra_app"
 	erlangNoTestsDirective               = "erlang_no_tests"
 	erlangErlcOptDirective               = "erlang_erlc_opt"
@@ -102,6 +103,7 @@ type ErlangConfig struct {
 	ExcludeWhenRuleOfKindExists     mutable_set.MutableSet[string]
 	IgnoredDeps                     mutable_set.MutableSet[string]
 	ExcludedDeps                    mutable_set.MutableSet[string]
+	IgnoredPaths                    mutable_set.MutableSet[string]
 	GenerateBeamFilesMacro          bool
 	GenerateFewerBytecodeRules      bool
 	GenerateTestBeamUnconditionally bool
@@ -129,6 +131,7 @@ func (erlang *Configurer) defaultErlangConfig(globalConfig *ErlangGlobalConfig) 
 		ExcludeWhenRuleOfKindExists:     mutable_set.New[string](),
 		IgnoredDeps:                     defaultIgnoredDeps,
 		ExcludedDeps:                    mutable_set.New[string](),
+		IgnoredPaths:                    mutable_set.New[string](),
 		GenerateBeamFilesMacro:          false,
 		GenerateFewerBytecodeRules:      erlang.compact,
 		GenerateTestBeamUnconditionally: false,
@@ -163,6 +166,7 @@ func erlangConfigForRel(c *config.Config, rel string) *ErlangConfig {
 			ExcludeWhenRuleOfKindExists:     mutable_set.Copy(parentConfig.ExcludeWhenRuleOfKindExists),
 			IgnoredDeps:                     mutable_set.Copy(parentConfig.IgnoredDeps),
 			ExcludedDeps:                    mutable_set.Copy(parentConfig.ExcludedDeps),
+			IgnoredPaths:                    mutable_set.Copy(parentConfig.IgnoredPaths),
 			GenerateBeamFilesMacro:          parentConfig.GenerateBeamFilesMacro,
 			GenerateFewerBytecodeRules:      parentConfig.GenerateFewerBytecodeRules,
 			GenerateTestBeamUnconditionally: parentConfig.GenerateTestBeamUnconditionally,
@@ -233,6 +237,7 @@ func (erlang *Configurer) KnownDirectives() []string {
 		erlangAppDepDirective,
 		erlangAppDepIgnoreDirective,
 		erlangAppDepBuildOnlyDirective,
+		erlangAppPathIgnoreDirective,
 		erlangAppExtraAppDirective,
 		erlangNoTestsDirective,
 		erlangErlcOptDirective,
@@ -309,6 +314,13 @@ func (erlang *Configurer) Configure(c *config.Config, rel string, f *rule.File) 
 				erlangConfig.IgnoredDeps.Add(d.Value)
 			case erlangAppDepBuildOnlyDirective:
 				erlangConfig.ExcludedDeps.Add(d.Value)
+			case erlangAppPathIgnoreDirective:
+				p := path.Join(rel, d.Value)
+				if err := checkPathMatchPattern(p); err != nil {
+					Log(c, "    the exclusion pattern is not valid", p, ":", err)
+					continue
+				}
+				erlangConfig.IgnoredPaths.Add(p)
 			case erlangAppExtraAppDirective:
 				erlangConfig.ExtraApps.Add(d.Value)
 			case erlangNoTestsDirective:

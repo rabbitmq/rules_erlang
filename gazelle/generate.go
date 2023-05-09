@@ -12,6 +12,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rabbitmq/rules_erlang/gazelle/fetch"
 	"github.com/rabbitmq/rules_erlang/gazelle/slices"
 )
@@ -192,6 +193,22 @@ func importBareErlang(args language.GenerateArgs, erlangApp *ErlangAppBuilder) e
 			if err != nil {
 				return err
 			}
+
+			rootRel, err := filepath.Rel(args.Config.RepoRoot, path)
+			if err != nil {
+				return err
+			}
+			erlangConfig := erlangConfigForRel(args.Config, rootRel)
+			for _, pattern := range erlangConfig.IgnoredPaths.Values(strings.Compare) {
+				if m, _ := doublestar.PathMatch(pattern, rootRel); m {
+					if info.IsDir() {
+						return filepath.SkipDir
+					} else {
+						return nil
+					}
+				}
+			}
+
 			if info.IsDir() {
 				if slices.Contains(ignoredDirs, filepath.Base(path)) {
 					return filepath.SkipDir

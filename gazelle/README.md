@@ -149,7 +149,11 @@ Then run `bazel run //:gazelle`
 
   Example: `# gazelle:erlang_app_dep_exclude rabbitmq_cli`
 
-  Purpose: Excludes a detected dependency from the generated `.app` file for an app, useful for optional dependencies.
+  Purpose: Excludes a detected dependency from the generated `.app` file for an app, useful for optional dependencies
+
+- `erlang_app_path_ignore`
+
+  Purpose: Exclude files matching the pattern from an `erlang_app` rule and its sources
 
 - `erlang_app_extra_app`
 
