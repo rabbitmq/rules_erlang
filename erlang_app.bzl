@@ -120,6 +120,7 @@ def _erlang_app(
         )
 
         beam_files = [":beam_files" if not test else ":test_beam_files"]
+        beam_files += native.glob(["ebin/{}.appup".format(app_name)])
 
     if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
         if not test:
