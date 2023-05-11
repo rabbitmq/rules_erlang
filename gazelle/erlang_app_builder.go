@@ -95,11 +95,6 @@ func (builder *ErlangAppBuilder) AddFile(f string, genfile bool) {
 				Path:      f,
 				IsGenFile: genfile,
 			})
-		} else if strings.HasSuffix(f, ".appup") {
-			builder.Ebin.Add(&ErlangAppFile{
-				Path:      f,
-				IsGenFile: genfile,
-			})
 		}
 	} else if strings.HasPrefix(f, "src/") {
 		if strings.HasSuffix(f, ".erl") {

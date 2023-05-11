@@ -1,3 +1,4 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load(":app_file.bzl", "app_file")
 load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
@@ -120,7 +121,6 @@ def _erlang_app(
         )
 
         beam_files = [":beam_files" if not test else ":test_beam_files"]
-        beam_files += native.glob(["ebin/{}.appup".format(app_name)])
 
     if len(native.glob(["ebin/{}.app".format(app_name)])) == 0:
         if not test:
@@ -144,6 +144,21 @@ def _erlang_app(
         app = ":app_file"
     else:
         app = "ebin/{}.app".format(app_name)
+
+    if len(native.glob(["ebin/{}.appup".format(app_name)])) > 0:
+        appup = "ebin/{}.appup".format(app_name)
+    elif len(native.glob(["src/{}.appup".format(app_name)])) > 0:
+        if not test:
+            copy_file(
+                name = "appup",
+                src = "src/{}.appup".format(app_name),
+                out = "ebin/{}.appup".format(app_name)
+            )
+        appup = ":appup"
+    else:
+        appup = None
+
+    beam_files += [appup] if appup != None else []
 
     if priv == None:
         priv = native.glob(
