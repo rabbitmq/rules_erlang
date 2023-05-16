@@ -1,8 +1,8 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
-load(":beam_transition.bzl", "beam_transition")
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load(":util.bzl", "erl_libs_contents")
+load("//transitions:beam_transition.bzl", "beam_transition")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",

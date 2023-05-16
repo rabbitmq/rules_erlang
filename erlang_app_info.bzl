@@ -1,4 +1,4 @@
-load("//private:beam_transition.bzl", "beam_transition")
+load("//transitions:beam_transition.bzl", "beam_transition")
 
 ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",

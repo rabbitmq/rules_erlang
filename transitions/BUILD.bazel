@@ -1,0 +1,7 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "enable",
+    build_setting_default = True,
+    visibility = ["//visibility:public"],
+)

@@ -4,7 +4,7 @@ load(
     "maybe_install_erlang",
 )
 load(
-    ":beam_transition.bzl",
+    "//transitions:beam_transition.bzl",
     "beam_transition",
 )
 
