@@ -96,7 +96,6 @@ func (builder *ErlangAppBuilder) AddFile(f string, genfile bool) {
 				IsGenFile: genfile,
 			})
 		}
-		// TODO: handle .appup files
 	} else if strings.HasPrefix(f, "src/") {
 		if strings.HasSuffix(f, ".erl") {
 			builder.Srcs.Add(&ErlangAppFile{
