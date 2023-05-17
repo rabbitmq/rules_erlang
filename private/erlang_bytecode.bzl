@@ -1,6 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(":util.bzl", "erl_libs_contents")
+load("//transitions:beam_transition.bzl", "beam_transition")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -146,14 +147,11 @@ fi
 
 erlang_bytecode = rule(
     implementation = _impl,
+    cfg = beam_transition,
     attrs = {
         "compile_first": attr.label(
             executable = True,
-            # I would have thought this should be "exec", since this is run
-            # in the execution environment. However, it's an ecript needing
-            # beam, and "target" allows it to match the toolchains for this
-            # rule.
-            cfg = "target",
+            cfg = "exec",
         ),
         "app_name": attr.string(),
         "hdrs": attr.label_list(
@@ -165,6 +163,7 @@ erlang_bytecode = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
+            cfg = beam_transition,
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
@@ -175,6 +174,9 @@ erlang_bytecode = rule(
         "erlc_opts": attr.string_list(),
         "dest": attr.string(
             default = "ebin",
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     toolchains = ["//tools:toolchain_type"],

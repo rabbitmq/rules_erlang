@@ -66,15 +66,15 @@ erlang_app_info = rule(
         "app": attr.label(allow_files = [".app"]),
         "beam": attr.label_list(
             allow_files = [".beam", ".appup"],
-            # cfg = beam_transition,
+            cfg = beam_transition,
         ),
         "priv": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
-        # "_allowlist_function_transition": attr.label(
-        #     default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        # ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     provides = [ErlangAppInfo],
 )

@@ -135,7 +135,7 @@ erlang_bytecode = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
-            # cfg = beam_transition,
+            cfg = beam_transition,
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
