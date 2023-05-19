@@ -124,9 +124,11 @@ jobs:
       working-directory: test
       shell: bash
       run: |
-        LOGS_TAR=$PWD/logs.tar
-        cd bazel-testlogs
-        tar -cf $LOGS_TAR *
+        TESTLOGS_DIR="$(bazel info bazel-testlogs)"
+        if [[ -d $TESTLOGS_DIR ]]; then
+          cd $TESTLOGS_DIR
+          tar -cf $LOGS_TAR *
+        fi
     - name: CAPTURE TEST LOGS
       if: always()
       uses: actions/upload-artifact@v3
@@ -200,9 +202,11 @@ jobs:
       working-directory: test
       shell: bash
       run: |
-        LOGS_TAR=$PWD/logs.tar
-        cd bazel-testlogs
-        tar -cf $LOGS_TAR *
+        TESTLOGS_DIR="$(bazel info bazel-testlogs)"
+        if [[ -d $TESTLOGS_DIR ]]; then
+          cd $TESTLOGS_DIR
+          tar -cf $LOGS_TAR *
+        fi
     - name: CAPTURE TEST LOGS
       if: always()
       uses: actions/upload-artifact@v3
