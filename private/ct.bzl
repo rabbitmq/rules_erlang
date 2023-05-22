@@ -27,7 +27,7 @@ load(
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
 
-def _unique_short_dirnames(files):
+def unique_short_dirnames(files):
     dirs = []
     for f in files:
         dirname = short_dirname(f)
@@ -38,7 +38,7 @@ def _unique_short_dirnames(files):
 def code_paths(dep):
     return [
         path_join(dep.label.workspace_root, d) if dep.label.workspace_root != "" else d
-        for d in _unique_short_dirnames(dep[ErlangAppInfo].beam)
+        for d in unique_short_dirnames(dep[ErlangAppInfo].beam)
     ]
 
 # Calling ctx.expand_location with short_paths=True gives
