@@ -155,7 +155,9 @@ plt = rule(
             providers = [ErlangAppInfo],
         ),
         "dialyzer_opts": attr.string_list(),
-        "ignore_warnings": attr.bool(),
+        "ignore_warnings": attr.bool(
+            default = True,
+        ),
     },
     outputs = {
         "plt": ".%{name}.plt",
