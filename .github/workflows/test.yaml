@@ -12,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "24.3"
-        - "25.1"
+        - "25.3"
+        - "26.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v3
@@ -46,8 +46,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "24.3"
-        - "25.1"
+        - "25.3"
+        - "26.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v3
@@ -97,8 +97,8 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "24.3"
-        - "25.1"
+        - "25.3"
+        - "26.0"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v3
@@ -128,7 +128,7 @@ jobs:
       fail-fast: false
       matrix:
         otp:
-        - "25.1"
+        - "25.3"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v3
@@ -245,7 +245,7 @@ jobs:
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
-        otp-version: 25
+        otp-version: 26
     - name: TEST GAZELLE PACKAGE
       working-directory: test
       run: |
