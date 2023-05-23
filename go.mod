@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bazelbuild/bazel-gazelle v0.29.0
-	github.com/bazelbuild/rules_go v0.39.1
+	github.com/bazelbuild/rules_go v0.39.0
 )
 
 require (
