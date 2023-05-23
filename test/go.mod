@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bazelbuild/bazel-gazelle v0.29.0
-	github.com/bazelbuild/rules_go v0.39.1
+	github.com/bazelbuild/rules_go v0.39.0
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/onsi/ginkgo/v2 v2.7.0
