@@ -1,6 +1,9 @@
 build --enable_bzlmod
 build --incompatible_strict_action_env
 
+# https://github.com/bazelbuild/bazel/issues/17081
+build --use_top_level_targets_for_symlinks=false
+
 build --flag_alias=erlang_home=@rules_erlang//:erlang_home
 build --flag_alias=erlang_version=@rules_erlang//:erlang_version
 
