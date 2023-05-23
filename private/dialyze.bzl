@@ -6,9 +6,12 @@ load(
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join", "windows_path")
 load(":util.bzl", "erl_libs_contents")
-load(":ct.bzl", "code_paths")
+load(":ct.bzl", "code_paths", "unique_short_dirnames")
 
 def _impl(ctx):
+    if ctx.attr.target == None and len(ctx.attr.beam) == 0:
+        fail("Either 'target' or 'beam' must be set")
+
     apps_args = ""
     if len(ctx.attr.plt_apps) > 0:
         apps_args = "--apps " + " ".join(ctx.attr.plt_apps)
@@ -33,6 +36,7 @@ def _impl(ctx):
         erl_libs_path = path_join(ctx.label.package, erl_libs_dir)
 
     dirs = code_paths(ctx.attr.target)
+    dirs.extend(unique_short_dirnames(ctx.files.beam))
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
@@ -93,7 +97,7 @@ EXIT /B 1
     )
 
     runfiles = runfiles.merge_all([
-        ctx.runfiles(ctx.files.plt + erl_libs_files),
+        ctx.runfiles(ctx.files.plt + erl_libs_files + ctx.files.beam),
         ctx.attr.target[DefaultInfo].default_runfiles,
     ])
     return [DefaultInfo(
@@ -108,9 +112,11 @@ dialyze_test = rule(
         "plt": attr.label(
             allow_single_file = [".plt"],
         ),
+        "beam": attr.label_list(
+            allow_files = [".beam"],
+        ),
         "target": attr.label(
             providers = [ErlangAppInfo],
-            mandatory = True,
         ),
         "plt_apps": attr.string_list(),
         "libs": attr.label_list(
