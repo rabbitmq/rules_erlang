@@ -259,7 +259,6 @@ exit /b %CT_RUN_ERRORLEVEL%
     runfiles = runfiles.merge_all(
         [
             ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
-        ] + [
             shard_suite[DefaultInfo].default_runfiles,
         ] + [
             tool[DefaultInfo].default_runfiles

@@ -2,6 +2,8 @@ cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/bazelbuild/bazel-gazelle v0.28.0 h1:sPdMMujcMt5jeSLGFko5yF1XBD5MDqm6YeFoXx9ORm4=
 github.com/bazelbuild/bazel-gazelle v0.28.0/go.mod h1:5Qer6FCMBeotA8eQYJEPxn2eAbHmTApPxyd7aD4A0S8=
+github.com/bazelbuild/bazel-gazelle v0.29.0 h1:uFYs0rkVtEwZ6PlVQAXkBrIvWtIljMG8YR67LGiopeY=
+github.com/bazelbuild/bazel-gazelle v0.29.0/go.mod h1:L6O3ptp0eoujyGx2KyJrv86w93S0hxgh9HB3Cbw0cdI=
 github.com/bazelbuild/bazel-gazelle v0.30.0 h1:q9XLWQSCA5NZPJ98WFqicHkq6fxrDPnfvMO1XycQBMg=
 github.com/bazelbuild/bazel-gazelle v0.30.0/go.mod h1:6RxhjM1v/lTpD3JlMpKUCcdus4tvdqsqdfbjYi+czYs=
 github.com/bazelbuild/buildtools v0.0.0-20221004120235-7186f635531b h1:jhiMzJ+8unnLRtV8rpbWBFE9pFNzIqgUTyZU5aA++w8=
