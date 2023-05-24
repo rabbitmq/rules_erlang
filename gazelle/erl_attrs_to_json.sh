@@ -227,7 +227,7 @@ deps(E) ->
        },
       E).
 
--spec parse(filename:any(), [macro()]) -> map() | 'null'.
+-spec parse(file:name(), [macro()]) -> map() | 'null'.
 parse(File, Macros) ->
     Opts = case Macros of
         Ms when length(Ms) > 0 ->
