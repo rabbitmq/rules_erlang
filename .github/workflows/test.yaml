@@ -269,3 +269,17 @@ jobs:
       with:
         name: bazel-testlogs-gazelle
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  summary:
+    needs:
+    - test
+    - test-windows
+    - test-bzlmod
+    - test-bzlmod-windows
+    - test-bzlmod-internal-erlang
+    - test-host-erlang-change-detected
+    - test-gazelle-extension
+    runs-on: ubuntu-latest
+    steps:
+    - name: SUMMARY
+      run: |
+        echo "SUCCESS"
