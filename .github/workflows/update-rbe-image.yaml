@@ -33,6 +33,7 @@ jobs:
     - name: CREATE PULL REQUEST
       uses: peter-evans/create-pull-request@v5.0.1
       with:
+        token: ${{ secrets.REPO_SCOPED_TOKEN }}
         committer: GitHub <noreply@github.com>
         author: GitHub <noreply@github.com>
         title: Adopt latest rabbitmq-server-buildenv:linux-rbe for RBE
