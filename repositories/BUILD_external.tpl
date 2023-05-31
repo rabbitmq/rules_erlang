@@ -34,6 +34,12 @@ toolchain(
     visibility = ["//visibility:public"],
 )
 
+alias(
+    name = "toolchain",
+    actual = "toolchain_major",
+    visibility = ["//visibility:public"],
+)
+
 toolchain(
     name = "toolchain_major_minor",
     exec_compatible_with = [
@@ -44,5 +50,11 @@ toolchain(
     ],
     toolchain = ":erlang_%{ERLANG_MAJOR}_%{ERLANG_MINOR}_toolchain",
     toolchain_type = "%{RULES_ERLANG_WORKSPACE}//tools:toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "toolchain2",
+    actual = "toolchain_major_minor",
     visibility = ["//visibility:public"],
 )
