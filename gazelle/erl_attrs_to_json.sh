@@ -166,6 +166,9 @@ record_expression(E, {map, _, Assocs}) ->
 record_expression(E, {cons, _, Head, Tail}) ->
     record_expression(E, Head),
     record_expression(E, Tail);
+record_expression(E, {op, _, _, Lhs, Rhs}) ->
+    record_expression(E, Lhs),
+    record_expression(E, Rhs);
 record_expression(_, _Exp) ->
     %% io:format(standard_error, "E: ~p~n", [Exp]),
     ok.
