@@ -24,8 +24,8 @@ bazel_skylib_workspace()
 
 http_archive(
     name = "rules_erlang",
-    strip_prefix = "rules_erlang-3.10.6",
-    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/3.10.6.zip"],
+    strip_prefix = "rules_erlang-3.10.7",
+    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/3.10.7.zip"],
 )
 
 load(
