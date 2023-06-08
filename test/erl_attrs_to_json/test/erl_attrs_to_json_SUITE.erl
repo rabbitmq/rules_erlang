@@ -40,7 +40,7 @@ basic(_) ->
                    filename => [split],
                    io => [format],
                    maps => [merge],
-                   other_lib => [foo, finalize, encode],
+                   other_lib => [foo, finalize, encode, calc],
                    some_other_lib => [bar, baz, fizz]
                   }
         },
@@ -55,7 +55,7 @@ basic(_) ->
                    filename => [split],
                    io => [format],
                    maps => [merge],
-                   other_lib => [foo, finalize, encode],
+                   other_lib => [foo, finalize, encode, calc],
                    some_other_lib => [bar, baz, fizz]
                   }
         },
