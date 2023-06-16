@@ -47,6 +47,7 @@ def _impl(repository_ctx):
                 "{}/BUILD.bazel".format(name),
                 Label("//repositories:BUILD_external.tpl"),
                 {
+                    "%{ERLANG_NAME}": name,
                     "%{ERLANG_HOME}": props.erlang_home,
                     "%{ERLANG_VERSION}": props.version,
                     "%{ERLANG_MAJOR}": props.major,
@@ -60,6 +61,7 @@ def _impl(repository_ctx):
                 "{}/BUILD.bazel".format(name),
                 Label("//repositories:BUILD_internal.tpl"),
                 {
+                    "%{ERLANG_NAME}": name,
                     "%{ERLANG_VERSION}": props.version,
                     "%{URL}": props.url,
                     "%{STRIP_PREFIX}": props.strip_prefix or "",

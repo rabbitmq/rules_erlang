@@ -10,7 +10,7 @@ load(
 )
 
 erlang_build(
-    name = "otp",
+    name = "otp-%{ERLANG_NAME}",
     version = "%{ERLANG_VERSION}",
     url = "%{URL}",
     strip_prefix = "%{STRIP_PREFIX}",
@@ -19,7 +19,7 @@ erlang_build(
 
 erlang_toolchain(
     name = "erlang_%{ERLANG_MAJOR}_%{ERLANG_MINOR}_toolchain",
-    otp = ":otp",
+    otp = ":otp-%{ERLANG_NAME}",
     visibility = ["//visibility:public"],
 )
 
