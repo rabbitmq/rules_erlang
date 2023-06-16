@@ -10,14 +10,14 @@ load(
 )
 
 erlang_external(
-    name = "otp",
+    name = "otp-%{ERLANG_NAME}",
     erlang_home = "%{ERLANG_HOME}",
     erlang_version = "%{ERLANG_VERSION}",
 )
 
 erlang_toolchain(
     name = "erlang_%{ERLANG_MAJOR}_%{ERLANG_MINOR}_toolchain",
-    otp = ":otp",
+    otp = ":otp-%{ERLANG_NAME}",
     visibility = ["//visibility:public"],
 )
 
