@@ -68,19 +68,35 @@ maybe_add_code_paths() ->
             code:add_paths(Paths)
     end.
 
--spec validate_groups(atom(), [ct_suite:ct_group_def()]) -> [ct_suite:ct_group_def()].
-validate_groups(SuiteModule, GroupDefs) ->
+-spec validate_groups(atom(), [ct_suite:ct_test_def()], [ct_suite:ct_group_def()]) ->
+          [ct_suite:ct_group_def()].
+validate_groups(SuiteModule, TestDefs, GroupDefs) ->
+    GroupNamesAll = lists:flatmap(fun
+                                      ({group, N}) -> [N];
+                                      ({group, N, _}) -> [N];
+                                      ({group, N, _, _}) -> [N];
+                                      ({testcase, _, _}) -> [];
+                                      (_) -> []
+                                  end, TestDefs),
     GroupNames = lists:map(fun ({GroupName, _, _}) ->
-        GroupName
-    end, GroupDefs),
-    case length(GroupNames) =/= length(lists:usort(GroupNames)) of
-        true ->
+                                   GroupName
+                           end, GroupDefs),
+    case lists:sort(GroupNamesAll) -- lists:sort(GroupNames) of
+        Missing when length(Missing) > 0 ->
             io:format(standard_error,
-                      "ERROR: ~p:groups/0 contains groups with duplicate names~n~n",
-                      [SuiteModule]),
-            throw(duplicate_group_names);
+                      "ERROR: ~p:all/0 references groups not present in ~p:groups/0: ~p~n~n",
+                      [SuiteModule, SuiteModule, Missing]),
+            throw(missing_group);
         _ ->
-            GroupDefs
+            case length(GroupNames) =/= length(lists:usort(GroupNames)) of
+                true ->
+                    io:format(standard_error,
+                              "ERROR: ~p:groups/0 contains groups with duplicate names~n~n",
+                              [SuiteModule]),
+                    throw(duplicate_group_names);
+                _ ->
+                    GroupDefs
+            end
     end.
 
 -spec flatten_shard([named_case()]) -> 
@@ -156,7 +172,7 @@ shard('case', Cases, ShardIndex, TotalShards) ->
 structure(SuiteModule) ->
     TestDefs = SuiteModule:all(),
     GroupDefs = case erlang:function_exported(SuiteModule, groups, 0) of
-        true -> validate_groups(SuiteModule, SuiteModule:groups());
+        true -> validate_groups(SuiteModule, TestDefs, SuiteModule:groups());
         false -> []
     end,
     lists:map(fun (TestDef) ->
