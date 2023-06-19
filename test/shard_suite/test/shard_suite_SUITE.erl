@@ -13,7 +13,8 @@ all() -> [
           shard_by_case,
           flatten_shard,
           flatten_shard_with_nested_group,
-          to_ct_run_args
+          to_ct_run_args,
+          when_all_references_missing_group
          ].
 
 structure(_) ->
@@ -87,3 +88,6 @@ to_ct_run_args(_) ->
                  lists:flatten(
                    shard_suite:to_ct_run_args(SuiteModule,
                                               shard_suite:flatten_shard(ShardThree)))).
+
+when_all_references_missing_group(_) ->
+    ?assertThrow(missing_group, shard_suite:structure(example_suite_missing_group)).

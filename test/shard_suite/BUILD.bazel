@@ -101,6 +101,7 @@ ct_suite(
     size = "small",
     additional_srcs = [
         "test/example_suite.erl",
+        "test/example_suite_missing_group.erl",
     ],
 )
 
