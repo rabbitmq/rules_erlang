@@ -59,6 +59,9 @@ def erlang_config(
     urls = {c.name: c.url for c in internal_erlang_configs}
     strip_prefixs = {c.name: c.strip_prefix for c in internal_erlang_configs if c.strip_prefix}
     sha256s = {c.name: c.sha256 for c in internal_erlang_configs if c.sha256}
+    pre_configure_cmdss = {c.name: c.pre_configure_cmds for c in internal_erlang_configs if c.pre_configure_cmds}
+    extra_configure_optss = {c.name: c.extra_configure_opts for c in internal_erlang_configs if c.extra_configure_opts}
+    post_configure_cmdss = {c.name: c.post_configure_cmds for c in internal_erlang_configs if c.post_configure_cmds}
 
     _erlang_config(
         name = "erlang_config",
@@ -68,6 +71,9 @@ def erlang_config(
         urls = urls,
         strip_prefixs = strip_prefixs,
         sha256s = sha256s,
+        pre_configure_cmdss = pre_configure_cmdss,
+        extra_configure_optss = extra_configure_optss,
+        post_configure_cmdss = post_configure_cmdss,
     )
 
 def internal_erlang_from_http_archive(
@@ -75,19 +81,28 @@ def internal_erlang_from_http_archive(
         version = None,
         url = None,
         strip_prefix = None,
-        sha256 = None):
+        sha256 = None,
+        pre_configure_cmds = None,
+        extra_configure_opts = None,
+        post_configure_cmds = None):
     return struct(
         name = name,
         version = version,
         url = url,
         strip_prefix = strip_prefix,
         sha256 = sha256,
+        pre_configure_cmds = pre_configure_cmds,
+        extra_configure_opts = extra_configure_opts,
+        post_configure_cmds = post_configure_cmds,
     )
 
 def internal_erlang_from_github_release(
         name = "internal",
         version = DEFAULT_ERLANG_VERSION,
-        sha256 = None):
+        sha256 = None,
+        pre_configure_cmds = None,
+        extra_configure_opts = None,
+        post_configure_cmds = None):
     url = "https://github.com/erlang/otp/releases/download/OTP-{v}/otp_src_{v}.tar.gz".format(
         v = version,
     )
@@ -101,4 +116,7 @@ def internal_erlang_from_github_release(
         url = url,
         strip_prefix = "otp_src_{}".format(version),
         sha256 = sha256,
+        pre_configure_cmds = pre_configure_cmds,
+        extra_configure_opts = extra_configure_opts,
+        post_configure_cmds = post_configure_cmds,
     )
