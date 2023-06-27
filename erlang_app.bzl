@@ -152,7 +152,7 @@ def _erlang_app(
             copy_file(
                 name = "appup",
                 src = "src/{}.appup".format(app_name),
-                out = "ebin/{}.appup".format(app_name)
+                out = "ebin/{}.appup".format(app_name),
             )
         appup = ":appup"
     else:

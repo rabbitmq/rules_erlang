@@ -19,6 +19,9 @@ def _parse_maybe_semver(version_string):
     else:
         return (parts[0], _ERLANG_VERSION_UNKNOWN.lower())
 
+def _to_string_list(strings):
+    return "[%s]" % ",".join(['"%s"' % s.replace('"', '\\"') for s in strings])
+
 def _impl(repository_ctx):
     rules_erlang_workspace = repository_ctx.attr.rules_erlang_workspace
 
@@ -39,6 +42,9 @@ def _impl(repository_ctx):
             strip_prefix = repository_ctx.attr.strip_prefixs.get(name, None),
             sha256 = repository_ctx.attr.sha256s.get(name, None),
             erlang_home = repository_ctx.attr.erlang_homes.get(name, None),
+            pre_configure_cmds = repository_ctx.attr.pre_configure_cmdss.get(name, []),
+            extra_configure_opts = repository_ctx.attr.extra_configure_optss.get(name, []),
+            post_configure_cmds = repository_ctx.attr.post_configure_cmdss.get(name, []),
         )
 
     for (name, props) in erlang_installations.items():
@@ -69,6 +75,9 @@ def _impl(repository_ctx):
                     "%{ERLANG_MAJOR}": props.major,
                     "%{ERLANG_MINOR}": props.minor,
                     "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
+                    "%{PRE_CONFIGURE_CMDS}": _to_string_list(props.pre_configure_cmds),
+                    "%{EXTRA_CONFIGURE_OPTS}": _to_string_list(props.extra_configure_opts),
+                    "%{POST_CONFIGURE_CMDS}": _to_string_list(props.post_configure_cmds),
                 },
                 False,
             )
@@ -111,6 +120,9 @@ erlang_config = repository_rule(
         "strip_prefixs": attr.string_dict(),
         "sha256s": attr.string_dict(),
         "erlang_homes": attr.string_dict(),
+        "pre_configure_cmdss": attr.string_list_dict(),
+        "extra_configure_optss": attr.string_list_dict(),
+        "post_configure_cmdss": attr.string_list_dict(),
     },
     environ = [
         ERLANG_HOME_ENV_VAR,

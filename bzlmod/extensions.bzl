@@ -39,6 +39,9 @@ def _erlang_config(ctx):
     strip_prefixs = {}
     sha256s = {}
     erlang_homes = {}
+    pre_configure_cmdss = {}
+    extra_configure_optss = {}
+    post_configure_cmdss = {}
     owners_by_name = {}
 
     for mod in ctx.modules:
@@ -66,6 +69,9 @@ def _erlang_config(ctx):
             urls[erlang.name] = erlang.url
             strip_prefixs[erlang.name] = erlang.strip_prefix
             sha256s[erlang.name] = erlang.sha256
+            pre_configure_cmdss[erlang.name] = erlang.pre_configure_cmds
+            extra_configure_optss[erlang.name] = erlang.extra_configure_opts
+            post_configure_cmdss[erlang.name] = erlang.post_configure_cmds
             owners_by_name[erlang.name] = mod
 
         for erlang in mod.tags.internal_erlang_from_github_release:
@@ -90,6 +96,9 @@ def _erlang_config(ctx):
             urls[erlang.name] = url
             strip_prefixs[erlang.name] = strip_prefix
             sha256s[erlang.name] = sha256
+            pre_configure_cmdss[erlang.name] = erlang.pre_configure_cmds
+            extra_configure_optss[erlang.name] = erlang.extra_configure_opts
+            post_configure_cmdss[erlang.name] = erlang.post_configure_cmds
             owners_by_name[erlang.name] = mod
 
     _erlang_config_rule(
@@ -101,6 +110,9 @@ def _erlang_config(ctx):
         strip_prefixs = strip_prefixs,
         sha256s = sha256s,
         erlang_homes = erlang_homes,
+        pre_configure_cmdss = pre_configure_cmdss,
+        extra_configure_optss = extra_configure_optss,
+        post_configure_cmdss = post_configure_cmdss,
     )
 
 external_erlang_from_path = tag_class(attrs = {
@@ -115,6 +127,9 @@ internal_erlang_from_http_archive = tag_class(attrs = {
     "url": attr.string(),
     "strip_prefix": attr.string(),
     "sha256": attr.string(),
+    "pre_configure_cmds": attr.string_list(),
+    "extra_configure_opts": attr.string_list(),
+    "post_configure_cmds": attr.string_list(),
 })
 
 internal_erlang_from_github_release = tag_class(attrs = {
@@ -125,6 +140,9 @@ internal_erlang_from_github_release = tag_class(attrs = {
         default = DEFAULT_ERLANG_VERSION,
     ),
     "sha256": attr.string(),
+    "pre_configure_cmds": attr.string_list(),
+    "extra_configure_opts": attr.string_list(),
+    "post_configure_cmds": attr.string_list(),
 })
 
 erlang_config = module_extension(

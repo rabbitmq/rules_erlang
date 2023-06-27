@@ -43,6 +43,7 @@ def _erlang_build_impl(ctx):
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
     extra_configure_opts = " ".join(ctx.attr.extra_configure_opts)
+    pre_configure_cmds = "\n".join(ctx.attr.pre_configure_cmds)
     post_configure_cmds = "\n".join(ctx.attr.post_configure_cmds)
     extra_make_opts = " ".join(ctx.attr.extra_make_opts)
 
@@ -109,10 +110,14 @@ tar --extract \\
 echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 
 cd "$ABS_BUILD_DIR"
+{pre_configure_cmds}
 ./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1
 {post_configure_cmds}
+echo "\tconfigure finished"
 make {extra_make_opts} >> "$ABS_LOG" 2>&1
+echo "\tmake finished"
 make DESTDIR="$ABS_DEST_DIR" install >> "$ABS_LOG" 2>&1
+echo "\tmake install finished"
 
 tar --create \\
     --file $ABS_BUILD_DIR_TAR \\
@@ -131,6 +136,7 @@ tar --create \\
             install_root = install_root,
             build_log = build_log.path,
             extra_configure_opts = extra_configure_opts,
+            pre_configure_cmds = pre_configure_cmds,
             post_configure_cmds = post_configure_cmds,
             extra_make_opts = extra_make_opts,
         ),
@@ -192,8 +198,9 @@ erlang_build = rule(
         "strip_prefix": attr.string(),
         "sha256": attr.string(),
         "install_prefix": attr.string(default = DEFAULT_INSTALL_PREFIX),
+        "pre_configure_cmds": attr.string_list(),
         "extra_configure_opts": attr.string_list(),
-        "post_configure_cmds": attr.string_list(),  # <- hopefully don't need this
+        "post_configure_cmds": attr.string_list(),
         "extra_make_opts": attr.string_list(
             default = ["-j 8"],
         ),
