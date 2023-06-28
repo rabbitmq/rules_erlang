@@ -111,12 +111,15 @@ echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 
 cd "$ABS_BUILD_DIR"
 {pre_configure_cmds}
-./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1
+./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1 \\
+    || (cat "$ABS_LOG" && exit 1)
 {post_configure_cmds}
 echo "\tconfigure finished"
-make {extra_make_opts} >> "$ABS_LOG" 2>&1
+make {extra_make_opts} >> "$ABS_LOG" 2>&1 \\
+    || (cat "$ABS_LOG" && exit 1)
 echo "\tmake finished"
-make DESTDIR="$ABS_DEST_DIR" install >> "$ABS_LOG" 2>&1
+make DESTDIR="$ABS_DEST_DIR" install >> "$ABS_LOG" 2>&1 \\
+    || (cat "$ABS_LOG" && exit 1)
 echo "\tmake install finished"
 
 tar --create \\
