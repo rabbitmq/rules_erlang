@@ -43,7 +43,7 @@ def _impl(ctx):
         headers = True,
         dir = erl_libs_dir,
         deps = ctx.attr.deps,
-        ez_deps = ctx.attr.ez_deps,
+        ez_deps = ctx.files.ez_deps,
     )
 
     # it would be nice to properly compute the path, but ctx.bin_dir.path
