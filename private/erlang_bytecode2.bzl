@@ -47,7 +47,7 @@ def _impl(ctx):
         headers = True,
         dir = erl_libs_dir,
         deps = flat_deps(ctx.attr.deps),
-        ez_deps = ctx.attr.ez_deps,
+        ez_deps = ctx.files.ez_deps,
     )
 
     erl_libs_path = ""
