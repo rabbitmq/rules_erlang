@@ -66,6 +66,7 @@ app_file(
     name = "app_file",
     app_name = APP_NAME,
     app_version = APP_VERSION,
+    modules = [":beam_files"],
 )
 
 erlang_app_info(

@@ -30,6 +30,7 @@ def _impl(ctx):
 
 mods=()
 module_paths={modules}
+set +u
 for f in ${{module_paths[@]}}; do
     if [[ -d "$f" ]]; then
         for m in "$f"/*.beam; do
@@ -40,11 +41,16 @@ for f in ${{module_paths[@]}}; do
     fi
 done
 
-mods_term="['${{mods[0]}}'"
-for m in ${{mods[@]:1}}; do
-    mods_term="$mods_term,'$m'"
-done
-mods_term="$mods_term]"
+if [[ ${{#mods[@]}} -eq 0 ]]; then
+    mods_term="[]"
+else
+    mods_term="['${{mods[0]}}'"
+    for m in ${{mods[@]:1}}; do
+        mods_term="$mods_term,'$m'"
+    done
+    mods_term="$mods_term]"
+fi
+set -u
 
 cat << EOF | "{erlang_home}"/bin/escript {app_file_tool} modules {src} > {out}
 $mods_term.
@@ -122,6 +128,7 @@ fi
 
 mods=()
 module_paths={modules}
+set +u
 for f in ${{module_paths[@]}}; do
     if [[ -d "$f" ]]; then
         for m in "$f"/*.beam; do
@@ -132,11 +139,16 @@ for f in ${{module_paths[@]}}; do
     fi
 done
 
-mods_term="['${{mods[0]}}'"
-for m in ${{mods[@]:1}}; do
-    mods_term="$mods_term,'$m'"
-done
-mods_term="$mods_term]"
+if [[ ${{#mods[@]}} -eq 0 ]]; then
+    mods_term="[]"
+else
+    mods_term="['${{mods[0]}}'"
+    for m in ${{mods[@]:1}}; do
+        mods_term="$mods_term,'$m'"
+    done
+    mods_term="$mods_term]"
+fi
+set -u
 
 cat << EOF | "{erlang_home}"/bin/escript {app_file_tool} modules {out} > {out}.tmp && mv {out}.tmp {out}
 $mods_term.
