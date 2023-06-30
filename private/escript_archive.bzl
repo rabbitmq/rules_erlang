@@ -22,46 +22,53 @@ DEFAULT_HEADERS = [
     "comment",
 ]
 
-def _build_erl_libs(ctx, dir = None):
-    deps = flat_deps([ctx.attr.app])
-
-    entries = {}
-    for dep in deps:
-        lib_info = dep[ErlangAppInfo]
-        for src in lib_info.beam:
-            if src.is_directory:
-                fail("beam directories are not supported with this rule")
-            archive_path = path_join(lib_info.app_name, "ebin", src.basename)
-            dest = ctx.actions.declare_file(path_join(dir, archive_path))
-            ctx.actions.symlink(output = dest, target_file = src)
-            entries[archive_path] = dest
-        for src in lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
-            archive_path = path_join(lib_info.app_name, rp)
-            dest = ctx.actions.declare_file(path_join(dir, archive_path))
-            ctx.actions.symlink(output = dest, target_file = src)
-            entries[archive_path] = dest
-    return entries
-
 def _impl(ctx):
     name = ctx.attr.out if ctx.attr.out != "" else ctx.label.name
 
     output = ctx.actions.declare_file(name)
 
-    file_entries = [
-        "{{filename:basename(\"{p}\"), \"{p}\"}}".format(p = src.path)
-        for src in ctx.files.srcs + ctx.files.beam
-    ]
+    contents_dir = ctx.actions.declare_directory("%s_contents" % name)
 
-    app_entries = []
-    app_files = []
-    if ctx.attr.app != None:
-        entries = _build_erl_libs(ctx, dir = ctx.label.name + "_deps")
-        for path, file in entries.items():
-            app_entries.append("{{\"{}\", \"{}\"}}".format(path, file.path))
-            app_files.append(file)
+    entries = {}
+    for f in ctx.files.srcs + ctx.files.hdrs + ctx.files.beam:
+        entries[f.basename] = f
+    for dep in flat_deps([ctx.attr.app]):
+        lib_info = dep[ErlangAppInfo]
+        for src in lib_info.beam:
+            if src.is_directory:
+                archive_path = path_join(lib_info.app_name, "ebin")
+            else:
+                archive_path = path_join(lib_info.app_name, "ebin", src.basename)
+            if archive_path in entries:
+                fail("Duplicate entry for", archive_path)
+            entries[archive_path] = src
+        for src in lib_info.include + lib_info.priv:
+            rp = additional_file_dest_relative_path(dep.label, src)
+            archive_path = path_join(lib_info.app_name, rp)
+            if archive_path in entries:
+                fail("Duplicate entry for", archive_path)
+            entries[archive_path] = src
 
-    entry_list = "[" + ", ".join(app_entries + file_entries) + "]"
+    commands = ["set -euo pipefail"]
+    for dest, src in entries.items():
+        full_dest = path_join(contents_dir.path, dest)
+        commands.append('mkdir -p $(dirname "{}")'.format(full_dest))
+        if src.is_directory:
+            commands.append("cp -r {src}/ {dest}".format(
+                src = src.path,
+                dest = full_dest,
+            ))
+        else:
+            commands.append("cp {src} {dest}".format(
+                src = src.path,
+                dest = full_dest,
+            ))
+
+    ctx.actions.run_shell(
+        inputs = entries.values(),
+        outputs = [contents_dir],
+        command = "\n".join(commands),
+    )
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
@@ -71,11 +78,15 @@ def _impl(ctx):
 
 "{erlang_home}"/bin/erl \\
     -noshell \\
-    -eval 'io:format("Assembling ~s escript...~n", ["{name}"]),
-ArchiveEntries = [begin
-    {{ok, Bin}} = file:read_file(Path),
-    {{Name, Bin}}
-end || {{Name, Path}} <- {entry_list}],
+    -eval 'io:format("Assembling {name} escript...~n", []),
+ContentsDir = "{contents_dir}",
+ArchiveEntries = filelib:fold_files(
+    ContentsDir, "", true,
+    fun(Path, Entries) ->
+        Rel = string:prefix(Path, ContentsDir ++ "/"),
+        {{ok, Bin}} = file:read_file(Path),
+        [{{Rel, Bin}} | Entries]
+    end, []),
 ok = escript:create("{output}",
                     [{headers}
                      {{archive, ArchiveEntries, []}}]),
@@ -85,14 +96,14 @@ halt().
 """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
+        contents_dir = contents_dir.path,
         name = name,
         headers = "".join(["{}, ".format(h) for h in ctx.attr.headers]),
-        entry_list = entry_list,
         output = output.path,
     )
 
     inputs = depset(
-        direct = app_files + ctx.files.srcs + ctx.files.beam,
+        direct = [contents_dir],
         transitive = [runfiles.files],
     )
 
@@ -117,6 +128,7 @@ escript_archive = rule(
             default = DEFAULT_HEADERS,
         ),
         "srcs": attr.label_list(allow_files = [".erl"]),
+        "hdrs": attr.label_list(allow_files = [".hrl"]),
         "beam": attr.label_list(allow_files = [".beam"]),
         "app": attr.label(providers = [ErlangAppInfo]),
     },
