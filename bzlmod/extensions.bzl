@@ -274,6 +274,8 @@ def _erlang_package(ctx):
                 sha256 = dep.sha256,
                 build_file = dep.build_file,
                 build_file_content = dep.build_file_content,
+                patches = dep.patches,
+                patch_args = dep.patch_args,
                 patch_cmds = dep.patch_cmds,
                 testonly = dep.testonly,
             ))
@@ -313,6 +315,10 @@ hex_package_tag = tag_class(attrs = {
     "sha256": attr.string(),
     "build_file": attr.label(),
     "build_file_content": attr.string(),
+    "patches": attr.label_list(),
+    "patch_args": attr.string_list(
+        default = ["-p0"],
+    ),
     "patch_cmds": attr.string_list(),
     "testonly": attr.bool(),
 })

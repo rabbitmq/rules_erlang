@@ -20,6 +20,8 @@ HexPackage = provider(fields = [
     "sha256",
     "build_file",
     "build_file_content",
+    "patches",
+    "patch_args",
     "patch_cmds",
     "testonly",
     "deps",
@@ -71,6 +73,8 @@ def hex_tree(
         version = version,
         sha256 = sha256,
         build_file_content = "",
+        patches = [],
+        patch_args = ["-p0"],
         patch_cmds = [],
         testonly = False,
         deps = deps,
@@ -87,6 +91,8 @@ def hex_package(
         sha256 = None,
         build_file = None,
         build_file_content = None,
+        patches = [],
+        patch_args = ["-p0"],
         patch_cmds = None,
         testonly = False):
     return HexPackage(
@@ -97,6 +103,8 @@ def hex_package(
         sha256 = sha256,
         build_file = build_file,
         build_file_content = build_file_content,
+        patches = patches,
+        patch_args = patch_args,
         patch_cmds = patch_cmds,
         testonly = testonly,
         deps = None,
@@ -172,6 +180,8 @@ def without_requirement(name, package):
             sha256 = package.sha256,
             build_file = package.build_file,
             build_file_content = package.build_file_content,
+            patches = package.patches,
+            patch_args = package.patch_args,
             patch_cmds = package.patch_cmds,
             testonly = package.testonly,
             deps = package.deps,
@@ -188,6 +198,8 @@ def _hex_package_repo(hex_package):
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file = hex_package.build_file,
+            patches = hex_package.patches,
+            patch_args = hex_package.patch_args,
             patch_cmds = hex_package.patch_cmds,
         )
     elif hex_package.build_file_content != "":
@@ -197,6 +209,8 @@ def _hex_package_repo(hex_package):
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = hex_package.build_file_content,
+            patches = hex_package.patches,
+            patch_args = hex_package.patch_args,
             patch_cmds = hex_package.patch_cmds,
         )
     else:
@@ -210,6 +224,8 @@ def _hex_package_repo(hex_package):
             package_name = package_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
+            patches = hex_package.patches,
+            patch_args = hex_package.patch_args,
             patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
                 name = hex_package.name,
                 version = hex_package.version,
