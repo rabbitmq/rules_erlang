@@ -36,15 +36,23 @@ def _impl(ctx):
         lib_info = dep[ErlangAppInfo]
         for src in lib_info.beam:
             if src.is_directory:
-                archive_path = path_join(lib_info.app_name, "ebin")
+                if ctx.attr.flat:
+                    archive_path = ""
+                else:
+                    archive_path = path_join(lib_info.app_name, "ebin")
+            elif ctx.attr.flat:
+                archive_path = src.basename
             else:
                 archive_path = path_join(lib_info.app_name, "ebin", src.basename)
             if archive_path in entries:
                 fail("Duplicate entry for", archive_path)
             entries[archive_path] = src
-        for src in lib_info.include + lib_info.priv:
+        for src in ([] if ctx.attr.drop_hrl else lib_info.include) + lib_info.priv:
             rp = additional_file_dest_relative_path(dep.label, src)
-            archive_path = path_join(lib_info.app_name, rp)
+            if ctx.attr.flat:
+                archive_path = src.basename
+            else:
+                archive_path = path_join(lib_info.app_name, rp)
             if archive_path in entries:
                 fail("Duplicate entry for", archive_path)
             entries[archive_path] = src
@@ -131,6 +139,8 @@ escript_archive = rule(
         "hdrs": attr.label_list(allow_files = [".hrl"]),
         "beam": attr.label_list(allow_files = [".beam"]),
         "app": attr.label(providers = [ErlangAppInfo]),
+        "flat": attr.bool(),
+        "drop_hrl": attr.bool(),
     },
     toolchains = ["//tools:toolchain_type"],
     executable = True,
