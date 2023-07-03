@@ -1,12 +1,10 @@
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
 )
-
-def _module_name(f):
-    return "'{}'".format(f.basename.replace(".beam", "", 1))
 
 def _impl(ctx):
     if len(ctx.files.app_src) > 1:
@@ -18,7 +16,10 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    modules = "[" + ",".join([_module_name(m) for m in ctx.files.modules]) + "]"
+    modules = shell.array_literal([
+        f.path
+        for f in ctx.files.modules
+    ])
 
     app_file_tool_path = ctx.attr.app_file_tool[DefaultInfo].files_to_run.executable.path
 
@@ -27,8 +28,32 @@ def _impl(ctx):
 
 {maybe_install_erlang}
 
-cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} modules {src} > {out}
-{modules}.
+mods=()
+module_paths={modules}
+set +u
+for f in ${{module_paths[@]}}; do
+    if [[ -d "$f" ]]; then
+        for m in "$f"/*.beam; do
+            mods+=( $(basename "$m" .beam) )
+        done
+    else
+        mods+=( $(basename "$f" .beam) )
+    fi
+done
+
+if [[ ${{#mods[@]}} -eq 0 ]]; then
+    mods_term="[]"
+else
+    mods_term="['${{mods[0]}}'"
+    for m in ${{mods[@]:1}}; do
+        mods_term="$mods_term,'$m'"
+    done
+    mods_term="$mods_term]"
+fi
+set -u
+
+cat << EOF | "{erlang_home}"/bin/escript {app_file_tool} modules {src} > {out}
+$mods_term.
 EOF
 
 """.format(
@@ -45,7 +70,7 @@ EOF
         )
 
         inputs = depset(
-            direct = ctx.files.app_src,
+            direct = ctx.files.app_src + ctx.files.modules,
             transitive = [runfiles.files],
         )
     else:
@@ -101,8 +126,32 @@ if [ -n "$VSN" ]; then
         {out} > {out}.tmp && mv {out}.tmp {out}
 fi
 
-cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} modules {out} > {out}.tmp && mv {out}.tmp {out}
-{modules}.
+mods=()
+module_paths={modules}
+set +u
+for f in ${{module_paths[@]}}; do
+    if [[ -d "$f" ]]; then
+        for m in "$f"/*.beam; do
+            mods+=( $(basename "$m" .beam) )
+        done
+    else
+        mods+=( $(basename "$f" .beam) )
+    fi
+done
+
+if [[ ${{#mods[@]}} -eq 0 ]]; then
+    mods_term="[]"
+else
+    mods_term="['${{mods[0]}}'"
+    for m in ${{mods[@]:1}}; do
+        mods_term="$mods_term,'$m'"
+    done
+    mods_term="$mods_term]"
+fi
+set -u
+
+cat << EOF | "{erlang_home}"/bin/escript {app_file_tool} modules {out} > {out}.tmp && mv {out}.tmp {out}
+$mods_term.
 EOF
 
 if [ -n '{registered}' ]; then
@@ -159,7 +208,7 @@ fi
         )
 
         inputs = depset(
-            direct = [ctx.info_file] if stamp else [],
+            direct = ([ctx.info_file] if stamp else []) + ctx.files.modules,
             transitive = [runfiles.files],
         )
 
