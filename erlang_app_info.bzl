@@ -68,4 +68,5 @@ erlang_app_info = rule(
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
     },
+    provides = [ErlangAppInfo],
 )
