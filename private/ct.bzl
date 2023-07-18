@@ -245,7 +245,7 @@ exit /b %CT_RUN_ERRORLEVEL%
             pa_args = " ".join(pa_args),
             dir = path_join(package, "test"),
             log_dir = log_dir,
-            drive_letter = ctx.attr._windows_logdir_drive_letter,
+            drive_letter = ctx.attr._windows_logdir_drive_letter[BuildSettingInfo].value,
             sname = sname(ctx),
             extra_args = " ".join(extra_args),
             test_env = "\n".join(test_env_commands),
