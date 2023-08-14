@@ -65,6 +65,7 @@ jobs:
           build --enable_runfiles
           build --color=yes
           build --@rules_erlang//:ct_test_windows_logdir_drive_letter=z
+          build --jobs=1
         EOF
     - name: TEST
       working-directory: test
@@ -146,6 +147,7 @@ jobs:
           build --enable_runfiles
           build --color=yes
           build --@rules_erlang//:ct_test_windows_logdir_drive_letter=z
+          build --jobs=1
         EOF
     - name: TEST
       working-directory: test
