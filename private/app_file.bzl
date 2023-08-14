@@ -83,10 +83,12 @@ EOF
                 fail(app_module, "is not present, but app_registered was provided.")
             registered_list = ""
 
-        applications = ["kernel", "stdlib"] + ctx.attr.extra_apps
+        applications = ["kernel", "stdlib"] + ctx.attr.extra_apps + ctx.attr.optional_applications
         for dep in ctx.attr.deps:
             applications.append(dep[ErlangAppInfo].app_name)
         applications_list = "[" + ",".join(applications) + "]"
+
+        optional_applications_list = "[" + ",".join(ctx.attr.optional_applications) + "]"
 
         stamp = ctx.attr.stamp == 1 or (ctx.attr.stamp == -1 and
                                         ctx.attr.private_stamp_detect)
@@ -166,6 +168,12 @@ if [ -n '{applications}' ]; then
 EOF
 fi
 
+if [ -n '{optional_applications}' ]; then
+    cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} optional_applications {out} > {out}.tmp && mv {out}.tmp {out}
+{optional_applications}.
+EOF
+fi
+
 if [ -n '{app_module}' ]; then
     cat << 'EOF' | "{erlang_home}"/bin/escript {app_file_tool} mod {out} > {out}.tmp && mv {out}.tmp {out}
 {{{app_module}, []}}.
@@ -197,6 +205,7 @@ fi
             modules = modules,
             registered = registered_list,
             applications = applications_list,
+            optional_applications = optional_applications_list,
             app_module = app_module,
             env = ctx.attr.app_env,
             extra_keys = ctx.attr.app_extra_keys,
@@ -242,6 +251,7 @@ app_file = rule(
         "app_env": attr.string(),
         "app_extra_keys": attr.string(),
         "extra_apps": attr.string_list(),
+        "optional_applications": attr.string_list(),
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
