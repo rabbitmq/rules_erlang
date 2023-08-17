@@ -14,7 +14,7 @@ erlang_build(
     version = "%{ERLANG_VERSION}",
     url = "%{URL}",
     strip_prefix = "%{STRIP_PREFIX}",
-    sha256 = "%{SHA_256}",
+    sha256v = "%{SHA_256}",
     pre_configure_cmds = %{PRE_CONFIGURE_CMDS},
     extra_configure_opts = %{EXTRA_CONFIGURE_OPTS},
     post_configure_cmds = %{POST_CONFIGURE_CMDS},

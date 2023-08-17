@@ -1,4 +1,9 @@
 load(
+    "@bazel_tools//tools/build_defs/hash:hash.bzl",
+    "sha256",
+    "tools",
+)
+load(
     "@bazel_skylib//rules:common_settings.bzl",
     "BuildSettingInfo",
 )
@@ -67,18 +72,15 @@ def _erlang_build_impl(ctx):
         command = """set -euo pipefail
 
 curl -L "{archive_url}" -o {archive_path}
-
-if [ -n "{sha256}" ]; then
-    echo "{sha256} {archive_path}" | sha256sum --check --strict -
-fi
 """.format(
             archive_url = ctx.attr.url,
             archive_path = downloaded_archive.path,
-            sha256 = ctx.attr.sha256,
         ),
         mnemonic = "OTP",
         progress_message = "Downloading {}".format(ctx.attr.url),
     )
+
+    sha256file = sha256(ctx, downloaded_archive)
 
     # zipper = ctx.executable._zipper
 
@@ -87,13 +89,20 @@ fi
         strip_prefix += "\\/"
 
     ctx.actions.run_shell(
-        inputs = [downloaded_archive],
+        inputs = [downloaded_archive, sha256file],
         outputs = [
             build_dir_tar,
             build_log,
             release_dir_tar,
         ],
         command = """set -euo pipefail
+
+if [ -n "{sha256}" ]; then
+    if [ "{sha256}" != "$(cat "{sha256file}")" ]; then
+        echo "ERROR: Checksum mismatch. $(basename "{archive_path}") $(cat "{sha256file}") != {sha256}"
+        exit 1
+    fi
+fi
 
 ABS_BUILD_DIR_TAR=$PWD/{build_path}
 ABS_RELEASE_DIR_TAR=$PWD/{release_path}
@@ -131,6 +140,8 @@ tar --create \\
     --file $ABS_RELEASE_DIR_TAR \\
     *
 """.format(
+            sha256 = ctx.attr.sha256v,
+            sha256file = sha256file.path,
             archive_path = downloaded_archive.path,
             strip_prefix = strip_prefix,
             build_path = build_dir_tar.path,
@@ -199,7 +210,7 @@ erlang_build = rule(
         "version": attr.string(mandatory = True),
         "url": attr.string(mandatory = True),
         "strip_prefix": attr.string(),
-        "sha256": attr.string(),
+        "sha256v": attr.string(),
         "install_prefix": attr.string(default = DEFAULT_INSTALL_PREFIX),
         "pre_configure_cmds": attr.string_list(),
         "extra_configure_opts": attr.string_list(),
@@ -207,6 +218,7 @@ erlang_build = rule(
         "extra_make_opts": attr.string_list(
             default = ["-j 8"],
         ),
+        "sha256": tools["sha256"],
     },
 )
 
