@@ -55,7 +55,7 @@ def erlang_toolchain_from_http_archive(
         version = version,
         url = url,
         strip_prefix = strip_prefix,
-        sha256 = sha256,
+        sha256v = sha256,
         extra_configure_opts = extra_configure_opts,
         target_compatible_with = [
             erlang_constraint,
