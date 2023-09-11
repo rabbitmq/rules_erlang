@@ -129,10 +129,10 @@ erlang_bytecode = rule(
         ),
         "srcs": attr.label_list(
             mandatory = True,
-            allow_files = [".erl", ".xrl", ".yrl"],
+            allow_files = [".erl"],
         ),
         "beam": attr.label_list(
-            allow_files = [".beam", ".erl"],
+            allow_files = [".beam"],
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
