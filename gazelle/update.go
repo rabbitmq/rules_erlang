@@ -119,6 +119,7 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
+	cmd.Args = append(cmd.Args, "fix")
 	cmd.Args = append(cmd.Args, "--verbose")
 	if erlangConfig.Testonly {
 		cmd.Args = append(cmd.Args, "--testonly")
