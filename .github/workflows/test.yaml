@@ -289,15 +289,19 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: 26
-    - name: TEST GAZELLE PACKAGE
+    - name: CONFIGURE BAZEL
       working-directory: test
       run: |
         cat << EOF >> user.bazelrc
           build --color=yes
         EOF
-
+    - name: TEST GAZELLE PACKAGE (UNIT_SUITE)
+      working-directory: test
+      run: |
         bazelisk test //gazelle:unit_suite
-
+    - name: TEST GAZELLE PACKAGE (INTEGRATION_SUITE)
+      working-directory: test
+      run: |
         bazelisk test //gazelle:integration_suite \
           || bazelisk test //gazelle:integration_suite
     - name: RESOVLE TEST LOGS PATH
