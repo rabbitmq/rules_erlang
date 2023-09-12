@@ -23,7 +23,7 @@ main(Args) ->
             Map = parse(Filename, Macros, Includes),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(Map),
-            io:format("~s", [Json]),
+            io:format("~ts", [Json]),
             % signal to erl_parser_impl.go that the json is written
             io:format(<<0>>),
             main(Args)

@@ -37,9 +37,15 @@ func newErlParser() *erlParserImpl {
 			os.Exit(1)
 		}
 
+		escriptCmd, err := exec.LookPath("escript")
+		if err != nil {
+			log.Printf("failed to locate escript command: %v\n", err)
+			os.Exit(1)
+		}
+
 		ctx := context.Background()
 		ctx, parserCancel := context.WithTimeout(ctx, time.Minute*5)
-		cmd := exec.CommandContext(ctx, scriptRunfile)
+		cmd := exec.CommandContext(ctx, escriptCmd, scriptRunfile)
 
 		cmd.Stderr = os.Stderr
 
