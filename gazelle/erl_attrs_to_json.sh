@@ -6,7 +6,7 @@
 -export([main/1]).
 
 -ifdef(TEST).
--export([parse/2,
+-export([parse/3,
          parse_command/1]).
 -endif.
 
@@ -18,8 +18,12 @@ main(Args) ->
         eof ->
             ok;
         Line ->
-            #{path := Filename, macros := Macros} = parse_command(string:trim(Line, trailing, "\n")),
-            Map = parse(Filename, Macros),
+            Command = string:trim(Line, trailing, "\n"),
+            %% io:format(standard_error, "Command: ~p~n", [Command]),
+            #{path := Filename,
+              macros := Macros,
+              includes := Includes} = parse_command(Command),
+            Map = parse(Filename, Macros, Includes),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = to_json(Map),
             io:format("~s", [Json]),
@@ -28,18 +32,20 @@ main(Args) ->
             main(Args)
     end.
 
--spec parse_command(string()) -> #{path := string(), macros := [macro()]}.
+-spec parse_command(string()) -> #{path := string(), macros := [macro()], includes := [string()]}.
 parse_command("{" ++ Tail) ->
     case string:reverse(Tail) of
         "}" ++ Middle ->
-            Pairs = string:split(string:reverse(Middle), ","),
+            Pairs = string:split(string:reverse(Middle), ",", all),
             maps:from_list([begin
                                 [K, V] = string:split(Pair, ":"),
                                 case K of
                                     "\"path\"" ->
                                         {path, parse_json_string(V)};
                                     "\"macros\"" ->
-                                        {macros, parse_macros(V)}
+                                        {macros, parse_macros(V)};
+                                    "\"includes\"" ->
+                                        {includes, parse_includes(V)}
                                 end
                             end || Pair <- Pairs])
     end.
@@ -60,6 +66,15 @@ parse_macros("{" ++ Tail) ->
                          {list_to_atom(Name), parse_json_string(V)}
                  end
              end || Pair <- Pairs]
+    end.
+
+parse_includes("[]") ->
+    [];
+parse_includes("[" ++ Tail) ->
+    case string:reverse(Tail) of
+        "]" ++ Middle ->
+            Elems = string:split(string:reverse(Middle), ",", all),
+            [parse_json_string(Elem) || Elem <- Elems]
     end.
 
 parse_json_string("\"" ++ Tail) ->
@@ -106,10 +121,12 @@ record_attr(E, _, include, Path) ->
     ets:insert(E, {include, Path});
 record_attr(E, _, include_lib, Path) ->
     ets:insert(E, {include_lib, Path});
-record_attr(_, _, _, _) ->
+record_attr(_, _, _Name, _Value) ->
+    %% io:format(standard_error, "record_attr: ~p:~p~n", [Name, Value]),
     ok.
 
 record_expression(E, {remote, _, {atom, _, M}, {atom, _, F}}) ->
+    %% io:format(standard_error, "remote: ~p:~p~n", [M, F]),
     ets:insert(E, {call, M, F});
 record_expression(E, {call, _, F, Args}) ->
     lists:foreach(
@@ -132,6 +149,7 @@ record_expression(E, {block, _, Expressions}) ->
       fun (Expression) -> record_expression(E, Expression) end,
       Expressions);
 record_expression(E, {'case', _, Arg, Expressions}) ->
+    %% io:format(standard_error, "case: ~p~n", [Arg]),
     record_expression(E, Arg),
     lists:foreach(
       fun (Expression) -> record_expression(E, Expression) end,
@@ -230,16 +248,24 @@ deps(E) ->
        },
       E).
 
--spec parse(file:name(), [macro()]) -> map() | 'null'.
-parse(File, Macros) ->
-    Opts = case Macros of
-        Ms when length(Ms) > 0 ->
-            [{macros, Ms}];
-        _ ->
-            []
-    end,
+-spec parse(file:name(), [macro()], [string()]) -> map() | 'null'.
+parse(File, Macros, Includes) ->
+    Opts0 = [],
+    Opts1 = case Macros of
+                Ms when length(Ms) > 0 ->
+                    [{macros, Ms} | Opts0];
+                _ ->
+                    Opts0
+            end,
+    Opts = case Includes of
+               Is when length(Is) > 0 ->
+                   [{includes, Is} | Opts1];
+               _ ->
+                   Opts1
+           end,
     case epp:parse_file(File, Opts) of
         {ok, Forms} ->
+            %% io:format(standard_error, "Forms: ~p~n", [Forms]),
             E = ets:new(makedep, [bag]),
             lists:foreach(fun (Form) -> note_form(E, File, Form) end, Forms),
             deps(E);

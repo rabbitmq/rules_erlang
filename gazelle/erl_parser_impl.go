@@ -75,17 +75,19 @@ func newErlParser() *erlParserImpl {
 }
 
 type parseCmd struct {
-	Path   string          `json:"path"`
-	Macros ErlParserMacros `json:"macros"`
+	Path     string                `json:"path"`
+	Macros   ErlParserMacros       `json:"macros"`
+	Includes ErlParserIncludePaths `json:"includes"`
 }
 
-func (p *erlParserImpl) parseErl(erlFilePath string, macros ErlParserMacros) (*ErlAttrs, error) {
+func (p *erlParserImpl) parseErl(erlFilePath string, macros ErlParserMacros, includes ErlParserIncludePaths) (*ErlAttrs, error) {
 	erlParserMutex.Lock()
 	defer erlParserMutex.Unlock()
 
 	command := parseCmd{
 		Path:   erlFilePath,
 		Macros: macros,
+		Includes: includes,
 	}
 
 	encoder := json.NewEncoder(erlParserStdin)
@@ -108,13 +110,13 @@ func (p *erlParserImpl) parseErl(erlFilePath string, macros ErlParserMacros) (*E
 	return &metadata, nil
 }
 
-func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, macros ErlParserMacros, erlAttrs *ErlAttrs) error {
+func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, macros ErlParserMacros, includes ErlParserIncludePaths, erlAttrs *ErlAttrs) error {
 	hrlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, hrlFile)
 	if _, err := os.Stat(hrlFilePath); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 
-	hrlAttrs, err := p.parseErl(hrlFilePath, macros)
+	hrlAttrs, err := p.parseErl(hrlFilePath, macros, includes)
 	if err != nil {
 		return err
 	}
@@ -122,7 +124,7 @@ func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, macros Er
 		erlAttrs.Include = append(erlAttrs.Include, include)
 		path := erlangApp.pathFor(hrlFile, include)
 		if path != "" {
-			err := p.parseHrl(path, erlangApp, macros, erlAttrs)
+			err := p.parseHrl(path, erlangApp, macros, includes, erlAttrs)
 			if err != nil {
 				return err
 			}
@@ -132,13 +134,14 @@ func (p *erlParserImpl) parseHrl(hrlFile string, erlangApp *ErlangApp, macros Er
 	return nil
 }
 
-func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *ErlangApp, macros ErlParserMacros) (*ErlAttrs, error) {
+func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *ErlangApp,
+	macros ErlParserMacros, includes ErlParserIncludePaths) (*ErlAttrs, error) {
 	erlFilePath := filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, erlFile)
 	if _, err := os.Stat(erlFilePath); errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 
-	rootAttrs, err := p.parseErl(erlFilePath, macros)
+	rootAttrs, err := p.parseErl(erlFilePath, macros, includes)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +149,7 @@ func (p *erlParserImpl) DeepParseErl(erlFile string, erlangApp *ErlangApp, macro
 	for _, include := range rootAttrs.Include {
 		path := erlangApp.pathFor(erlFile, include)
 		if path != "" {
-			err := p.parseHrl(path, erlangApp, macros, rootAttrs)
+			err := p.parseHrl(path, erlangApp, macros, includes, rootAttrs)
 			if err != nil {
 				return nil, err
 			}

@@ -96,7 +96,7 @@ genrule(
     outs = ["erl_attrs_to_json_wrapper.sh"],
     cmd = """\
 cat << 'EOF' > $@
-jq -nc '{"path":"'$$1'","macros":{}}' \
+jq -nc '{"path":"'$$1'","macros":{},"includes":["'$$(dirname $$1)'"]}' \
     | $(location @rules_erlang//gazelle:erl_attrs_to_json) \
     | jq
 EOF

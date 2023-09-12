@@ -185,8 +185,14 @@ func (builder *ErlangAppBuilder) Build(args language.GenerateArgs, erlParser Erl
 
 			var err error
 
+			includes := []string{
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel),
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, "include"),
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, "src"),
+			}
+
 			erlcOpts := mutable_set.Union(erlangConfig.ErlcOpts, erlangApp.ErlcOpts)
-			src.ErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(erlcOpts))
+			src.ErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(erlcOpts), includes)
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 			}
@@ -194,7 +200,7 @@ func (builder *ErlangAppBuilder) Build(args language.GenerateArgs, erlParser Erl
 			Log(args.Config, "        Parsed", src.path(), "->", actualPath)
 
 			testErlcOpts := mutable_set.Union(erlangConfig.TestErlcOpts, erlangApp.TestErlcOpts)
-			src.TestErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts))
+			src.TestErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts), includes)
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 			}
@@ -210,7 +216,12 @@ func (builder *ErlangAppBuilder) Build(args language.GenerateArgs, erlParser Erl
 			var err error
 
 			testErlcOpts := mutable_set.Union(erlangConfig.TestErlcOpts, erlangApp.TestErlcOpts)
-			src.TestErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts))
+			src.TestErlAttrs, err = erlParser.DeepParseErl(src.Path, &erlangApp, macros(testErlcOpts), []string{
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel),
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, "include"),
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, "src"),
+				filepath.Join(erlangApp.RepoRoot, erlangApp.Rel, "test"),
+			})
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
 			}
