@@ -6,6 +6,47 @@ on:
       - bump-rbe
   pull_request:
 jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        otp:
+        - "25.3"
+        - "26.0"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v4
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: BUILD
+      run: |
+        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
+        bazelisk build //... \
+          --noenable_bzlmod \
+          --color=yes
+  build-bzlmod:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        otp:
+        - "25.3"
+        - "26.0"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v4
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: BUILD
+      run: |
+        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
+        bazelisk build //... \
+          --color=yes
   test:
     runs-on: ubuntu-20.04
     strategy:
@@ -26,7 +67,7 @@ jobs:
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
         bazelisk test //... \
-          --noexperimental_enable_bzlmod \
+          --noenable_bzlmod \
           --color=yes
     - name: RESOVLE TEST LOGS PATH
       if: always()
@@ -77,7 +118,7 @@ jobs:
 
         set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
 
-        bazelisk test //... --noexperimental_enable_bzlmod
+        bazelisk test //... --noenable_bzlmod
     - name: RESOVLE TEST LOGS PATH
       if: always()
       working-directory: test
@@ -273,6 +314,8 @@ jobs:
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   summary:
     needs:
+    - build
+    - build-bzlmod
     - test
     - test-windows
     - test-bzlmod
