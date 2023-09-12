@@ -1,13 +1,10 @@
-#!/usr/bin/env escript
-%% -*- erlang -*-
-%%! -nocookie
--mode(compile).
+-module(erl_attrs_to_json).
 
 -export([main/1]).
 
 -ifdef(TEST).
 -export([parse/3,
-         parse_command/1]).
+         conform_command/1]).
 -endif.
 
 -type macro() :: [atom() | {atom(), term()}].
@@ -18,70 +15,39 @@ main(Args) ->
         eof ->
             ok;
         Line ->
-            Command = string:trim(Line, trailing, "\n"),
+            {ok, Command} = thoas:decode(Line),
             %% io:format(standard_error, "Command: ~p~n", [Command]),
             #{path := Filename,
               macros := Macros,
-              includes := Includes} = parse_command(Command),
+              includes := Includes} = conform_command(Command),
             Map = parse(Filename, Macros, Includes),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
-            Json = to_json(Map),
+            Json = thoas:encode(Map),
             io:format("~s", [Json]),
-            % signal to hex_metadata.go that the json is written
+            % signal to erl_parser_impl.go that the json is written
             io:format(<<0>>),
             main(Args)
     end.
 
--spec parse_command(string()) -> #{path := string(), macros := [macro()], includes := [string()]}.
-parse_command("{" ++ Tail) ->
-    case string:reverse(Tail) of
-        "}" ++ Middle ->
-            Pairs = string:split(string:reverse(Middle), ",", all),
-            maps:from_list([begin
-                                [K, V] = string:split(Pair, ":"),
-                                case K of
-                                    "\"path\"" ->
-                                        {path, parse_json_string(V)};
-                                    "\"macros\"" ->
-                                        {macros, parse_macros(V)};
-                                    "\"includes\"" ->
-                                        {includes, parse_includes(V)}
-                                end
-                            end || Pair <- Pairs])
-    end.
+-spec conform_command(thoas:json_term()) -> #{path := string(), macros := [macro()], includes := [string()]}.
+conform_command(JsonTerm) when is_map(JsonTerm) ->
+    maps:from_list(
+     lists:map(fun
+                   ({<<"path">> = K, V}) ->
+                       {binary_to_atom(K), binary_to_list(V)};
+                   ({<<"macros">> = K, V}) ->
+                       {binary_to_atom(K), conform_macros(V)};
+                   ({<<"includes">> = K, V}) ->
+                       {binary_to_atom(K), lists:map(fun erlang:binary_to_list/1, V)}
+               end, maps:to_list(JsonTerm))).
 
-parse_macros("{}") ->
-    [];
-parse_macros("{" ++ Tail) ->
-    case string:reverse(Tail) of
-        "}" ++ Middle ->
-            Pairs = string:split(string:reverse(Middle), ",", all),
-            [begin
-                 [K, V] = string:split(Pair, ":"),
-                 Name = parse_json_string(K),
-                 case V of
-                     "null" ->
-                         list_to_atom(Name);
-                     _ ->
-                         {list_to_atom(Name), parse_json_string(V)}
-                 end
-             end || Pair <- Pairs]
-    end.
-
-parse_includes("[]") ->
-    [];
-parse_includes("[" ++ Tail) ->
-    case string:reverse(Tail) of
-        "]" ++ Middle ->
-            Elems = string:split(string:reverse(Middle), ",", all),
-            [parse_json_string(Elem) || Elem <- Elems]
-    end.
-
-parse_json_string("\"" ++ Tail) ->
-    case string:reverse(Tail) of
-        "\"" ++ Middle ->
-            string:reverse(Middle)
-    end.
+conform_macros(M) when is_map(M) ->
+    lists:map(fun
+                  ({K, null}) ->
+                      binary_to_atom(K);
+                  ({K, V}) ->
+                      {binary_to_atom(K), binary_to_list(V)}
+              end, maps:to_list(M)).
 
 drop_common([C | L], [C | R]) ->
     drop_common(L, R);
@@ -216,9 +182,9 @@ deps(E) ->
     ets:foldl(
       fun
           ({include_lib, Path}, #{include_lib := IncludeLib} = Acc) ->
-              Acc#{include_lib := [Path | IncludeLib]};
+              Acc#{include_lib := [list_to_binary(Path) | IncludeLib]};
           ({include, Path}, #{include := Include} = Acc) ->
-              Acc#{include := [Path | Include]};
+              Acc#{include := [list_to_binary(Path) | Include]};
           ({behaviour, Dep}, #{behaviour := Behaviours} = Acc) ->
               Acc#{behaviour := [Dep | Behaviours]};
           ({parse_transform, Dep}, #{parse_transform := Transforms} = Acc) ->
@@ -273,25 +239,4 @@ parse(File, Macros, Includes) ->
             io:format(standard_error, "~s: error opening ~s: ~p~n",
                       [filename:basename(escript:script_name()), File, Reason]),
             null
-    end.
-
--spec to_json(term()) -> string().
-to_json(null) ->
-    "null";
-to_json(M) when is_map(M) ->
-    Pairs = [to_json(K) ++ ": " ++ to_json(V) || {K, V} <- maps:to_list(M)],
-    "{" ++ string:join(Pairs, ",") ++ "}";
-to_json(S) when is_binary(S) ->
-    "\"" ++ binary_to_list(S) ++ "\"";
-to_json(A) when is_atom(A) ->
-    "\"" ++ atom_to_list(A) ++ "\"";
-to_json([]) ->
-    "[]";
-to_json(L) when is_list(L) ->
-    case io_lib:printable_list(L) of
-        true ->
-            "\"" ++ L ++ "\"";
-        _ ->
-            Items = lists:map(fun to_json/1, L),
-            "[" ++ string:join(Items, ",") ++ "]"
     end.
