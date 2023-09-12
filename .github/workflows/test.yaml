@@ -234,7 +234,8 @@ jobs:
         bazelisk test //... \
           --config=rbe \
           --toolchain_resolution_debug="@rules_erlang.*" \
-          --verbose_failures
+          --verbose_failures \
+          --build_tests_only
     - name: RESOVLE TEST LOGS PATH
       if: always()
       working-directory: test
@@ -302,8 +303,8 @@ jobs:
     - name: TEST GAZELLE PACKAGE (INTEGRATION_SUITE)
       working-directory: test
       run: |
-        bazelisk test //gazelle:integration_suite \
-          || bazelisk test //gazelle:integration_suite
+        bazelisk test //gazelle:integration_suite --test_env PATH \
+          || bazelisk test //gazelle:integration_suite --test_env PATH
     - name: RESOVLE TEST LOGS PATH
       if: always()
       working-directory: test
