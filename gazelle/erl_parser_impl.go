@@ -91,8 +91,8 @@ func (p *erlParserImpl) parseErl(erlFilePath string, macros ErlParserMacros, inc
 	defer erlParserMutex.Unlock()
 
 	command := parseCmd{
-		Path:   erlFilePath,
-		Macros: macros,
+		Path:     erlFilePath,
+		Macros:   macros,
 		Includes: includes,
 	}
 
