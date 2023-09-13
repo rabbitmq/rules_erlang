@@ -116,7 +116,7 @@ func multilineList[T any](values []T) build.Expr {
 }
 
 func (erlangApp *ErlangApp) pathFor(from, include string) string {
-	directPath := filepath.Join(filepath.Dir(from), include)
+	directPath := filepath.Join(from, include)
 	privatePath := filepath.Join("src", include)
 	for p, ok := range erlangApp.PrivateHdrs {
 		if ok {
@@ -650,7 +650,7 @@ func (erlangApp *ErlangApp) testPathFor(from, include string) string {
 	if standardPath != "" {
 		return standardPath
 	}
-	directPath := filepath.Join(filepath.Dir(from), include)
+	directPath := filepath.Join(from, include)
 	for p, ok := range erlangApp.TestHdrs {
 		if ok {
 			if p.Path == include {

@@ -32,10 +32,17 @@ erlang_package = use_extension(
     "//bzlmod:extensions.bzl",
     "erlang_package",
 )
+erlang_package.hex_package(
+    name = "thoas",
+    build_file = "@rules_erlang//:BUILD.thoas",
+    sha256 = "442296847aca11db8d25180693d7ca3073d6d7179f66952f07b16415306513b6",
+    version = "0.4.0",
+)
 use_repo(
     erlang_package,
     "getopt_src",
     "xref_runner_src",
+    "thoas",
 )
 
 erlang_config_extension = use_extension(
