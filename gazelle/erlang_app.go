@@ -650,7 +650,7 @@ func (erlangApp *ErlangApp) testPathFor(from, include string) string {
 	if standardPath != "" {
 		return standardPath
 	}
-	directPath := filepath.Join(filepath.Dir(from), include)
+	directPath := filepath.Join(from, include)
 	for p, ok := range erlangApp.TestHdrs {
 		if ok {
 			if p.Path == include {
