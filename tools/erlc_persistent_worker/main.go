@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strings"
 
 	wp "github.com/rabbitmq/rules_erlang/tools/erlc_persistent_worker/worker_protocol"
 	"google.golang.org/protobuf/encoding/protodelim"
@@ -88,10 +89,26 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Println("One Shot mode")
-	}
+		argsfile := strings.TrimPrefix(os.Args[1], "@")
+		argsfile_bytes, err := os.ReadFile(argsfile)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
+		erlcArgs := strings.Split(string(argsfile_bytes), "\n")
 
-	os.Exit(1)
+		ctx := context.Background()
+		cmd := exec.CommandContext(ctx, erlc)
+		cmd.Env = append(cmd.Env, erlcArgs[0])
+		cmd.Args = append(cmd.Args, erlcArgs[1:]...)
+		output, err := cmd.CombinedOutput()
+
+		fmt.Print(bytes.NewBuffer(output).String())
+		if err != nil {
+			os.Exit(cmd.ProcessState.ExitCode())
+		}
+	}
+	os.Exit(0)
 }
 
 func (s *WorkerState) server_id(request *wp.WorkRequest) string {
