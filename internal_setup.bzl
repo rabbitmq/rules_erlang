@@ -1,6 +1,7 @@
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 load("//gazelle:deps.bzl", "gazelle_deps")
 
 def rules_erlang_internal_setup(
@@ -16,3 +17,5 @@ def rules_erlang_internal_setup(
 
     # gazelle:repository_macro gazelle/deps.bzl%gazelle_deps
     gazelle_deps()
+
+    protobuf_deps()

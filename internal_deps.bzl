@@ -33,6 +33,17 @@ def rules_erlang_internal_deps():
         ],
     )
 
+    maybe(
+        http_archive,
+        name = "com_google_protobuf",
+        sha256 = "9a301cf94a8ddcb380b901e7aac852780b826595075577bb967004050c835056",
+        strip_prefix = "protobuf-3.19.6",
+        urls = [
+            "https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.19.6.tar.gz",
+            "https://github.com/protocolbuffers/protobuf/archive/v3.19.6.tar.gz",
+        ],
+    )
+
     hex_archive(
         name = "getopt_src",
         package_name = "getopt",
