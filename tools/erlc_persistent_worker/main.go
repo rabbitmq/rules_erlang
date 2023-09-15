@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 
@@ -14,10 +15,23 @@ import (
 	"google.golang.org/protobuf/encoding/protodelim"
 )
 
+type WorkerState struct {
+	Id int
+}
+
+func NewWorkerState() *WorkerState {
+	return &WorkerState{
+		Id: rand.Intn(1000),
+	}
+}
+
 func main() {
-	p := flag.Bool("persistent_worker", false, "use as a bazel persistent worker")
+	persistent := flag.Bool(
+		"persistent_worker", false, "use as a bazel persistent worker",
+	)
 	flag.Parse()
 
+	worker_state := NewWorkerState()
 	// fmt.Fprintln(os.Stderr, "PATH:", os.Getenv("PATH"))
 
 	erlc, err := exec.LookPath("erlc")
@@ -35,7 +49,7 @@ func main() {
 
 	logger := log.New(f, "ERLC_PW ", log.LstdFlags)
 
-	if *p {
+	if *persistent {
 		reader := bufio.NewReader(os.Stdin)
 		writer := bufio.NewWriter(os.Stdout)
 		for true {
@@ -45,26 +59,29 @@ func main() {
 				log.Fatalf("ERROR: %v\n", err)
 			}
 
-			// need to shell out to erlc, using it as a server with the right env
 			ctx := context.Background()
 			cmd := exec.CommandContext(ctx, erlc)
 			cmd.Env = append(cmd.Env,
-				// "ERLC_USE_SERVER=true",
+				"ERLC_USE_SERVER=true",
+				"ERLC_SERVER_ID="+worker_state.server_id(request),
 				request.GetArguments()[0],
 			)
 			cmd.Args = append(cmd.Args, request.GetArguments()[1:]...)
 			output, err := cmd.CombinedOutput()
 
-			response := &wp.WorkResponse{}
-			response.Output = bytes.NewBuffer(output).String()
-			response.ExitCode = int32(cmd.ProcessState.ExitCode())
+			response := wp.WorkResponse{
+				Output:   bytes.NewBuffer(output).String(),
+				ExitCode: int32(cmd.ProcessState.ExitCode()),
+			}
 
+			cwd, _ := os.Getwd()
+			logger.Println("-------------------------------------------------------------")
+			logger.Println("ID:      ", worker_state.server_id(request))
+			logger.Println("CWD:     ", cwd)
 			logger.Println("REQUEST: ", cmd.Args)
-			// cwd, _ := os.Getwd()
-			// logger.Println(cwd)
 			logger.Println("RESPONSE:", response)
 
-			protodelim.MarshalTo(writer, response)
+			protodelim.MarshalTo(writer, &response)
 			err = writer.Flush()
 			if err != nil {
 				log.Fatalf("ERROR: %v\n", err)
@@ -75,4 +92,8 @@ func main() {
 	}
 
 	os.Exit(1)
+}
+
+func (s *WorkerState) server_id(request *wp.WorkRequest) string {
+	return fmt.Sprintf("%03d", s.Id)
 }
