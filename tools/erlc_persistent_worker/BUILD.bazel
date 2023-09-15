@@ -1,34 +1,33 @@
-load("//:erlang_app.bzl", "erlang_app", "test_erlang_app")
-load("//:escript.bzl", "escript_archive")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load(":worker_wrapper.bzl", "worker_wrapper")
 
-APP_NAME = "erlc_persistent_worker"
+TOOL_NAME = "erlc_persistent_worker"
 
-APP_VERSION = "1.0.0"
-
-DEPS = ["@thoas//:erlang_app"]
-
-erlang_app(
-    name = "erlang_app",
-    app_name = APP_NAME,
-    app_version = APP_VERSION,
-    deps = DEPS,
+go_proto_library(
+    name = "worker_protocol_go_proto",
+    importpath = "github.com/rabbitmq/rules_erlang/tools/erlc_persistent_worker/worker_protocol",
+    protos = [
+        "@bazel_tools//src/main/protobuf:worker_protocol_proto",
+    ],
 )
 
-test_erlang_app(
-    name = "test_erlang_app",
-    app_name = APP_NAME,
-    app_version = APP_VERSION,
-    deps = DEPS,
-)
-
-escript_archive(
-    name = APP_NAME,
-    app = ":erlang_app",
+go_binary(
+    name = TOOL_NAME,
+    srcs = [
+        "main.go",
+    ],
+    deps = [
+        ":worker_protocol_go_proto",
+        "@org_golang_google_protobuf//encoding/protodelim:go_default_library",
+        "@org_golang_google_protobuf//proto:go_default_library",
+    ],
+    # importpath = "github.com/rabbitmq/rules_erlang/tools/erlc_persistent_worker",
+    # visibility = ["//visibility:public"],
 )
 
 worker_wrapper(
-    name = "%s_wrapper" % APP_NAME,
-    escript = ":%s" % APP_NAME,
+    name = "%s_wrapper" % TOOL_NAME,
     visibility = ["//visibility:public"],
+    worker = ":%s" % TOOL_NAME,
 )

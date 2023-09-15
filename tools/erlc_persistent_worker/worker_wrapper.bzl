@@ -7,15 +7,15 @@ load(
 def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    script = """set -euxo pipefail
+    script = """set -euo pipefail
 
 {maybe_install_erlang}
 
-exec "{erlang_home}"/bin/escript {escript} $@
+exec env PATH="{erlang_home}/bin:$PATH" {worker} $@
 """.format(
         maybe_install_erlang = maybe_install_erlang(ctx, True),
         erlang_home = erlang_home,
-        escript = ctx.file.escript.path,
+        worker = ctx.file.worker.path,
     )
 
     ctx.actions.write(
@@ -25,7 +25,7 @@ exec "{erlang_home}"/bin/escript {escript} $@
     )
 
     runfiles = runfiles.merge(
-        ctx.runfiles(files = ctx.files.escript),
+        ctx.runfiles(files = ctx.files.worker),
     )
 
     return [
@@ -38,7 +38,7 @@ exec "{erlang_home}"/bin/escript {escript} $@
 worker_wrapper = rule(
     implementation = _impl,
     attrs = {
-        "escript": attr.label(
+        "worker": attr.label(
             mandatory = True,
             allow_single_file = True,
         ),

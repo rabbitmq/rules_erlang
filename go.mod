@@ -11,6 +11,7 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20230831140646-386244e73fc4
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	gopkg.in/yaml.v2 v2.4.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

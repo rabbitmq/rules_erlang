@@ -88,7 +88,7 @@ def _impl(ctx):
         mnemonic = "ERLC",
         execution_requirements = {
             "supports-workers": "1",
-            "requires-worker-protocol": "json",
+            "requires-worker-protocol": "proto",
         },
         arguments = ["@%s" % args_file.path],
     )

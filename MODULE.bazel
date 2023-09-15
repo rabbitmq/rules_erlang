@@ -26,6 +26,7 @@ use_repo(
     "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
     "in_gopkg_yaml_v2",
+    "org_golang_google_protobuf",
 )
 
 erlang_package = use_extension(
@@ -41,8 +42,8 @@ erlang_package.hex_package(
 use_repo(
     erlang_package,
     "getopt_src",
-    "xref_runner_src",
     "thoas",
+    "xref_runner_src",
 )
 
 erlang_config_extension = use_extension(
