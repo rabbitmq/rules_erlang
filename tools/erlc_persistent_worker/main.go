@@ -97,12 +97,15 @@ func main() {
 		}
 		erlcArgs := strings.Split(string(argsfile_bytes), "\n")
 
+		erl_libs_pair := strings.TrimPrefix(erlcArgs[0], "--")
+
 		ctx := context.Background()
 		cmd := exec.CommandContext(ctx, erlc)
-		cmd.Env = append(cmd.Env, erlcArgs[0])
+		cmd.Env = append(cmd.Env, erl_libs_pair)
 		cmd.Args = append(cmd.Args, erlcArgs[1:]...)
 		output, err := cmd.CombinedOutput()
 
+		fmt.Println(erl_libs_pair, cmd)
 		fmt.Print(bytes.NewBuffer(output).String())
 		if err != nil {
 			os.Exit(cmd.ProcessState.ExitCode())

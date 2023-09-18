@@ -59,7 +59,7 @@ def _impl(ctx):
     for dir in unique_dirnames(ctx.files.hdrs):
         include_args.extend(["-I", dir])
     if erl_libs_path != "":
-        include_args.extend(["-I", "${ERL_LIBS}"])
+        include_args.extend(["-I", erl_libs_path])
 
     pa_args = []
     for dir in unique_dirnames(ctx.files.beam):
