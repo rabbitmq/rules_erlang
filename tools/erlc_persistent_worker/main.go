@@ -31,6 +31,9 @@ func main() {
 	persistent := flag.Bool(
 		"persistent_worker", false, "use as a bazel persistent worker",
 	)
+	logfile := flag.String(
+		"logfile", "", "log commands and respsonses to a file",
+	)
 	flag.Parse()
 
 	worker_state := NewWorkerState()
@@ -43,14 +46,16 @@ func main() {
 
 	id_hits := make(map[string]int)
 
-	f, err := os.OpenFile("/tmp/erlc_persistent_worker.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Println(err)
+	var logger *log.Logger
+	if *logfile != "" {
+		f, err := os.OpenFile(*logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		logger = log.New(f, "ERLC_PW ", log.LstdFlags)
 	}
-	defer f.Close()
-
-	logger := log.New(f, "ERLC_PW ", log.LstdFlags)
 
 	if *persistent {
 		reader := bufio.NewReader(os.Stdin)
@@ -93,15 +98,17 @@ func main() {
 				ExitCode: int32(cmd.ProcessState.ExitCode()),
 			}
 
-			cwd, _ := os.Getwd()
-			logger.Println("-------------------------------------------------------------")
-			logger.Println("WORKER ID:", worker_state.Id)
-			logger.Println("ID:       ", erlc_server_id)
-			logger.Println("ID HITS:  ", id_hits[erlc_server_id])
-			logger.Println("CWD:      ", cwd)
-			logger.Println("ENV:      ", cmd.Env)
-			logger.Println("ARGS:     ", cmd.Args)
-			logger.Println("RESPONSE: ", response)
+			if logger != nil {
+				cwd, _ := os.Getwd()
+				logger.Println("-------------------------------------------------------------")
+				logger.Println("WORKER ID:", worker_state.Id)
+				logger.Println("ID:       ", erlc_server_id)
+				logger.Println("ID HITS:  ", id_hits[erlc_server_id])
+				logger.Println("CWD:      ", cwd)
+				logger.Println("ENV:      ", cmd.Env)
+				logger.Println("ARGS:     ", cmd.Args)
+				logger.Println("RESPONSE: ", response)
+			}
 
 			protodelim.MarshalTo(writer, &response)
 			err = writer.Flush()
