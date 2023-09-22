@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"math/rand"
 	"os"
@@ -33,7 +34,6 @@ func main() {
 	flag.Parse()
 
 	worker_state := NewWorkerState()
-	// fmt.Fprintln(os.Stderr, "PATH:", os.Getenv("PATH"))
 
 	erlc, err := exec.LookPath("erlc")
 	if err != nil {
@@ -95,12 +95,13 @@ func main() {
 
 			cwd, _ := os.Getwd()
 			logger.Println("-------------------------------------------------------------")
-			logger.Println("ID:      ", erlc_server_id)
-			logger.Println("ID HITS: ", id_hits[erlc_server_id])
-			logger.Println("CWD:     ", cwd)
-			logger.Println("ENV:     ", cmd.Env)
-			logger.Println("ARGS:    ", cmd.Args)
-			logger.Println("RESPONSE:", response)
+			logger.Println("WORKER ID:", worker_state.Id)
+			logger.Println("ID:       ", erlc_server_id)
+			logger.Println("ID HITS:  ", id_hits[erlc_server_id])
+			logger.Println("CWD:      ", cwd)
+			logger.Println("ENV:      ", cmd.Env)
+			logger.Println("ARGS:     ", cmd.Args)
+			logger.Println("RESPONSE: ", response)
 
 			protodelim.MarshalTo(writer, &response)
 			err = writer.Flush()
@@ -145,12 +146,64 @@ func main() {
 }
 
 func (s *WorkerState) server_id(request *wp.WorkRequest) string {
-	// the question is what is a reasonable function of the args
-	// that will actually let us get some re-use?
-	// Maybe the working directory? In rabbitmq-server that might
-	// work pretty well...
-
 	package_dir := strings.TrimPrefix(request.GetArguments()[0], "--PACKAGE_DIR=")
+	erl_libs := strings.TrimPrefix(request.GetArguments()[1], "--ERL_LIBS=")
 
-	return strings.ReplaceAll(package_dir, "/", "_")
+	erlc_args := parse_erlc_args(request.GetArguments()[2:], &ErlcArgs{})
+
+	return fmt.Sprintf("%s-%d-%d",
+		strings.ReplaceAll(package_dir, "/", "_"),
+		string_hash(erl_libs),
+		erlc_args.hash(),
+	)
+}
+
+func parse_erlc_args(arguments []string, acc *ErlcArgs) *ErlcArgs {
+	if len(arguments) == 0 {
+		return acc
+	}
+
+	switch arguments[0] {
+	case "-v":
+		acc.Verbose = true
+		return parse_erlc_args(arguments[1:], acc)
+	case "-I":
+		acc.Includes = append(acc.Includes, arguments[1])
+		return parse_erlc_args(arguments[2:], acc)
+	case "-o":
+		acc.Output = arguments[1]
+		return parse_erlc_args(arguments[2:], acc)
+	default:
+		if strings.HasPrefix(arguments[0], "-D") {
+			acc.ErlTerms = append(acc.ErlTerms, arguments[0])
+		} else if strings.HasPrefix(arguments[0], "+") {
+			acc.ErlTerms = append(acc.ErlTerms, arguments[0])
+		}
+		return parse_erlc_args(arguments[1:], acc)
+	}
+}
+
+type ErlcArgs struct {
+	Verbose  bool
+	Includes []string
+	ErlTerms []string
+	Output   string
+}
+
+func (args *ErlcArgs) hash() uint32 {
+	h := fnv.New32a()
+	for i := range args.Includes {
+		h.Write([]byte(args.Includes[i]))
+	}
+	for i := range args.ErlTerms {
+		h.Write([]byte(args.ErlTerms[i]))
+	}
+	h.Write([]byte(args.Output))
+	return h.Sum32()
+}
+
+func string_hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }
