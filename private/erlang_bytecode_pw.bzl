@@ -68,6 +68,7 @@ def _impl(ctx):
     inputs = ctx.files.hdrs + ctx.files.srcs + ctx.files.beam + erl_libs_files
 
     args = []
+    args.append("--PACKAGE_DIR=%s" % package_dir)
     args.append("--ERL_LIBS=%s" % erl_libs_path)
     args.append("-v")
     args.extend(include_args)

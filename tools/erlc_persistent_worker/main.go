@@ -41,6 +41,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	id_hits := make(map[string]int)
+
 	f, err := os.OpenFile("/tmp/erlc_persistent_worker.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -60,14 +62,30 @@ func main() {
 				log.Fatalf("ERROR: %v\n", err)
 			}
 
+			if !strings.HasPrefix(request.GetArguments()[0], "--PACKAGE_DIR=") {
+				log.Fatalf("ERROR: First argument did not begin with --PACKAGE_DIR=\n")
+				os.Exit(1)
+			}
+
+			if !strings.HasPrefix(request.GetArguments()[1], "--ERL_LIBS=") {
+				log.Fatalf("ERROR: First argument did not begin with --ERL_LIBS=\n")
+				os.Exit(1)
+			}
+
+			erl_libs_pair := strings.TrimPrefix(request.GetArguments()[1], "--")
+
+			erlc_server_id := worker_state.server_id(request)
+
+			id_hits[erlc_server_id]++
+
 			ctx := context.Background()
 			cmd := exec.CommandContext(ctx, erlc)
 			cmd.Env = append(cmd.Env,
 				"ERLC_USE_SERVER=true",
-				"ERLC_SERVER_ID="+worker_state.server_id(request),
-				request.GetArguments()[0],
+				"ERLC_SERVER_ID="+erlc_server_id,
+				erl_libs_pair,
 			)
-			cmd.Args = append(cmd.Args, request.GetArguments()[1:]...)
+			cmd.Args = append(cmd.Args, request.GetArguments()[2:]...)
 			output, err := cmd.CombinedOutput()
 
 			response := wp.WorkResponse{
@@ -77,9 +95,11 @@ func main() {
 
 			cwd, _ := os.Getwd()
 			logger.Println("-------------------------------------------------------------")
-			logger.Println("ID:      ", worker_state.server_id(request))
+			logger.Println("ID:      ", erlc_server_id)
+			logger.Println("ID HITS: ", id_hits[erlc_server_id])
 			logger.Println("CWD:     ", cwd)
-			logger.Println("REQUEST: ", cmd.Args)
+			logger.Println("ENV:     ", cmd.Env)
+			logger.Println("ARGS:    ", cmd.Args)
 			logger.Println("RESPONSE:", response)
 
 			protodelim.MarshalTo(writer, &response)
@@ -97,12 +117,22 @@ func main() {
 		}
 		erlcArgs := strings.Split(string(argsfile_bytes), "\n")
 
+		if !strings.HasPrefix(erlcArgs[0], "--PACKAGE_DIR=") {
+			log.Fatalf("ERROR: First argument did not begin with --PACKAGE_DIR=\n")
+			os.Exit(1)
+		}
+
+		if !strings.HasPrefix(erlcArgs[1], "--ERL_LIBS=") {
+			log.Fatalf("ERROR: First argument did not begin with --ERL_LIBS=\n")
+			os.Exit(1)
+		}
+
 		erl_libs_pair := strings.TrimPrefix(erlcArgs[0], "--")
 
 		ctx := context.Background()
 		cmd := exec.CommandContext(ctx, erlc)
 		cmd.Env = append(cmd.Env, erl_libs_pair)
-		cmd.Args = append(cmd.Args, erlcArgs[1:]...)
+		cmd.Args = append(cmd.Args, erlcArgs[2:]...)
 		output, err := cmd.CombinedOutput()
 
 		fmt.Println(erl_libs_pair, cmd)
@@ -115,5 +145,12 @@ func main() {
 }
 
 func (s *WorkerState) server_id(request *wp.WorkRequest) string {
-	return fmt.Sprintf("%03d", s.Id)
+	// the question is what is a reasonable function of the args
+	// that will actually let us get some re-use?
+	// Maybe the working directory? In rabbitmq-server that might
+	// work pretty well...
+
+	package_dir := strings.TrimPrefix(request.GetArguments()[0], "--PACKAGE_DIR=")
+
+	return strings.ReplaceAll(package_dir, "/", "_")
 }
