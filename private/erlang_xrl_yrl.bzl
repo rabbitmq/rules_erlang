@@ -35,12 +35,11 @@ def _impl(ctx):
 
     script = """set -euo pipefail
 
-TMP=$(mktemp -d || mktemp -d -t bazel-tmp)
-test -d "$TMP"
-trap "rm -fr '$TMP'" EXIT
+
+mkdir -p {out_dir}
 
 "{erlang_home}"/bin/erlc \\
-    -o {out_dir} \\
+    -o "{out_dir}" \\
     $@
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
