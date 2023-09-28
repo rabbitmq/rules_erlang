@@ -40,7 +40,7 @@ mkdir -p {out_dir}
 
 "{erlang_home}"/bin/erlc \\
     -o "{out_dir}" \\
-    $@
+    "$@"
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
