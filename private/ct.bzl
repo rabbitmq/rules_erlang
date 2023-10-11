@@ -7,7 +7,11 @@ load(
     "ErlangAppInfo",
     "flat_deps",
 )
-load(":util.bzl", "erl_libs_contents")
+load(
+    ":util.bzl",
+    "erl_libs_contents",
+    "to_erlang_string_list",
+)
 load(
     ":eunit.bzl",
     "package_relative_dirnames",
@@ -84,6 +88,20 @@ def _impl(ctx):
         extra_args.append("-ct_hooks " + " ".join(ctx.attr.ct_hooks))
     extra_args.extend(ctx.attr.ct_run_extra_args)
 
+    app_name = ctx.attr.app_name if ctx.attr.app_name != "" else ctx.label.package.rpartition("/")[-1]
+
+    apps_ebin_dirs = []
+    if ctx.configuration.coverage_enabled:
+        for dep in flat_deps(ctx.attr.deps):
+            if dep.label.workspace_name == "":
+                apps_ebin_dirs.append(path_join(
+                    "$TEST_SRCDIR",
+                    "$TEST_WORKSPACE",
+                    erl_libs_path,
+                    dep[ErlangAppInfo].app_name,
+                    "ebin",
+                ))
+
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     shard_suite = ctx.attr.shard_suite
@@ -100,6 +118,17 @@ def _impl(ctx):
         script = """set -eo pipefail
 
 {maybe_install_erlang}
+
+COVER_ARGS=
+if [ -n "${{COVERAGE}}" ]; then
+    cat << EOF > "${{TEST_UNDECLARED_OUTPUTS_DIR}}/ct.cover.spec"
+{{incl_app, '{app_name}', details}}.
+{{incl_dirs, {apps_ebin_dirs_term}}}.
+{{export, "${{COVERAGE_OUTPUT_FILE}}"}}.
+EOF
+
+    COVER_ARGS="-cover ${{TEST_UNDECLARED_OUTPUTS_DIR}}/ct.cover.spec"
+fi
 
 if [ -n "{shard_suite}" ]; then
     if [ -n "${{TEST_SHARD_STATUS_FILE+x}}" ]; then
@@ -153,9 +182,11 @@ set -x
     -dir test {pa_args} \\
     -logdir "{log_dir}" \\
     -hidden \\
-    -sname {sname} {extra_args}
+    -sname {sname} ${{COVER_ARGS}} {extra_args}
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+            app_name = app_name,
+            apps_ebin_dirs_term = to_erlang_string_list(apps_ebin_dirs),
             erlang_home = erlang_home,
             package = package,
             erl_libs_path = erl_libs_path,
@@ -285,6 +316,7 @@ ct_test = rule(
             cfg = "target",
         ),
         "is_windows": attr.bool(mandatory = True),
+        "app_name": attr.string(),  # should be mandatory
         "suite_name": attr.string(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
