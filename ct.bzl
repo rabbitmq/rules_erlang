@@ -73,6 +73,7 @@ def ct_suite_variant(
 
     _ct_test(
         shard_suite = Label("@rules_erlang//tools/shard_suite:shard_suite"),
+        coverdata_to_lcov = Label("@rules_erlang//tools/coverdata_to_lcov:coverdata_to_lcov"),
         name = name,
         suite_name = suite_name,
         is_windows = select({
@@ -93,6 +94,7 @@ def ct_test(
         compiled_suites = None,
         deps = [":test_erlang_app"],
         shard_suite = Label("@rules_erlang//tools/shard_suite:shard_suite"),
+        coverdata_to_lcov = Label("@rules_erlang//tools/coverdata_to_lcov:coverdata_to_lcov"),
         **kwargs):
     if suite_name == None or suite_name == "":
         suite_name = name
@@ -104,6 +106,7 @@ def ct_test(
         compiled_suites = compiled_suites,
         deps = deps,
         shard_suite = shard_suite,
+        coverdata_to_lcov = coverdata_to_lcov,
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,

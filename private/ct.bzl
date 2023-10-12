@@ -107,6 +107,9 @@ def _impl(ctx):
     shard_suite = ctx.attr.shard_suite
     shard_suite_path = shard_suite[DefaultInfo].files_to_run.executable.short_path
 
+    coverdata_to_lcov = ctx.attr.coverdata_to_lcov
+    coverdata_to_lcov_path = coverdata_to_lcov[DefaultInfo].files_to_run.executable.short_path
+
     if not ctx.attr.is_windows:
         test_env_commands = []
         for k, v in ctx.attr.test_env.items():
@@ -183,6 +186,13 @@ set -x
     -logdir "{log_dir}" \\
     -hidden \\
     -sname {sname} ${{COVER_ARGS}} {extra_args}
+set +x
+if [ -n "${{COVERAGE}}" ]; then
+    "{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{coverdata_to_lcov} \\
+        {suite_name} \\
+        ${{COVERAGE_OUTPUT_FILE}} \\
+        ${{COVERAGE_OUTPUT_FILE}}
+fi
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             app_name = app_name,
@@ -192,6 +202,7 @@ set -x
             erl_libs_path = erl_libs_path,
             shard_suite = shard_suite_path,
             sharding_method = ctx.attr.sharding_method,
+            coverdata_to_lcov = coverdata_to_lcov_path,
             suite_name = ctx.attr.suite_name,
             pa_args = " ".join(pa_args),
             dir = path_join(package, "test"),
@@ -292,6 +303,8 @@ exit /b %CT_RUN_ERRORLEVEL%
             ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
             shard_suite[DefaultInfo].default_runfiles,
         ] + [
+            coverdata_to_lcov[DefaultInfo].default_runfiles,
+        ] if ctx.configuration.coverage_enabled else [] + [
             tool[DefaultInfo].default_runfiles
             for tool in ctx.attr.tools
         ],
@@ -312,6 +325,10 @@ ct_test = rule(
             default = Label("//:ct_logdir"),
         ),
         "shard_suite": attr.label(
+            executable = True,
+            cfg = "target",
+        ),
+        "coverdata_to_lcov": attr.label(
             executable = True,
             cfg = "target",
         ),
