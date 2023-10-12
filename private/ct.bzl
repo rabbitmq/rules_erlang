@@ -303,9 +303,7 @@ exit /b %CT_RUN_ERRORLEVEL%
         [
             ctx.runfiles(ctx.files.compiled_suites + ctx.files.data + erl_libs_files),
             shard_suite[DefaultInfo].default_runfiles,
-        ] + [
-            coverdata_to_lcov[DefaultInfo].default_runfiles,
-        ] if ctx.configuration.coverage_enabled else [] + [
+        ] + ([coverdata_to_lcov[DefaultInfo].default_runfiles] if ctx.configuration.coverage_enabled else []) + [
             tool[DefaultInfo].default_runfiles
             for tool in ctx.attr.tools
         ],
