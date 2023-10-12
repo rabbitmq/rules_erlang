@@ -191,7 +191,8 @@ if [ -n "${{COVERAGE}}" ]; then
     "{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{coverdata_to_lcov} \\
         {suite_name} \\
         ${{COVERAGE_OUTPUT_FILE}} \\
-        ${{COVERAGE_OUTPUT_FILE}}
+        ${{COVERAGE_OUTPUT_FILE}} \\
+        > ${{TEST_UNDECLARED_OUTPUTS_DIR}}/coverdata_to_lcov.log
 fi
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
