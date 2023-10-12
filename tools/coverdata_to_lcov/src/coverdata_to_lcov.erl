@@ -21,26 +21,32 @@ main([TestName, CoverdataFile, LcovFile]) ->
     io:format(S, "TN:~s~n", [TestName]),
     lists:foreach(
       fun (Module) ->
-              {ok, SF} = guess_source_file(Module, ExecRoot),
-              io:format(S, "SF:~s~n", [SF]),
+              case guess_source_file(Module, ExecRoot) of
+                  {ok, SF} ->
+                      io:format(S, "SF:~s~n", [SF]),
 
-              {ok, Lines} = cover:analyse(Module, calls, line),
-              {LH, LF} = lists:foldl(
-                           fun ({{_M, N}, Calls}, {LinesHit, LinesFound}) ->
-                                   case Calls of
-                                       0 ->
-                                           ok;
-                                       _ ->
-                                           io:format(standard_error,
-                                                     "~s: ~s:~B calls ~B~n",
-                                                     [ScriptName, SF, N, Calls])
-                                   end,
-                                   io:format(S, "DA:~B,~B~n", [N, Calls]),
-                                   {LinesHit + is_hit(Calls), LinesFound + 1}
-                           end, {0, 0}, Lines),
-              io:format(S, "LH:~B~n", [LH]),
-              io:format(S, "LF:~B~n", [LF]),
-              io:format(S, "end_of_record~n", [])
+                      {ok, Lines} = cover:analyse(Module, calls, line),
+                      {LH, LF} = lists:foldl(
+                                   fun ({{_M, N}, Calls}, {LinesHit, LinesFound}) ->
+                                           case Calls of
+                                               0 ->
+                                                   ok;
+                                               _ ->
+                                                   io:format(standard_error,
+                                                             "~s: ~s:~B calls ~B~n",
+                                                             [ScriptName, SF, N, Calls])
+                                           end,
+                                           io:format(S, "DA:~B,~B~n", [N, Calls]),
+                                           {LinesHit + is_hit(Calls), LinesFound + 1}
+                                   end, {0, 0}, Lines),
+                      io:format(S, "LH:~B~n", [LH]),
+                      io:format(S, "LF:~B~n", [LF]),
+                      io:format(S, "end_of_record~n", []);
+                  _ ->
+                      io:format(standard_error,
+                                "~s: WARNING: failed to locate source file for module ~p~n",
+                                [ScriptName, Module])
+              end
       end, Modules),
     file:close(S).
 
@@ -69,7 +75,17 @@ source_file(Module, SourceRoot, AppsDir) ->
     Pattern = filename:join([AppsDir, "*", "src", atom_to_list(Module) ++ ".erl"]),
     case filelib:wildcard(Pattern, SourceRoot) of
         [Path] -> {ok, Path};
-        _ -> not_found
+        _ -> generated_source_file(Module, SourceRoot, AppsDir)
+    end.
+
+generated_source_file(Module, SourceRoot, AppsDir) ->
+    Pattern = filename:join(["bazel-out", "*", "bin", AppsDir, "*", "src", atom_to_list(Module) ++ ".erl"]),
+    case filelib:wildcard(Pattern, SourceRoot) of
+        [Path] ->
+            AppName = filename:basename(filename:dirname(filename:dirname(Path))),
+            {ok, filename:join(["bazel-bin", AppsDir, AppName, "src", filename:basename(Path)])};
+        _ ->
+            not_found
     end.
 
 is_hit(0) ->
