@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,10 +16,10 @@ import (
 )
 
 var (
-	parserOnce   sync.Once
-	parserStdin  io.Writer
-	parserStdout io.Reader
-	parserMutex  sync.Mutex
+	parserOnce    sync.Once
+	parserEncoder *json.Encoder
+	parserStdout  *bufio.Reader
+	parserMutex   sync.Mutex
 )
 
 // based on bazelbuild/rules_python/gazelle/parser.go
@@ -55,14 +54,14 @@ func newRebarConfigParser(
 			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		parserStdin = stdin
+		parserEncoder = json.NewEncoder(stdin)
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		parserStdout = stdout
+		parserStdout = bufio.NewReader(stdout)
 
 		if err := cmd.Start(); err != nil {
 			log.Printf("failed to initialize rebar_config_to_json: %v\n", err)
@@ -90,13 +89,11 @@ func (p *rebarConfigParser) parseRebarConfig(configFilename string) (*rebarConfi
 
 	configFilePath := filepath.Join(p.repoRoot, p.relPackagePath, configFilename)
 
-	encoder := json.NewEncoder(parserStdin)
-	if err := encoder.Encode(&configFilePath); err != nil {
+	if err := parserEncoder.Encode(&configFilePath); err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
-	reader := bufio.NewReader(parserStdout)
-	data, err := reader.ReadBytes(0)
+	data, err := parserStdout.ReadBytes(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
@@ -126,8 +123,7 @@ func (p *rebarConfigParser) parseRebarLock(lockFilename string) (*rebarLock, err
 
 	lockFilePath := filepath.Join(p.repoRoot, p.relPackagePath, lockFilename)
 
-	encoder := json.NewEncoder(parserStdin)
-	if err := encoder.Encode(&lockFilePath); err != nil {
+	if err := parserEncoder.Encode(&lockFilePath); err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 

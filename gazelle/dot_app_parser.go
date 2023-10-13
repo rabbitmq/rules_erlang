@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,10 +16,10 @@ import (
 )
 
 var (
-	dotAppOnce         sync.Once
-	dotAppParserStdin  io.Writer
-	dotAppParserStdout io.Reader
-	dotAppParserMutex  sync.Mutex
+	dotAppOnce          sync.Once
+	dotAppParserEncoder *json.Encoder
+	dotAppParserStdout  *bufio.Reader
+	dotAppParserMutex   sync.Mutex
 )
 
 // based on bazelbuild/rules_python/gazelle/parser.go
@@ -55,14 +54,14 @@ func newDotAppParser(
 			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		dotAppParserStdin = stdin
+		dotAppParserEncoder = json.NewEncoder(stdin)
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		dotAppParserStdout = stdout
+		dotAppParserStdout = bufio.NewReader(stdout)
 
 		if err := cmd.Start(); err != nil {
 			log.Printf("failed to initialize dot_app_to_json: %v\n", err)
@@ -90,13 +89,11 @@ func (p *dotAppParser) parseAppSrc(appFile string) (*dotApp, error) {
 
 	appFilePath := filepath.Join(p.repoRoot, p.relPackagePath, appFile)
 
-	encoder := json.NewEncoder(dotAppParserStdin)
-	if err := encoder.Encode(&appFilePath); err != nil {
+	if err := dotAppParserEncoder.Encode(&appFilePath); err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
-	reader := bufio.NewReader(dotAppParserStdout)
-	data, err := reader.ReadBytes(0)
+	data, err := dotAppParserStdout.ReadBytes(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
