@@ -790,6 +790,7 @@ func (erlangApp *ErlangApp) CtSuiteRules(testDirBeamFilesRules []*rule.Rule) []*
 		if strings.HasSuffix(modName, "_SUITE") {
 			beamFilesRule := rulesByName[modName]
 			r := rule.NewRule(ctTestKind, modName)
+			r.SetAttr("app_name", erlangApp.Name)
 			r.SetAttr("compiled_suites",
 				append([]string{":" + beamFilesRule.Name()},
 					runtimeBeam(beamFilesRule)...))

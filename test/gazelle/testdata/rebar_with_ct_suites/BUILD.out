@@ -101,6 +101,7 @@ eunit(
 
 ct_test(
     name = "osiris_SUITE",
+    app_name = "rebar_with_ct_suites",
     compiled_suites = [":osiris_SUITE_beam_files"],
     data = glob(["test/osiris_SUITE_data/**/*"]),
     deps = [":test_erlang_app"],
@@ -108,6 +109,7 @@ ct_test(
 
 ct_test(
     name = "osiris_log_SUITE",
+    app_name = "rebar_with_ct_suites",
     compiled_suites = [":osiris_log_SUITE_beam_files"],
     data = glob(["test/osiris_log_SUITE_data/**/*"]),
     deps = [":test_erlang_app"],
@@ -115,6 +117,7 @@ ct_test(
 
 ct_test(
     name = "osiris_tracking_SUITE",
+    app_name = "rebar_with_ct_suites",
     compiled_suites = [":osiris_tracking_SUITE_beam_files"],
     data = glob(["test/osiris_tracking_SUITE_data/**/*"]),
     deps = [":test_erlang_app"],
@@ -122,6 +125,7 @@ ct_test(
 
 ct_test(
     name = "osiris_util_SUITE",
+    app_name = "rebar_with_ct_suites",
     compiled_suites = [":osiris_util_SUITE_beam_files"],
     data = glob(["test/osiris_util_SUITE_data/**/*"]),
     deps = [":test_erlang_app"],
