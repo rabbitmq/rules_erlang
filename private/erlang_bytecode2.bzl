@@ -78,11 +78,6 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    instrument = (ctx.attr.testonly and
-                  (ctx.configuration.coverage_enabled and
-                   (ctx.coverage_instrumented() or
-                    any([ctx.coverage_instrumented(dep) for dep in ctx.attr.deps]))))
-
     script = """set -euo pipefail
 
 {maybe_install_erlang}
@@ -95,11 +90,6 @@ fi
     -v {include_args} {pa_args} \\
     -o {out_dir} {erlc_opts} \\
     $@
-if [ -n "{instrument}" ]; then
-    echo "Instrumenting beam files in {out_dir}..."
-    "{erlang_home}"/bin/erl -eval 'RC = case cover:compile_beam_directory("{out_dir}") of {{error, _}} -> 1; _ -> 0 end, halt(RC).' -noshell
-    echo "done"
-fi
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
@@ -108,7 +98,6 @@ fi
         pa_args = " ".join(pa_args),
         out_dir = out_dir,
         erlc_opts = " ".join(ctx.attr.erlc_opts[ErlcOptsInfo].values),
-        instrument = "1" if instrument else "",
     )
 
     inputs = depset(
@@ -129,11 +118,6 @@ fi
 
     return [
         DefaultInfo(files = depset(outputs)),
-        coverage_common.instrumented_files_info(
-            ctx,
-            dependency_attributes = ["beam", "deps"],
-            source_attributes = ["srcs", "hdrs"],
-        ),
     ]
 
 erlang_bytecode = rule(
