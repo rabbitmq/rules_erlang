@@ -1,10 +1,18 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
+load(
+    "//:erlang_app_info.bzl",
+    "ErlangAppInfo",
+    "flat_deps",
+)
 load(
     "//:util.bzl",
     "path_join",
     "windows_path",
 )
-load(":util.bzl", "erl_libs_contents")
+load(
+    ":util.bzl",
+    "erl_libs_contents",
+    "to_erlang_string_list",
+)
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -37,6 +45,9 @@ def package_relative_dirnames(package, files):
 
 def _to_atom_list(atoms):
     return "[" + ",".join(["'%s'" % a for a in atoms]) + "]"
+
+def _quote(string_list_term):
+    return string_list_term.replace('"', '\\"')
 
 def _impl(ctx):
     if ctx.attr.eunit_mods == [] and ctx.attr.target == None:
@@ -77,9 +88,24 @@ def _impl(ctx):
     for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
         pa_args.extend(["-pa", dir])
 
+    apps_ebin_dirs = []
+    if ctx.configuration.coverage_enabled:
+        for dep in deps:
+            if dep.label.workspace_name == "":
+                apps_ebin_dirs.append(path_join(
+                    "$TEST_SRCDIR",
+                    "$TEST_WORKSPACE",
+                    erl_libs_path,
+                    dep[ErlangAppInfo].app_name,
+                    "ebin",
+                ))
+
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     eunit_opts_term = "[" + ",".join(ctx.attr.eunit_opts) + "]"
+
+    coverdata_to_lcov = ctx.attr.coverdata_to_lcov
+    coverdata_to_lcov_path = coverdata_to_lcov[DefaultInfo].files_to_run.executable.short_path
 
     if not ctx.attr.is_windows:
         test_env_commands = []
@@ -102,15 +128,30 @@ if [ -n "{package}" ]; then
     cd {package}
 fi
 
+COVER_PRE=
+COVER_POST=
+if [ -n "${{COVERAGE}}" ]; then
+    COVER_PRE="[case cover:compile_beam_directory(D) of {{error, _}} -> halt(1); _ -> ok end || D <- {apps_ebin_dirs_term}], "
+    COVER_POST="cover:export(\\"${{COVERAGE_OUTPUT_FILE}}\\"), "
+fi
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
     {pa_args} {extra_args} \\
-    -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()"
+    -eval "${{COVER_PRE}}case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, ${{COVER_POST}}halt()."
+set +x
+if [ -n "${{COVERAGE}}" ]; then
+    "{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{coverdata_to_lcov} \\
+        ${{COVERAGE_OUTPUT_FILE}} \\
+        ${{COVERAGE_OUTPUT_FILE}} \\
+        > ${{TEST_UNDECLARED_OUTPUTS_DIR}}/coverdata_to_lcov.log
+fi
 """.format(
             maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
             erlang_home = erlang_home,
+            apps_ebin_dirs_term = _quote(to_erlang_string_list(apps_ebin_dirs)),
             erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             package = package,
+            coverdata_to_lcov = coverdata_to_lcov_path,
             pa_args = " ".join(pa_args),
             extra_args = " ".join(ctx.attr.erl_extra_args),
             eunit_mods_term = _to_atom_list(eunit_mods),
@@ -158,7 +199,7 @@ echo on
         [ctx.runfiles(
             files = ctx.files.compiled_suites + ctx.files.data,
             transitive_files = depset(erl_libs_files),
-        )] + [
+        )] + ([coverdata_to_lcov[DefaultInfo].default_runfiles] if ctx.configuration.coverage_enabled else []) + [
             tool[DefaultInfo].default_runfiles
             for tool in ctx.attr.tools
         ],
@@ -174,6 +215,10 @@ echo on
 eunit_test = rule(
     implementation = _impl,
     attrs = {
+        "coverdata_to_lcov": attr.label(
+            executable = True,
+            cfg = "target",
+        ),
         "is_windows": attr.bool(mandatory = True),
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],

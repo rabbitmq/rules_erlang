@@ -6,7 +6,7 @@
 
 -spec main([string()]) -> no_return().
 
-main([TestName, CoverdataFile, LcovFile]) ->
+main([CoverdataFile, LcovFile]) ->
     ScriptName = filename:basename(escript:script_name()),
     io:format(standard_error, "~s: converting ~s to lcov...~n",
               [ScriptName, CoverdataFile]),
@@ -18,7 +18,6 @@ main([TestName, CoverdataFile, LcovFile]) ->
     Modules = cover:imported_modules(),
     
     {ok, S} = file:open(LcovFile, [write]),
-    io:format(S, "TN:~s~n", [TestName]),
     lists:foreach(
       fun (Module) ->
               case guess_source_file(Module, ExecRoot) of

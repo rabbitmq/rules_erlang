@@ -35,6 +35,7 @@ def eunit(
 
     eunit_test(
         name = "eunit",
+        coverdata_to_lcov = Label("@rules_erlang//tools/coverdata_to_lcov:coverdata_to_lcov"),
         is_windows = select({
             "@bazel_tools//src/conditions:host_windows": True,
             "//conditions:default": False,
