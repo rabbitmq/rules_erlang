@@ -253,6 +253,9 @@ jobs:
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
+    - name: INSTALL LCOV
+      run: |
+        sudo apt-get install -y lcov
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
