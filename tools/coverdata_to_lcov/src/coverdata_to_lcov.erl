@@ -11,6 +11,8 @@ main([CoverdataFile, LcovFile]) ->
     io:format(standard_error, "~s: converting ~s to lcov...~n",
               [ScriptName, CoverdataFile]),
 
+    AppsDirPaths = string:split(os:getenv("COVERDATA_TO_LCOV_APPS_DIRS", "apps"), ":"),
+
     {ok, Cwd} = file:get_cwd(),
     {ok, ExecRoot} = find_execroot(Cwd),
 
@@ -20,7 +22,7 @@ main([CoverdataFile, LcovFile]) ->
     {ok, S} = file:open(LcovFile, [write]),
     lists:foreach(
       fun (Module) ->
-              case guess_source_file(Module, ExecRoot) of
+              case guess_source_file(AppsDirPaths, Module, ExecRoot) of
                   {ok, SF} ->
                       io:format(S, "SF:~s~n", [SF]),
 
@@ -47,7 +49,8 @@ main([CoverdataFile, LcovFile]) ->
                                 [ScriptName, Module])
               end
       end, Modules),
-    file:close(S).
+    file:close(S),
+    io:format(standard_error, "~s: done.~n", [ScriptName]).
 
 find_execroot(Dir) ->
     find_execroot(Dir, filename:dirname(Dir)).
@@ -62,10 +65,12 @@ find_execroot(Dir, Parent) ->
             find_execroot(filename:dirname(Dir), filename:dirname(Parent))
     end.
 
-guess_source_file(Module, SourceRoot) ->
-    case source_file(Module, SourceRoot, "apps") of
+guess_source_file([], _, _) ->
+    not_found;
+guess_source_file([AppsDir | Rest], Module, SourceRoot) ->
+    case source_file(Module, SourceRoot, AppsDir) of
         not_found ->
-            source_file(Module, SourceRoot, "deps");
+            guess_source_file(Rest, Module, SourceRoot);
         P ->
             P
     end.
