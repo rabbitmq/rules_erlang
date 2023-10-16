@@ -253,9 +253,9 @@ jobs:
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
-    - name: INSTALL LCOV
-      run: |
-        sudo apt-get install -y lcov
+    # - name: INSTALL LCOV
+    #   run: |
+    #     sudo apt-get install -y lcov
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -264,11 +264,11 @@ jobs:
       working-directory: test
       run: |
         bazelisk coverage --combined_report=lcov //...
-    - name: GENHTML
-      working-directory: test
-      run: |
-        head "$(bazel info output_path)/_coverage/_coverage_report.dat"
-        genhtml --output genhtml "$(bazel info output_path)/_coverage/_coverage_report.dat"
+    # - name: GENHTML
+    #   working-directory: test
+    #   run: |
+    #     head "$(bazel info output_path)/_coverage/_coverage_report.dat"
+    #     genhtml --output genhtml "$(bazel info output_path)/_coverage/_coverage_report.dat"
     - name: RESOVLE TEST LOGS PATH
       if: always()
       working-directory: test
