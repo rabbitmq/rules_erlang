@@ -190,6 +190,7 @@ func (l *erlangLang) Kinds() map[string]rule.KindInfo {
 			},
 			SubstituteAttrs: map[string]bool{},
 			MergeableAttrs: map[string]bool{
+				"app_name":        true,
 				"compiled_suites": true,
 				"deps":            true,
 			},

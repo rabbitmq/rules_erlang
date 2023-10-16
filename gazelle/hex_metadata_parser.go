@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,10 +16,10 @@ import (
 )
 
 var (
-	hexParserOnce   sync.Once
-	hexParserStdin  io.Writer
-	hexParserStdout io.Reader
-	hexParserMutex  sync.Mutex
+	hexParserOnce    sync.Once
+	hexParserEncoder *json.Encoder
+	hexParserStdout  *bufio.Reader
+	hexParserMutex   sync.Mutex
 )
 
 // based on bazelbuild/rules_python/gazelle/parser.go
@@ -55,14 +54,14 @@ func newHexMetadataParser(
 			log.Printf("failed to initialize hex_metadata_config_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		hexParserStdin = stdin
+		hexParserEncoder = json.NewEncoder(stdin)
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Printf("failed to initialize hex_metadata_config_to_json: %v\n", err)
 			os.Exit(1)
 		}
-		hexParserStdout = stdout
+		hexParserStdout = bufio.NewReader(stdout)
 
 		if err := cmd.Start(); err != nil {
 			log.Printf("failed to initialize hex_metadata_config_to_json: %v\n", err)
@@ -90,13 +89,11 @@ func (p *hexMetadataParser) parseHexMetadata(configFilename string) (*hexMetadat
 
 	configFilePath := filepath.Join(p.repoRoot, p.relPackagePath, configFilename)
 
-	encoder := json.NewEncoder(hexParserStdin)
-	if err := encoder.Encode(&configFilePath); err != nil {
+	if err := hexParserEncoder.Encode(&configFilePath); err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
-	reader := bufio.NewReader(hexParserStdout)
-	data, err := reader.ReadBytes(0)
+	data, err := hexParserStdout.ReadBytes(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
