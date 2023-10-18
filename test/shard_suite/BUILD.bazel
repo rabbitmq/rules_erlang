@@ -26,6 +26,10 @@ load(
     "plt",
 )
 load(
+    "@rules_erlang//:eunit2.bzl",
+    "eunit",
+)
+load(
     "@rules_erlang//:ct.bzl",
     "ct_suite",
 )
@@ -96,12 +100,57 @@ dialyze(
     plt = ":base_plt",
 )
 
+erlang_bytecode(
+    name = "test_example_suite_beam",
+    testonly = True,
+    srcs = [
+        "test/example_suite.erl",
+    ],
+    dest = "test",
+    erlc_opts = DEFAULT_TEST_ERLC_OPTS + [
+        "+nowarn_export_all",
+    ],
+)
+
+erlang_bytecode(
+    name = "test_example_suite_missing_group_beam",
+    testonly = True,
+    srcs = [
+        "test/example_suite_missing_group.erl",
+    ],
+    dest = "test",
+    erlc_opts = DEFAULT_TEST_ERLC_OPTS + [
+        "+nowarn_export_all",
+    ],
+)
+
+erlang_bytecode(
+    name = "test_shard_suite_test_beam",
+    testonly = True,
+    srcs = [
+        "test/shard_suite_test.erl",
+    ],
+    dest = "test",
+    erlc_opts = DEFAULT_TEST_ERLC_OPTS + [
+        "+nowarn_export_all",
+    ],
+)
+
+eunit(
+    name = "eunit",
+    compiled_suites = [
+        ":test_example_suite_beam",
+        ":test_shard_suite_test_beam",
+    ],
+    target = ":test_erlang_app",
+)
+
 ct_suite(
     name = "shard_suite_SUITE",
     size = "small",
-    additional_srcs = [
-        "test/example_suite.erl",
-        "test/example_suite_missing_group.erl",
+    additional_beam = [
+        ":test_example_suite_beam",
+        ":test_example_suite_missing_group_beam",
     ],
 )
 
