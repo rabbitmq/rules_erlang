@@ -58,7 +58,7 @@ def maybe_install_erlang(ctx, short_path = False):
         return ""
     else:
         return """\
-mkdir -p "$(dirname "{erlang_home}")"
+mkdir -p $(dirname "{erlang_home}")
 if [[ mkdir "{erlang_home}" ]]; then
     tar --extract \\
         --directory / \\
