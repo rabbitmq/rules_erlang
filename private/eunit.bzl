@@ -8,7 +8,7 @@ load(
     "windows_path",
 )
 load(
-    ":beam_transition.bzl",
+    "//transitions:beam_transition.bzl",
     "beam_transition",
 )
 load(
