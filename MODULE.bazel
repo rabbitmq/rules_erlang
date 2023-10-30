@@ -41,8 +41,8 @@ erlang_package.hex_package(
 use_repo(
     erlang_package,
     "getopt_src",
-    "xref_runner_src",
     "thoas",
+    "xref_runner_src",
 )
 
 erlang_config_extension = use_extension(
