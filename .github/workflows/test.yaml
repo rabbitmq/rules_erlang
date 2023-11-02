@@ -73,7 +73,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" | tee $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -124,15 +124,14 @@ jobs:
       working-directory: test
       shell: bash
       run: |
-        LOGS_TAR=$PWD/logs.tar
-        cd bazel-testlogs
-        tar -cf $LOGS_TAR *
+        echo "LOGS_PATH=$(bazel info bazel-testlogs)" | tee $GITHUB_OUTPUT
+      id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
       uses: actions/upload-artifact@v3
       with:
-        name: bazel-testlogs-windows-${{matrix.otp}}
-        path: test/logs.tar
+        name: bazel-testlogs-bzlmod-windows-${{matrix.otp}}
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-bzlmod:
     runs-on: ubuntu-20.04
     strategy:
@@ -156,7 +155,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" | tee $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -200,15 +199,14 @@ jobs:
       working-directory: test
       shell: bash
       run: |
-        LOGS_TAR=$PWD/logs.tar
-        cd bazel-testlogs
-        tar -cf $LOGS_TAR *
+        echo "LOGS_PATH=$(bazel info bazel-testlogs)" | tee $GITHUB_OUTPUT
+      id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
       uses: actions/upload-artifact@v3
       with:
         name: bazel-testlogs-bzlmod-windows-${{matrix.otp}}
-        path: test/logs.tar
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-bzlmod-internal-erlang:
     runs-on: ubuntu-20.04
     steps:
@@ -240,7 +238,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" | tee $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -342,7 +340,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" | tee $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()

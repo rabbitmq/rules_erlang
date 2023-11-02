@@ -2,6 +2,7 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load(":util.bzl", "erl_libs_contents")
+load("//transitions:beam_transition.bzl", "beam_transition")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
@@ -122,6 +123,7 @@ fi
 
 erlang_bytecode = rule(
     implementation = _impl,
+    cfg = beam_transition,
     attrs = {
         "app_name": attr.string(),
         "hdrs": attr.label_list(
@@ -133,6 +135,7 @@ erlang_bytecode = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
+            cfg = beam_transition,
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
@@ -145,6 +148,9 @@ erlang_bytecode = rule(
         ),
         "outs": attr.output_list(
             mandatory = True,
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     toolchains = ["//tools:toolchain_type"],

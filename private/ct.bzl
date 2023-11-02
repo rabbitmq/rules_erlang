@@ -27,6 +27,7 @@ load(
     "erlang_dirs",
     "maybe_install_erlang",
 )
+load("//transitions:beam_transition.bzl", "beam_transition")
 
 def sanitize_sname(s):
     return s.replace("@", "-").replace(".", "_")
@@ -336,6 +337,7 @@ ct_test = rule(
         "compiled_suites": attr.label_list(
             allow_files = [".beam"],
             mandatory = True,
+            cfg = beam_transition,
         ),
         "ct_hooks": attr.string_list(),
         "ct_run_extra_args": attr.string_list(),
@@ -349,6 +351,9 @@ ct_test = rule(
         "sharding_method": attr.string(
             default = "group",
             values = ["group", "case"],
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
     toolchains = ["//tools:toolchain_type"],

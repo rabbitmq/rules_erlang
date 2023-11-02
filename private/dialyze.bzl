@@ -7,6 +7,7 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join", "windows_path")
 load(":util.bzl", "erl_libs_contents")
 load(":ct.bzl", "code_paths", "unique_short_dirnames")
+load("//transitions:beam_transition.bzl", "beam_transition")
 
 def _impl(ctx):
     if ctx.attr.target == None and len(ctx.attr.beam) == 0:
@@ -114,6 +115,7 @@ dialyze_test = rule(
         ),
         "beam": attr.label_list(
             allow_files = [".beam"],
+            cfg = beam_transition,
         ),
         "target": attr.label(
             providers = [ErlangAppInfo],
@@ -129,6 +131,9 @@ dialyze_test = rule(
             ],
         ),
         "warnings_as_errors": attr.bool(default = True),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     toolchains = ["//tools:toolchain_type"],
     test = True,

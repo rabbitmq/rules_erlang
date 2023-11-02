@@ -1,3 +1,5 @@
+load("//transitions:beam_transition.bzl", "beam_transition")
+
 ErlangAppInfo = provider(
     doc = "Compiled Erlang Application",
     fields = {
@@ -62,11 +64,17 @@ erlang_app_info = rule(
         "extra_apps": attr.string_list(),
         "hdrs": attr.label_list(allow_files = True),
         "app": attr.label(allow_files = [".app"]),
-        "beam": attr.label_list(allow_files = [".beam", ".appup"]),
+        "beam": attr.label_list(
+            allow_files = [".beam", ".appup"],
+            cfg = beam_transition,
+        ),
         "priv": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
     },
     provides = [ErlangAppInfo],
 )
