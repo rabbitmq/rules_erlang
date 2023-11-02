@@ -68,8 +68,9 @@ filegroup(
 """,
     )
     hex_archive(
-        name = "thoas",
-        version = "0.4.0",
-        sha256 = "442296847aca11db8d25180693d7ca3073d6d7179f66952f07b16415306513b6",
+        name = "thoas_rules_erlang",
+        package_name = "thoas",
+        version = "1.0.0",
+        sha256 = "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735",
         build_file = "@rules_erlang//:BUILD.thoas",
     )
