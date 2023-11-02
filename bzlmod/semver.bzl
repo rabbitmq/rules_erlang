@@ -45,3 +45,6 @@ def lt(a, b):
 
 def eq(a, b):
     return a.major == b.major and a.minor == b.minor and a.patch == b.patch
+
+def compatible(a, b):
+    return a.major == b.major

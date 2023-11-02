@@ -13,6 +13,7 @@ load(
 )
 load(
     ":semver.bzl",
+    "compatible",
     "lt",
     "version_from_string",
 )
@@ -227,12 +228,26 @@ def _newest(a, b):
             b_version = b.version,
             b_module = b.module.name,
         ))
-    elif lt(a_version, b_version):
+    if not compatible(a_version, b_version):
+        fail("Version {dep_name}@{a_version} (required by {a_module}) & {dep_name}@{b_version} (required by {b_module}) cannot be resolved (major version mismatch)".format(
+            dep_name = a.name,
+            a_version = a.version,
+            a_module = a.module.name,
+            b_version = b.version,
+            b_module = b.module.name,
+        ))
+    if lt(a_version, b_version):
         return b
     else:
         return a
 
-def _resolve_local(packages):
+def _dedupe_by_version(packages):
+    by_version = {}
+    for p in packages:
+        by_version[p.version] = p
+    return by_version.values()
+
+def _resolve_local(ctx, packages):
     deduped = []
     packages_by_name = {}
     for p in packages:
@@ -240,11 +255,18 @@ def _resolve_local(packages):
             packages_by_name[p.name].append(p)
         else:
             packages_by_name[p.name] = [p]
-    for (_, dupes) in packages_by_name.items():
+    for (name, dupes) in packages_by_name.items():
         p = dupes[0]
         for dupe in dupes[1:]:
             p = _newest(p, dupe)
         deduped.append(p)
+        filtered_dupes = _dedupe_by_version(dupes)
+        if len(filtered_dupes) > 1:
+            log(ctx, "Multiple versions of {} requested ({}), selecting {}".format(
+                name,
+                ", ".join([p.version for p in filtered_dupes]),
+                p.version,
+            ))
     return deduped
 
 def _erlang_package(ctx):
@@ -290,7 +312,7 @@ def _erlang_package(ctx):
                 dep = dep,
             ))
 
-    deduped = _resolve_local(packages)
+    deduped = _resolve_local(ctx, packages)
 
     resolved = _resolve_hex_pm(ctx, deduped)
 
