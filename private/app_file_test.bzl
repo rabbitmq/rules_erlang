@@ -1,4 +1,4 @@
-load("@bazel_skylib//lib:unittest.bzl", "asserts", "analysistest")
+load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
 load(":app_file.bzl", "app_file")
 load("//:util.bzl", "path_join")
 
@@ -6,7 +6,8 @@ def _app_file_test_impl(ctx):
     env = analysistest.begin(ctx)
 
     target_under_test = analysistest.target_under_test(env)
-    asserts.equals(env,
+    asserts.equals(
+        env,
         expected = path_join(ctx.label.package, "basic.app"),
         actual = target_under_test[DefaultInfo].files.to_list()[0].short_path,
     )

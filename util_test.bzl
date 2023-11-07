@@ -4,7 +4,8 @@ load(":util.bzl", "path_join")
 def _path_join_test_impl(ctx):
     env = unittest.begin(ctx)
 
-    asserts.equals(env,
+    asserts.equals(
+        env,
         expected = "path/to/myfile.erl",
         actual = path_join("path", "", "to", "myfile.erl"),
     )
