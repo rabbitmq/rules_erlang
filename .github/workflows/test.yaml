@@ -6,7 +6,7 @@ on:
       - bump-rbe
   pull_request:
 jobs:
-  build:
+  unit-test:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -21,13 +21,13 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp }}
-    - name: BUILD
+    - name: UNIT TEST
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        bazelisk build //... \
+        bazelisk test //... \
           --noenable_bzlmod \
           --color=yes
-  build-bzlmod:
+  unit-test-bzlmod:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -42,10 +42,10 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp }}
-    - name: BUILD
+    - name: UNIT TEST
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        bazelisk build //... \
+        bazelisk test //... \
           --color=yes
   test:
     runs-on: ubuntu-20.04

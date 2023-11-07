@@ -1,4 +1,8 @@
+load(":app_file_test.bzl", "app_file_test_suite")
+
 config_setting(
     name = "private_stamp_detect",
     values = {"stamp": "1"},
 )
+
+app_file_test_suite(name = "app_file_test_suite")
