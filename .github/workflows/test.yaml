@@ -6,14 +6,14 @@ on:
       - bump-rbe
   pull_request:
 jobs:
-  build:
+  unit-test:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         otp:
         - "25.3"
-        - "26.0"
+        - "26.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
@@ -21,20 +21,20 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp }}
-    - name: BUILD
+    - name: UNIT TEST
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        bazelisk build //... \
+        bazelisk test //... \
           --noenable_bzlmod \
           --color=yes
-  build-bzlmod:
+  unit-test-bzlmod:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         otp:
         - "25.3"
-        - "26.0"
+        - "26.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
@@ -42,10 +42,10 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp }}
-    - name: BUILD
+    - name: UNIT TEST
       run: |
         ERLANG_HOME="$(dirname $(dirname $(which erl)))"
-        bazelisk build //... \
+        bazelisk test //... \
           --color=yes
   test:
     runs-on: ubuntu-20.04
@@ -54,7 +54,7 @@ jobs:
       matrix:
         otp:
         - "25.3"
-        - "26.0"
+        - "26.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
@@ -88,7 +88,7 @@ jobs:
       matrix:
         otp:
         - "25.3"
-        - "26.0"
+        - "26.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
@@ -140,7 +140,7 @@ jobs:
       matrix:
         otp:
         - "25.3"
-        - "26.0"
+        - "26.1"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
@@ -352,8 +352,8 @@ jobs:
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   summary:
     needs:
-    - build
-    - build-bzlmod
+    - unit-test
+    - unit-test-bzlmod
     - test
     - test-windows
     - test-bzlmod
