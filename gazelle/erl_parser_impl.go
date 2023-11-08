@@ -31,7 +31,7 @@ type erlParserImpl struct{}
 
 func newErlParser() *erlParserImpl {
 	erlParserOnce.Do(func() {
-		scriptRunfile, err := bazel.Runfile("gazelle/erl_attrs_to_json/erl_attrs_to_json")
+		scriptRunfile, err := bazel.Runfile("tools/erl_attrs_to_json/erl_attrs_to_json")
 		if err != nil {
 			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
 			os.Exit(1)
