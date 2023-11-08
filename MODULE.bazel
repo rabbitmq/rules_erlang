@@ -34,16 +34,16 @@ erlang_package = use_extension(
 )
 erlang_package.hex_package(
     name = "thoas_rules_erlang",
-    pkg = "thoas",
     build_file = "@rules_erlang//:BUILD.thoas",
+    pkg = "thoas",
     sha256 = "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735",
     version = "1.0.0",
 )
 use_repo(
     erlang_package,
     "getopt_src",
-    "xref_runner_src",
     "thoas_rules_erlang",
+    "xref_runner_src",
 )
 
 erlang_config_extension = use_extension(
