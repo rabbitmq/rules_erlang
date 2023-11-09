@@ -16,7 +16,7 @@ go_test(
         "@rules_erlang//gazelle:dot_app_to_json",
         "@rules_erlang//gazelle:hex_metadata_config_to_json",
         "@rules_erlang//gazelle:rebar_config_to_json",
-        "@rules_erlang//tools/erl_attrs_to_json",
+        "@rules_erlang//tools/erl_attrs_to_json_gazelle",
     ] + glob(["testdata/**"]),
     tags = ["manual"],
     deps = [
@@ -90,19 +90,19 @@ test_suite(
 )
 
 # convenience for parsing an actual file somewhere
-# `bazel run //tools:erl_attrs_to_json -- /path/to/file.erl`
+# `bazel run //tools:erl_attrs_to_json_gazelle -- /path/to/file.erl`
 genrule(
-    name = "erl_attrs_to_json",
-    outs = ["erl_attrs_to_json_wrapper.sh"],
+    name = "erl_attrs_to_json_gazelle",
+    outs = ["erl_attrs_to_json_gazelle_wrapper.sh"],
     cmd = """\
 cat << 'EOF' > $@
 jq -nc '{"path":"'$$1'","macros":{},"includes":["'$$(dirname $$1)'"]}' \
-    | $(location @rules_erlang//tools/erl_attrs_to_json:erl_attrs_to_json) \
+    | $(location @rules_erlang//tools/erl_attrs_to_json_gazelle:erl_attrs_to_json_gazelle) \
     | jq
 EOF
 """,
     executable = True,
     tools = [
-        "@rules_erlang//tools/erl_attrs_to_json",
+        "@rules_erlang//tools/erl_attrs_to_json_gazelle",
     ],
 )

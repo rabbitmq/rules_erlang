@@ -31,9 +31,9 @@ type erlParserImpl struct{}
 
 func newErlParser() *erlParserImpl {
 	erlParserOnce.Do(func() {
-		scriptRunfile, err := bazel.Runfile("tools/erl_attrs_to_json/erl_attrs_to_json")
+		scriptRunfile, err := bazel.Runfile("tools/erl_attrs_to_json_gazelle/erl_attrs_to_json_gazelle")
 		if err != nil {
-			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			log.Printf("failed to initialize erl_attrs_to_json_gazelle: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -51,27 +51,27 @@ func newErlParser() *erlParserImpl {
 
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			log.Printf("failed to initialize erl_attrs_to_json_gazelle: %v\n", err)
 			os.Exit(1)
 		}
 		erlParserStdin = stdin
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			log.Printf("failed to initialize erl_attrs_to_json_gazelle: %v\n", err)
 			os.Exit(1)
 		}
 		erlParserStdout = stdout
 
 		if err := cmd.Start(); err != nil {
-			log.Printf("failed to initialize erl_attrs_to_json: %v\n", err)
+			log.Printf("failed to initialize erl_attrs_to_json_gazelle: %v\n", err)
 			os.Exit(1)
 		}
 
 		go func() {
 			defer parserCancel()
 			if err := cmd.Wait(); err != nil {
-				log.Printf("failed to wait for erl_attrs_to_json: %v\n", err)
+				log.Printf("failed to wait for erl_attrs_to_json_gazelle: %v\n", err)
 				os.Exit(1)
 			}
 		}()
