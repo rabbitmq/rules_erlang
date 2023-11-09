@@ -1,0 +1,60 @@
+-module(parser_SUITE).
+
+-include_lib("common_test/include/ct.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
+-compile(export_all).
+
+all() -> [
+          basic,
+          test_src
+         ].
+
+basic(_) ->
+    ?assertEqual(
+       #{
+         include_lib => [],
+         include => [<<"my_header.hrl">>, <<"basic.hrl">>],
+         behaviour => [],
+         parse_transform => [my_pt],
+         call => #{
+                   filename => [split],
+                   io => [format],
+                   maps => [merge],
+                   other_lib => [foo, bar, finalize, encode, calc],
+                   some_other_lib => [bar, baz, fizz]
+                  }
+        },
+       parser:parse(fixture_path("test/basic.erl"), [], ["test"])),
+    ?assertEqual(
+       #{
+         include_lib => [<<"some_lib/include/some_header.hrl">>],
+         include => [<<"my_header.hrl">>, <<"basic.hrl">>],
+         behaviour => [],
+         parse_transform => [my_pt],
+         call => #{
+                   filename => [split],
+                   io => [format],
+                   maps => [merge],
+                   other_lib => [foo, bar, finalize, encode, calc],
+                   some_other_lib => [bar, baz, fizz]
+                  }
+        },
+       parser:parse(fixture_path("test/basic.erl"), ['TEST'], ["test"])).
+
+test_src(_) ->
+   ?assertMatch(
+      #{
+        include_lib := [<<"proper/include/proper.hrl">>],
+        parse_transform := [eunit_autoexport],
+        call := #{
+         proper := [counterexample]
+        }
+       },
+      parser:parse(fixture_path("test/test.erl"), ['TEST'], ["test"])).
+
+fixture_path(File) ->
+    filename:join([os:getenv("TEST_SRCDIR"),
+                   os:getenv("TEST_WORKSPACE"),
+                   "erl_attrs_to_json",
+                   File]).

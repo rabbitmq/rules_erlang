@@ -6,9 +6,7 @@
 -compile(export_all).
 
 all() -> [
-          conform_command,
-          basic,
-          test_src
+          conform_command
          ].
 
 conform_command(_) ->
@@ -35,52 +33,3 @@ conform_command(_) ->
          macros => [{'TEST', "1"}],
          includes => ["/some/path"]},
        erl_attrs_to_json:conform_command(Command2Decoded)).
-
-basic(_) ->
-    ?assertEqual(
-       #{
-         include_lib => [],
-         include => [<<"my_header.hrl">>, <<"basic.hrl">>],
-         behaviour => [],
-         parse_transform => [my_pt],
-         call => #{
-                   filename => [split],
-                   io => [format],
-                   maps => [merge],
-                   other_lib => [foo, bar, finalize, encode, calc],
-                   some_other_lib => [bar, baz, fizz]
-                  }
-        },
-       erl_attrs_to_json:parse(fixture_path("test/basic.erl"), [], ["test"])),
-    ?assertEqual(
-       #{
-         include_lib => [<<"some_lib/include/some_header.hrl">>],
-         include => [<<"my_header.hrl">>, <<"basic.hrl">>],
-         behaviour => [],
-         parse_transform => [my_pt],
-         call => #{
-                   filename => [split],
-                   io => [format],
-                   maps => [merge],
-                   other_lib => [foo, bar, finalize, encode, calc],
-                   some_other_lib => [bar, baz, fizz]
-                  }
-        },
-       erl_attrs_to_json:parse(fixture_path("test/basic.erl"), ['TEST'], ["test"])).
-
-test_src(_) ->
-   ?assertMatch(
-      #{
-        include_lib := [<<"proper/include/proper.hrl">>],
-        parse_transform := [eunit_autoexport],
-        call := #{
-         proper := [counterexample]
-        }
-       },
-      erl_attrs_to_json:parse(fixture_path("test/test.erl"), ['TEST'], ["test"])).
-
-fixture_path(File) ->
-    filename:join([os:getenv("TEST_SRCDIR"),
-                   os:getenv("TEST_WORKSPACE"),
-                   "erl_attrs_to_json",
-                   File]).

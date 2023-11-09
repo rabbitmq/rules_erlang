@@ -1,0 +1,1 @@
+-type macro() :: [atom() | {atom(), term()}].
