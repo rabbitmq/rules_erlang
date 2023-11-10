@@ -169,7 +169,7 @@ deps(E) ->
        },
       E).
 
--spec parse(file:name(), [macro()], [string()]) -> map() | 'null'.
+-spec parse(file:name(), [macro()], [include()]) -> {ok, map()} | {error, term()}.
 parse(File, Macros, Includes) ->
     Opts0 = [],
     Opts1 = case Macros of
@@ -189,9 +189,7 @@ parse(File, Macros, Includes) ->
             %% io:format(standard_error, "Forms: ~p~n", [Forms]),
             E = ets:new(makedep, [bag]),
             lists:foreach(fun (Form) -> note_form(E, File, Form) end, Forms),
-            deps(E);
-        {error, Reason} ->
-            io:format(standard_error, "~s: error opening ~s: ~p~n",
-                      [filename:basename(escript:script_name()), File, Reason]),
-            null
+            {ok, deps(E)};
+        {error, _} = E ->
+            E
     end.

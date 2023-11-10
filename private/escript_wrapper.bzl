@@ -9,7 +9,7 @@ def _impl(ctx):
 
     script = """set -euxo pipefail
 {maybe_install_erlang}
-exec "{erlang_home}"/bin/escript {escript} $@
+exec "{erlang_home}"/bin/escript "{escript}" $@
 """.format(
         maybe_install_erlang = maybe_install_erlang(ctx, True),
         erlang_home = erlang_home,

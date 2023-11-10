@@ -1,1 +1,2 @@
 -type macro() :: [atom() | {atom(), term()}].
+-type include() :: string().

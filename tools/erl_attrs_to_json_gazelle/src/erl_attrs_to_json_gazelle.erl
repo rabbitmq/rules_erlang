@@ -19,7 +19,14 @@ main(Args) ->
             #{path := Filename,
               macros := Macros,
               includes := Includes} = conform_command(Command),
-            Map = erl_attrs_to_json:parse(Filename, Macros, Includes),
+            Map = case erl_attrs_to_json:parse(Filename, Macros, Includes) of
+                      {ok, M} ->
+                          M;
+                      {error, Reason} ->
+                          io:format(standard_error, "~s: error opening ~s: ~p~n",
+                                    [filename:basename(escript:script_name()), Filename, Reason]),
+                          null
+                  end,
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(Map),
             io:format("~ts", [Json]),

@@ -9,7 +9,13 @@
 -endif.
 
 -type input() :: #{path := string(), digest := string()}.
--type request() :: #{arguments := [string()], inputs := [input()]}.
+-type request_args() :: #{in := string(),
+                          out := string(),
+                          macros := [macro()],
+                          includes := [include()]}.
+-type request() :: #{arguments := request_args(),
+                     inputs := [input()],
+                     request_id => integer()}.
 
 -type response() :: #{exit_code := integer(), output := string()}.
 
@@ -22,6 +28,7 @@ main(["--persistent_worker"] = Args) ->
             {ok, RawRequest} = thoas:decode(Line),
             io:format(standard_error, "RawRequest: ~p~n", [RawRequest]),
             Request = conform_request(RawRequest),
+            io:format(standard_error, "Request: ~p~n", [Request]),
             Response = execute(Request),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),
@@ -31,23 +38,45 @@ main(["--persistent_worker"] = Args) ->
             main(Args)
     end;
 main(["@" ++ FlagsFilePath]) ->
-    Request = #{arguments => read_flags_file(FlagsFilePath), inputs => [], request_id => 0},
+    RawRequest = #{<<"arguments">> => read_flags_file(FlagsFilePath),
+                   <<"inputs">> => []},
+    Request = conform_request(RawRequest),
     %% io:format(standard_error, "One Shot Request: ~p~n", [Request]),
     #{exit_code := ExitCode, output := Output} = execute(Request),
     case ExitCode of
         0 ->
-            io:format(standard_error, "~s~n", [Output]);
+            io:format(standard_error, "~s", [Output]),
+            ok;
         _ ->
-            io:format(standard_error, "ERROR: ~s~n", [Output])
-    end,
-    exit(ExitCode);
+            io:format(standard_error, "ERROR: ~s", [Output]),
+            exit(ExitCode)
+    end;
 main([]) ->
     exit(1).
 
 -spec conform_request(thoas:json_term()) -> request().
-conform_request(JsonTerm) when is_map(JsonTerm) ->
-    #{arguments => maps:get(<<"arguments">>, JsonTerm),
-      inputs => maps:get(<<"inputs">>, JsonTerm)}.
+conform_request(#{<<"arguments">> := [InFile, OutFile | Rest],
+                  <<"inputs">> := RawInputs} = Request)
+  when is_binary(InFile), is_binary(OutFile) ->
+    Flags = parse_flags(Rest),
+    Args = Flags#{in => binary_to_list(InFile),
+                  out => binary_to_list(OutFile)},
+
+    Inputs = lists:map(fun(#{<<"path">> := Path,
+                             <<"digest">> := Digest}) ->
+                               #{path => binary_to_list(Path),
+                                 digest => binary_to_list(Digest)}
+                       end, RawInputs),
+
+    case Request of
+        #{<<"request_id">> := Id} ->
+            #{arguments => Args,
+              inputs => Inputs,
+              request_id => Id};
+        _ ->
+            #{arguments => Args,
+              inputs => Inputs}
+    end.
 
 -spec conform_response(response()) -> thoas:input_term().
 conform_response(#{exit_code := ExitCode, output := Output}) ->
@@ -55,14 +84,13 @@ conform_response(#{exit_code := ExitCode, output := Output}) ->
       output => list_to_binary(Output)}.
 
 -spec execute(request()) -> response().
-execute(#{arguments := [InFile, OutFile], inputs := _Inputs}) when is_binary(InFile), is_binary(OutFile) ->
-    In = binary_to_list(InFile),
-    Out = binary_to_list(OutFile),
-    case erl_attrs_to_json:parse(In, [], []) of
-        null ->
-            #{exit_code => 1,
-              output => io_lib:format("Failed to parse ~p~n", [In])};
-        Map ->
+execute(#{arguments := Args}) ->
+    #{in := In,
+      out := Out,
+      macros := Macros,
+      includes := Includes} = Args,
+    case erl_attrs_to_json:parse(In, Macros, Includes) of
+        {ok, Map} ->
             case file:write_file(Out, thoas:encode(Map)) of
                 ok ->
                     #{exit_code => 0,
@@ -70,11 +98,41 @@ execute(#{arguments := [InFile, OutFile], inputs := _Inputs}) when is_binary(InF
                 {error, Reason} ->
                     #{exit_code => 1,
                       output => io_lib:format("Failed to write ~p: ~p~n", [Out, Reason])}
-            end
-    end;
-execute(_) ->
-    #{exit_code => 1,
-      output => "Not implemented."}.
+            end;
+        {error, Reason} ->
+            #{exit_code => 1,
+              output => io_lib:format("Failed to parse ~p: ~p~n", [In, Reason])}
+    end.
+
+-spec binary_string_to_term(binary()) -> term().
+binary_string_to_term(B) when is_binary(B) ->
+    {ok, Tokens, _} = erl_scan:string(binary_to_list(B) ++ "."),
+    {ok, AbsForm} = erl_parse:parse_exprs(Tokens),
+    {value, Value, _} = erl_eval:exprs(AbsForm, erl_eval:new_bindings()),
+    Value.
+
+parse_flags([], Acc) ->
+    Acc;
+parse_flags([<<"-D", MacroString/binary>> | Rest], Acc) ->
+    Macro = case string:split(MacroString, "=") of
+                [A] -> binary_to_atom(A);
+                [A, V] -> {binary_to_atom(A), binary_string_to_term(V)}
+            end,
+    parse_flags(Rest,
+                maps:update_with(macros,
+                                 fun(L) -> [Macro | L] end,
+                                 Acc));
+parse_flags([<<"-I">>, Path | Rest], Acc) when is_binary(Path) ->
+    parse_flags(Rest,
+                maps:update_with(includes,
+                                 fun(L) ->
+                                         [binary_to_list(Path) | L]
+                                 end,
+                                 Acc)).
+
+-spec parse_flags([binary()]) -> #{macros := [macro()], includes := [include()]}.
+parse_flags(Flags) ->
+    parse_flags(Flags, #{macros => [], includes => []}).
 
 read_flags_file(Path) ->
     {ok, D} = file:open(Path, [read]),
@@ -85,5 +143,5 @@ read_flags_file(Path) ->
 all_lines(D) ->
     case io:get_line(D, "") of
         eof -> [];
-        L -> [string:trim(L, trailing, "\n") | all_lines(D)]
+        L -> [list_to_binary(string:trim(L, trailing, "\n")) | all_lines(D)]
     end.
