@@ -1,6 +1,11 @@
 load(":erlang_bytecode.bzl", "unique_dirnames")
 load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 
+ErlAnalyzeInfo = provider(
+    doc = "Produced by the erl_analyze rule",
+    fields = {},
+)
+
 def _macros(erlc_opts):
     return [opt for opt in erlc_opts if opt.startswith("-D")]
 
@@ -31,6 +36,12 @@ def _impl(ctx):
         arguments = ["@%s" % args_file.path],
     )
 
+    return [
+        ctx.attr.erlc_opts[ErlcOptsInfo],
+        ErlAnalyzeInfo(),
+        DefaultInfo(files = depset([ctx.outputs.out])),
+    ]
+
 erl_analyze = rule(
     implementation = _impl,
     attrs = {
@@ -53,5 +64,6 @@ erl_analyze = rule(
             cfg = "exec",
         ),
     },
-    toolchains = ["//tools:toolchain_type"],
+    provides = [ErlcOptsInfo, ErlAnalyzeInfo],
+    # toolchains = ["//tools:toolchain_type"],
 )
