@@ -4,8 +4,9 @@ load(":erl_analyze.bzl", "ErlAnalyzeInfo")
 ErlangAppSourcesInfo = provider(
     doc = "Produced by the erlang_app_sources rule",
     fields = {
-        "name": "name of the application in erlang",
+        "app_name": "name of the application in erlang",
         "srcs": "source files",
+        "analysis": "analysis files for sources",
     }
 )
 
@@ -13,8 +14,9 @@ def _impl(ctx):
     return [
         ctx.attr.analysis[ErlcOptsInfo],
         ErlangAppSourcesInfo(
-            name = ctx.attr.app_name,
+            app_name = ctx.attr.app_name,
             srcs = ctx.files.srcs,
+            analysis = ctx.files.analysis,
         ),
         DefaultInfo(
             files = depset(ctx.files.srcs + ctx.files.analysis),

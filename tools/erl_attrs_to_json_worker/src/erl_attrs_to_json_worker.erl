@@ -28,7 +28,7 @@ main(["--persistent_worker"] = Args) ->
             {ok, RawRequest} = thoas:decode(Line),
             io:format(standard_error, "RawRequest: ~p~n", [RawRequest]),
             Request = conform_request(RawRequest),
-            io:format(standard_error, "Request: ~p~n", [Request]),
+            % io:format(standard_error, "Request: ~p~n", [Request]),
             Response = execute(Request),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),
