@@ -7,7 +7,7 @@ load(
 def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    script = """set -euxo pipefail
+    script = """set -euo pipefail
 {maybe_install_erlang}
 exec "{erlang_home}"/bin/escript "{escript}" $@
 """.format(

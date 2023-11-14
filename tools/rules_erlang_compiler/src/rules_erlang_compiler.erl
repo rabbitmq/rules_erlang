@@ -2,9 +2,9 @@
 
 -export([main/1]).
 
-% -ifdef(TEST).
-% -export([conform_request/1]).
-% -endif.
+-ifdef(TEST).
+-export([transform_erlc_opts/1]).
+-endif.
 
 % -type input() :: #{path := string(), digest := string()}.
 % -type request_args() :: #{in := string(),
@@ -50,14 +50,19 @@ main([ConfigJsonPath]) ->
 
     io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
 
+    lists:foreach(fun (AppName) ->
+                          io:format(standard_error, "Compiling ~p~n", [AppName]),
+                          #{AppName := Props} = Targets,
+                          compile(AppName, Props, DestDir)
+                  end, AppCompileOrder),
+
     %% pre-first we need to copy all the sources into the output tree
     %% first we need to determine the dependencies between apps
     %% then for each app, we need to determine it's inter-file
     %% (behaviours and such) dependencies
     %% we do the compile, then we clean up the .erl files
 
-
-    exit(1);
+    ok;
 main(_) ->
     exit(1).
 
@@ -119,6 +124,7 @@ app_compilation_order([App | Rest], Targets, ModuleIndex, Acc) ->
     #{App := #{analysis := AnalysisFiles}} = Targets,
     Deps = app_deps(AnalysisFiles, ModuleIndex),
     io:format(standard_error, "~p depends on ~p~n", [App, Deps]),
+    % need to actually update Acc resonably given Deps...
     app_compilation_order(Rest, Targets, ModuleIndex, [App | Acc]).
 
 app_deps(AnalysisFiles, ModuleIndex) ->
@@ -128,13 +134,48 @@ app_deps(AnalysisFiles, ModuleIndex) ->
                      {ok, ErlAttrs} = thoas:decode(Contents),
                      %% io:format(standard_error, "ErlAttrs: ~p~n", [ErlAttrs]),
                      #{<<"behaviour">> := Behaviours} = ErlAttrs,
-                     lists:foldl(fun (Behaviour, Acc) ->
-                                         case ModuleIndex of
-                                             #{Behaviour := Dep} ->
-                                                 sets:add_element(Dep, Acc);
-                                             _ ->
-                                                 Acc
-                                         end
-                                 end, Acc0, Behaviours)
+                     Acc1 = lists:foldl(fun (Behaviour, Acc) ->
+                                                case ModuleIndex of
+                                                    #{Behaviour := Dep} ->
+                                                        sets:add_element(Dep, Acc);
+                                                    _ ->
+                                                        Acc
+                                                end
+                                        end, Acc0, Behaviours),
+                     % need to handle include_lib, etc.
+                     Acc1
              end, sets:new(), AnalysisFiles),
     sets:to_list(Deps).
+
+is_erlang_source(F) ->
+    case filename:extension(F) of
+        ".erl" ->
+            true;
+        _ ->
+            false
+    end.
+
+compile(AppName, #{erlc_opts := ErlcOpts, outs := Outs}, DestDir) ->
+    CompileOpts0 = transform_erlc_opts(ErlcOpts),
+    OutDir = filename:join([DestDir, AppName, "ebin"]),
+    CompileOpts = [{outdir, OutDir} | CompileOpts0],
+    io:format(standard_error, "using ~p~n", [CompileOpts]),
+    CopiedSrcs = lists:filter(
+                   fun is_erlang_source/1,
+                   Outs),
+    lists:foreach(
+      fun (Src) ->
+              {ok, _} = compile:file(Src, CompileOpts)
+      end, CopiedSrcs).
+
+transform_erlc_opts(ErlcOpts) ->
+    lists:map(
+      fun
+          ("-Werror") ->
+              warnings_as_errors;
+          ("+" ++ Term) ->
+              list_to_atom(Term);
+          ("-D" ++ Macro) ->
+              % need to handle if the macro has a value
+              {d, list_to_atom(Macro)}
+      end, ErlcOpts).
