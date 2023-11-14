@@ -168,6 +168,13 @@ compile(AppName, #{erlc_opts := ErlcOpts, outs := Outs}, DestDir) ->
               {ok, _} = compile:file(Src, CompileOpts)
       end, CopiedSrcs).
 
+-spec string_to_term(string()) -> term().
+string_to_term(S) ->
+    {ok, Tokens, _} = erl_scan:string(S ++ "."),
+    {ok, AbsForm} = erl_parse:parse_exprs(Tokens),
+    {value, Value, _} = erl_eval:exprs(AbsForm, erl_eval:new_bindings()),
+    Value.
+
 transform_erlc_opts(ErlcOpts) ->
     lists:map(
       fun
@@ -176,6 +183,10 @@ transform_erlc_opts(ErlcOpts) ->
           ("+" ++ Term) ->
               list_to_atom(Term);
           ("-D" ++ Macro) ->
-              % need to handle if the macro has a value
-              {d, list_to_atom(Macro)}
+              case string:split(Macro, "=") of
+                  [A] ->
+                      {d, list_to_atom(A)};
+                  [A, V] ->
+                      {d, list_to_atom(A), string_to_term(V)}
+              end
       end, ErlcOpts).

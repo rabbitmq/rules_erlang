@@ -28,7 +28,10 @@ xref()
 
 plt(
     name = "base_plt",
-    apps = DEFAULT_PLT_APPS,
+    apps = DEFAULT_PLT_APPS + ["compiler"],
+    deps = [
+        "@thoas//:erlang_app",
+    ],
 )
 
 dialyze(
