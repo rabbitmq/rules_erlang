@@ -18,6 +18,7 @@
 % -type response() :: #{exit_code := integer(), output := string()}.
 
 -type config() :: #{dest_dir := string(),
+                    module_index := #{string() := string()},
                     targets := #{string() := #{path := string(),
                                                erlc_opts := [string()],
                                                srcs := [string()],
@@ -31,6 +32,7 @@ main([ConfigJsonPath]) ->
     Config = conform_config(RawConfig),
 
     #{dest_dir := DestDir,
+      module_index := ModuleIndex,
       targets := Targets} = Config,
 
     io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
@@ -43,6 +45,10 @@ main([ConfigJsonPath]) ->
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
     ok = clone_sources(DestDir, Targets),
+
+    AppCompileOrder = app_compilation_order(Targets, ModuleIndex),
+
+    io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
 
     %% pre-first we need to copy all the sources into the output tree
     %% first we need to determine the dependencies between apps
@@ -72,9 +78,17 @@ conform_targets(Targets) ->
               Acc#{binary_to_list(K) => conform_target(V)}
       end, #{}, Targets).
 
+conform_index(ModuleIndex) ->
+    maps:fold(
+      fun (K, V, Acc) ->
+              % maybe these should be atoms?
+              Acc#{binary_to_list(K) => binary_to_list(V)}
+      end, #{}, ModuleIndex).
+
 -spec conform_config(thoas:json_term()) -> config().
-conform_config(#{<<"dest_dir">> := DD, <<"targets">> := T}) ->
+conform_config(#{<<"dest_dir">> := DD, <<"module_index">> := MI, <<"targets">> := T}) ->
     #{dest_dir => binary_to_list(DD),
+      module_index => conform_index(MI),
       targets => conform_targets(T)}.
 
 clone_app(DestDir, AppName, #{path := AppPath, srcs := Srcs, outs := Outs}) ->
@@ -92,3 +106,35 @@ clone_sources(DestDir, Targets) ->
       fun (AppName, Props) ->
               ok = clone_app(DestDir, AppName, Props)
       end, Targets).
+
+app_compilation_order(Targets, ModuleIndex) ->
+    % if there is only one target, we could just return it, no need to analyze
+    app_compilation_order(maps:keys(Targets), Targets, ModuleIndex, []).
+
+app_compilation_order([], _, _, Acc) ->
+    Acc;
+app_compilation_order([App | Rest], Targets, ModuleIndex, Acc) ->
+    % read the app's json files, merge, put it in
+    % Acc after the things it depends upon
+    #{App := #{analysis := AnalysisFiles}} = Targets,
+    Deps = app_deps(AnalysisFiles, ModuleIndex),
+    io:format(standard_error, "~p depends on ~p~n", [App, Deps]),
+    app_compilation_order(Rest, Targets, ModuleIndex, [App | Acc]).
+
+app_deps(AnalysisFiles, ModuleIndex) ->
+    Deps = lists:foldl(
+             fun (File, Acc0) ->
+                     {ok, Contents} = file:read_file(File),
+                     {ok, ErlAttrs} = thoas:decode(Contents),
+                     %% io:format(standard_error, "ErlAttrs: ~p~n", [ErlAttrs]),
+                     #{<<"behaviour">> := Behaviours} = ErlAttrs,
+                     lists:foldl(fun (Behaviour, Acc) ->
+                                         case ModuleIndex of
+                                             #{Behaviour := Dep} ->
+                                                 sets:add_element(Dep, Acc);
+                                             _ ->
+                                                 Acc
+                                         end
+                                 end, Acc0, Behaviours)
+             end, sets:new(), AnalysisFiles),
+    sets:to_list(Deps).

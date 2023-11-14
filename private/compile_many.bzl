@@ -5,12 +5,13 @@ load(":util.bzl", "additional_file_dest_relative_path")
 
 CompileManyInfo = provider(
     doc = "An ERL_LIBS dir layout of compiled erlang apps",
-    fields = {},
+    fields = {
+        "module_index": "A map modulename to application name",
+    },
 )
 
 def _impl(ctx):
-    # can we figure out all the output files?
-    # I guess probably yes
+    module_index = {}
 
     compiler_flags = {
         "dest_dir": path_join(
@@ -34,13 +35,15 @@ def _impl(ctx):
         app_outs = []
         for src in source_info.srcs:
             if src.basename.endswith(".erl"):
+                module_name = src.basename.removesuffix(".erl")
                 out = ctx.actions.declare_file(path_join(
                     ctx.label.name,
                     source_info.app_name,
                     "ebin",
-                    src.basename.removesuffix(".erl") + ".beam",
+                    module_name + ".beam",
                 ))
                 app_outs.append(out)
+                module_index[module_name] = source_info.app_name
             rp = additional_file_dest_relative_path(app.label, src)
             out = ctx.actions.declare_file(path_join(
                 ctx.label.name,
@@ -53,6 +56,11 @@ def _impl(ctx):
             for o in app_outs
         ]
         outputs.extend(app_outs)
+
+    # need to merge the module_index props from all the erl_libs, and add
+    # them to the json
+    # correction, we don't have to do that, as erl_libs are already compiled
+    compiler_flags["module_index"] = module_index
 
     targets_file = ctx.actions.declare_file(ctx.label.name + "_targets.json")
     ctx.actions.write(
@@ -89,7 +97,7 @@ def _impl(ctx):
     )
 
     return [
-        CompileManyInfo(),
+        CompileManyInfo(module_index = module_index),
         DefaultInfo(files = depset(outputs)),
     ]
 
