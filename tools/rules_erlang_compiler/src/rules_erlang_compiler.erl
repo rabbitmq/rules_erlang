@@ -39,32 +39,28 @@ main([ConfigJsonPath]) ->
       module_index := ModuleIndex,
       targets := Targets} = Config,
 
-    io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
+    %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
 
-    io:format(standard_error, "Targets: ~p~n", [Targets]),
+    %% io:format(standard_error, "Targets: ~p~n", [Targets]),
 
-    io:format(standard_error, "DestDir: ~p~n", [DestDir]),
+    %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
 
     %% TreeOut = os:cmd("/usr/local/bin/tree"),
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
     ok = clone_sources(DestDir, Targets),
 
-    AppCompileOrder = app_compilation_order(Targets, ModuleIndex),
+    G = app_graph(Targets, ModuleIndex),
 
-    io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
+    AppCompileOrder = consume_to_list(G),
 
-    lists:foreach(fun (AppName) ->
-                          io:format(standard_error, "Compiling ~p~n", [AppName]),
-                          #{AppName := Props} = Targets,
-                          compile(AppName, Props, DestDir, ModuleIndex)
-                  end, AppCompileOrder),
+    %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
 
-    %% pre-first we need to copy all the sources into the output tree
-    %% first we need to determine the dependencies between apps
-    %% then for each app, we need to determine it's inter-file
-    %% (behaviours and such) dependencies
-    %% we do the compile, then we clean up the .erl files
+    lists:foreach(
+      fun (AppName) ->
+              #{AppName := Props} = Targets,
+              compile(AppName, Props, DestDir, ModuleIndex)
+      end, AppCompileOrder),
 
     ok;
 main(_) ->
@@ -108,7 +104,7 @@ clone_app(DestDir, AppName, #{path := AppPath, srcs := Srcs, outs := Outs}) ->
               RP = string:prefix(Src, AppPath ++ "/"), % might not work when cloning the "root" app
               Dest = filename:join([DestDir, AppName, RP]),
               true = lists:member(Dest, Outs),
-              io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
+              %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
               {ok, _} = file:copy(Src, Dest)
       end, Srcs).
 
@@ -118,40 +114,44 @@ clone_sources(DestDir, Targets) ->
               ok = clone_app(DestDir, AppName, Props)
       end, Targets).
 
-app_compilation_order(Targets, ModuleIndex) ->
-    % if there is only one target, we could just return it, no need to analyze
-    app_compilation_order(maps:keys(Targets), Targets, ModuleIndex, []).
+app_graph(Targets, ModuleIndex) ->
+    G = digraph:new([acyclic]),
+    lists:foreach(fun (App) ->
+                      digraph:add_vertex(G, App)
+                  end, maps:keys(Targets)),
+    app_graph(maps:keys(Targets), Targets, ModuleIndex, G).
 
-app_compilation_order([], _, _, Acc) ->
-    Acc;
-app_compilation_order([App | Rest], Targets, ModuleIndex, Acc) ->
-    % read the app's json files, merge, put it in
-    % Acc after the things it depends upon
+app_graph([], _, _, G) ->
+    G;
+app_graph([App | Rest], Targets, ModuleIndex, G) ->
     #{App := #{analysis := AnalysisFiles}} = Targets,
-    Deps = app_deps(AnalysisFiles, ModuleIndex),
-    io:format(standard_error, "~p depends on ~p~n", [App, Deps]),
-    % need to actually update Acc resonably given Deps...
-    app_compilation_order(Rest, Targets, ModuleIndex, [App | Acc]).
+    app_deps(App, AnalysisFiles, ModuleIndex, G),
+    app_graph(Rest, Targets, ModuleIndex, G).
 
-app_deps(AnalysisFiles, ModuleIndex) ->
-    Deps = lists:foldl(
-             fun (File, Acc0) ->
-                     {ok, Contents} = file:read_file(File),
-                     {ok, ErlAttrs} = thoas:decode(Contents),
-                     %% io:format(standard_error, "ErlAttrs: ~p~n", [ErlAttrs]),
-                     #{<<"behaviour">> := Behaviours} = ErlAttrs,
-                     Acc1 = lists:foldl(fun (Behaviour, Acc) ->
-                                                case ModuleIndex of
-                                                    #{Behaviour := Dep} ->
-                                                        sets:add_element(Dep, Acc);
-                                                    _ ->
-                                                        Acc
-                                                end
-                                        end, Acc0, Behaviours),
-                     % need to handle include_lib, etc.
-                     Acc1
-             end, sets:new(), AnalysisFiles),
-    sets:to_list(Deps).
+app_deps(_, [], _, _) ->
+    ok;
+app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G) ->
+    {ok, Contents} = file:read_file(AnalysisFile),
+    {ok, ErlAttrs} = thoas:decode(Contents),
+
+    #{<<"behaviour">> := Behaviours,
+      <<"parse_transform">> := Transforms,
+      <<"include_lib">> := IncludeLibs} = ErlAttrs,
+    lists:foreach(
+      fun (Behavior) ->
+              case ModuleIndex of
+                  #{Behavior := OtherApp} ->
+                      io:format(standard_error, "Adding edge ~p -> ~p~n", [OtherApp, AppName]),
+                      digraph:add_edge(G, OtherApp, AppName);
+                  _ ->
+                      ok
+              end
+      end, Behaviours ++ Transforms),
+    lists:foreach(
+      fun (IncludeLib) ->
+              io:format(standard_error, "~p: ~p~n", [AppName, IncludeLib])
+      end, IncludeLibs),
+    app_deps(AppName, Rest, ModuleIndex, G).
 
 src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex) ->
     G = digraph:new([acyclic]),
@@ -160,13 +160,11 @@ src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex) ->
                   end, Srcs),
     src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, G).
 
-% need to read the analysis for each source, and put the .erl file in
-% Acc after anything that it depends on
-src_graph(_, _, [], _, _, Acc) ->
-    Acc;
-src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, Acc0) ->
+src_graph(_, _, [], _, _, G) ->
+    G;
+src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G) ->
     ModuleName = filename:basename(filename:basename(A, ".json"), "." ++ Suffix),
-    io:format(standard_error, "Checking deps for ~p~n", [ModuleName]),
+    %% io:format(standard_error, "Checking deps for ~p~n", [ModuleName]),
     {value, Src} = lists:search(
                      fun (S) ->
                              filename:basename(S, ".erl") == ModuleName
@@ -175,25 +173,25 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, Acc0) ->
     {ok, ErlAttrs} = thoas:decode(Contents),
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
-    Acc = lists:foldl(
-             fun (Behavior, Acc) ->
-                     case ModuleIndex of
-                         #{Behavior := AppName} ->
-                             {value, BS} = lists:search(
-                                             fun (S) ->
-                                                     case filename:basename(S, ".erl") of
-                                                         Behavior -> true;
-                                                         _ -> false
-                                                     end
-                                             end, Srcs),
-                             io:format(standard_error, "Adding edge ~p -> ~p~n", [BS, Src]),
-                             digraph:add_edge(Acc, BS, Src);
-                         _ ->
-                             Acc
-                     end
-             end, Acc0, Behaviours ++ Transforms),
+    lists:foreach(
+      fun (Behavior) ->
+              case ModuleIndex of
+                  #{Behavior := AppName} ->
+                      {value, BS} = lists:search(
+                                      fun (S) ->
+                                              case filename:basename(S, ".erl") of
+                                                  Behavior -> true;
+                                                  _ -> false
+                                              end
+                                      end, Srcs),
+                      io:format(standard_error, "Adding edge ~p -> ~p~n", [BS, Src]),
+                      digraph:add_edge(G, BS, Src);
+                  _ ->
+                      ok
+              end
+      end, Behaviours ++ Transforms),
 
-    src_graph(AppName, Suffix, Rest, Srcs, Acc).
+    src_graph(AppName, Suffix, Rest, Srcs, G).
 
 is_erlang_source(F) ->
     case filename:extension(F) of
@@ -214,16 +212,16 @@ compile(AppName,
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
     OutDir = filename:join([DestDir, AppName, "ebin"]),
     CompileOpts = [{outdir, OutDir} | CompileOpts0],
-    io:format(standard_error, "using ~p~n", [CompileOpts]),
+    io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
     CopiedSrcs = lists:filter(
                    fun is_erlang_source/1,
                    Outs),
 
     G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex),
-    io:format(standard_error, "~p: ~p~n", [AppName, G]),
+    %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
 
     Srcs = consume_to_list(G),
-    io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
+    %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
     lists:foreach(
       fun (Src) ->
