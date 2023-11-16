@@ -1,5 +1,6 @@
 load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 load("//:util.bzl", "path_join")
+load(":erl_analyze.bzl", "ErlAnalyzeInfo")
 load(":erlang_app_sources.bzl", "ErlangAppSourcesInfo")
 load(":util.bzl", "additional_file_dest_relative_path")
 
@@ -31,6 +32,7 @@ def _impl(ctx):
             "erlc_opts": erlc_opts.values,
             "srcs": [s.path for s in source_info.srcs],
             "analysis": [a.path for a in source_info.analysis],
+            "analysis_suffix": app[ErlAnalyzeInfo].suffix,
         }
         app_outs = []
         for src in source_info.srcs:
@@ -118,5 +120,4 @@ compile_many = rule(
         ),
     },
     provides = [CompileManyInfo],
-    # toolchains = ["//tools:toolchain_type"],
 )

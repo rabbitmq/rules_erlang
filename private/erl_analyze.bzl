@@ -4,7 +4,9 @@ load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 
 ErlAnalyzeInfo = provider(
     doc = "Produced by the erl_analyze rule",
-    fields = {},
+    fields = {
+        "suffix": "the suffix used for the filenames, ModuleName.Suffix.json"
+    },
 )
 
 def _macros(erlc_opts):
@@ -52,7 +54,7 @@ def _impl(ctx):
 
     return [
         ctx.attr.erlc_opts[ErlcOptsInfo],
-        ErlAnalyzeInfo(),
+        ErlAnalyzeInfo(suffix = ctx.attr.suffix),
         DefaultInfo(files = depset(outputs)),
     ]
 
@@ -79,5 +81,4 @@ erl_analyze = rule(
         ),
     },
     provides = [ErlcOptsInfo, ErlAnalyzeInfo],
-    # toolchains = ["//tools:toolchain_type"],
 )

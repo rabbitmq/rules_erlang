@@ -13,6 +13,7 @@ ErlangAppSourcesInfo = provider(
 def _impl(ctx):
     return [
         ctx.attr.analysis[ErlcOptsInfo],
+        ctx.attr.analysis[ErlAnalyzeInfo],
         ErlangAppSourcesInfo(
             app_name = ctx.attr.app_name,
             srcs = ctx.files.srcs,
@@ -38,5 +39,5 @@ erlang_app_sources = rule(
             providers = [ErlcOptsInfo, ErlAnalyzeInfo],
         )
     },
-    provides = [ErlcOptsInfo, ErlangAppSourcesInfo]
+    provides = [ErlcOptsInfo, ErlAnalyzeInfo, ErlangAppSourcesInfo]
 )

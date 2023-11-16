@@ -3,7 +3,10 @@
 -export([main/1]).
 
 -ifdef(TEST).
--export([transform_erlc_opts/1]).
+-export([
+         consume_to_list/1,
+         transform_erlc_opts/1
+        ]).
 -endif.
 
 % -type input() :: #{path := string(), digest := string()}.
@@ -23,6 +26,7 @@
                                                erlc_opts := [string()],
                                                srcs := [string()],
                                                analysis := [string()],
+                                               analysis_suffix := string(),
                                                outs := [string()]}}}.
 
 -spec main([string()]) -> no_return().
@@ -53,7 +57,7 @@ main([ConfigJsonPath]) ->
     lists:foreach(fun (AppName) ->
                           io:format(standard_error, "Compiling ~p~n", [AppName]),
                           #{AppName := Props} = Targets,
-                          compile(AppName, Props, DestDir)
+                          compile(AppName, Props, DestDir, ModuleIndex)
                   end, AppCompileOrder),
 
     %% pre-first we need to copy all the sources into the output tree
@@ -70,11 +74,13 @@ conform_target(#{<<"path">> := Path,
                  <<"erlc_opts">> := ErlcOpts,
                  <<"srcs">> := Srcs,
                  <<"analysis">> := Analysis,
+                 <<"analysis_suffix">> := Suffix,
                  <<"outs">> := Outs}) ->
     #{path => binary_to_list(Path),
       erlc_opts => lists:map(fun binary_to_list/1, ErlcOpts),
       srcs => lists:map(fun binary_to_list/1, Srcs),
       analysis => lists:map(fun binary_to_list/1, Analysis),
+      analysis_suffix => binary_to_list(Suffix),
       outs => lists:map(fun binary_to_list/1, Outs)}.
 
 conform_targets(Targets) ->
@@ -147,6 +153,48 @@ app_deps(AnalysisFiles, ModuleIndex) ->
              end, sets:new(), AnalysisFiles),
     sets:to_list(Deps).
 
+src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex) ->
+    G = digraph:new([acyclic]),
+    lists:foreach(fun (Src) ->
+                          digraph:add_vertex(G, Src)
+                  end, Srcs),
+    src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, G).
+
+% need to read the analysis for each source, and put the .erl file in
+% Acc after anything that it depends on
+src_graph(_, _, [], _, _, Acc) ->
+    Acc;
+src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, Acc0) ->
+    ModuleName = filename:basename(filename:basename(A, ".json"), "." ++ Suffix),
+    io:format(standard_error, "Checking deps for ~p~n", [ModuleName]),
+    {value, Src} = lists:search(
+                     fun (S) ->
+                             filename:basename(S, ".erl") == ModuleName
+                     end, Srcs),
+    {ok, Contents} = file:read_file(A),
+    {ok, ErlAttrs} = thoas:decode(Contents),
+    #{<<"behaviour">> := Behaviours,
+      <<"parse_transform">> := Transforms} = ErlAttrs,
+    Acc = lists:foldl(
+             fun (Behavior, Acc) ->
+                     case ModuleIndex of
+                         #{Behavior := AppName} ->
+                             {value, BS} = lists:search(
+                                             fun (S) ->
+                                                     case filename:basename(S, ".erl") of
+                                                         Behavior -> true;
+                                                         _ -> false
+                                                     end
+                                             end, Srcs),
+                             io:format(standard_error, "Adding edge ~p -> ~p~n", [BS, Src]),
+                             digraph:add_edge(Acc, BS, Src);
+                         _ ->
+                             Acc
+                     end
+             end, Acc0, Behaviours ++ Transforms),
+
+    src_graph(AppName, Suffix, Rest, Srcs, Acc).
+
 is_erlang_source(F) ->
     case filename:extension(F) of
         ".erl" ->
@@ -155,7 +203,14 @@ is_erlang_source(F) ->
             false
     end.
 
-compile(AppName, #{erlc_opts := ErlcOpts, outs := Outs}, DestDir) ->
+compile(AppName,
+        #{erlc_opts := ErlcOpts,
+          analysis := Analysis,
+          analysis_suffix := Suffix,
+          outs := Outs},
+        DestDir,
+        ModuleIndex) ->
+
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
     OutDir = filename:join([DestDir, AppName, "ebin"]),
     CompileOpts = [{outdir, OutDir} | CompileOpts0],
@@ -163,10 +218,51 @@ compile(AppName, #{erlc_opts := ErlcOpts, outs := Outs}, DestDir) ->
     CopiedSrcs = lists:filter(
                    fun is_erlang_source/1,
                    Outs),
+
+    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex),
+    io:format(standard_error, "~p: ~p~n", [AppName, G]),
+
+    Srcs = consume_to_list(G),
+    io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
+
     lists:foreach(
       fun (Src) ->
               {ok, _} = compile:file(Src, CompileOpts)
-      end, CopiedSrcs).
+      end, Srcs).
+
+-spec consume_to_list(digraph:graph()) -> [digraph:vertex()].
+consume_to_list(G) ->
+    consume_to_list(G, []).
+
+consume_to_list(G, Acc) ->
+    case lists:sort(digraph:vertices(G)) of
+        [] ->
+            digraph:delete(G),
+            Acc;
+        [V | _]  ->
+            R = find_root(G, V),
+            digraph:del_vertex(G, R),
+            consume_to_list(G, Acc ++ [R])
+    end.
+
+find_root(G, V) ->
+    Edges = lists:sort(
+              fun (E1, E2) ->
+                      {E1, P1, V, _} = digraph:edge(G, E1),
+                      {E2, P2, V, _} = digraph:edge(G, E2),
+                      case lists:sort([P1, P1]) of
+                          [P1, P2] -> true;
+                          [P2, P1] -> false
+                      end
+              end,
+              digraph:in_edges(G, V)),
+    case Edges of
+        [] ->
+            V;
+        [E | _] ->
+            {E, P, V, _} = digraph:edge(G, E),
+            find_root(G, P)
+    end.
 
 -spec string_to_term(string()) -> term().
 string_to_term(S) ->
@@ -175,6 +271,7 @@ string_to_term(S) ->
     {value, Value, _} = erl_eval:exprs(AbsForm, erl_eval:new_bindings()),
     Value.
 
+-spec transform_erlc_opts([string()]) -> [compile:option()].
 transform_erlc_opts(ErlcOpts) ->
     lists:map(
       fun
