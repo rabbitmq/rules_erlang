@@ -103,7 +103,11 @@ conform_config(#{<<"dest_dir">> := DD, <<"module_index">> := MI, <<"targets">> :
 clone_app(DestDir, AppName, #{path := AppPath, srcs := Srcs, outs := Outs}) ->
     lists:foreach(
       fun (Src) ->
-              RP = string:prefix(Src, AppPath ++ "/"), % might not work when cloning the "root" app
+              RP = case AppPath of
+                       "" -> Src;
+                       _ ->string:prefix(Src, AppPath ++ "/")
+                   end,
+              %% io:format(standard_error, "App: ~p, Src: ~p, AppPath: ~p, RP: ~p~n", [AppName, Src, AppPath, RP]),
               Dest = filename:join([DestDir, AppName, RP]),
               true = lists:member(Dest, Outs),
               %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),

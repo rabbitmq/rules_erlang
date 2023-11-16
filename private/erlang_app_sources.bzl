@@ -7,7 +7,7 @@ ErlangAppSourcesInfo = provider(
         "app_name": "name of the application in erlang",
         "srcs": "source files",
         "analysis": "analysis files for sources",
-    }
+    },
 )
 
 def _impl(ctx):
@@ -21,7 +21,7 @@ def _impl(ctx):
         ),
         DefaultInfo(
             files = depset(ctx.files.srcs + ctx.files.analysis),
-        )
+        ),
     ]
 
 erlang_app_sources = rule(
@@ -37,7 +37,7 @@ erlang_app_sources = rule(
         "analysis": attr.label(
             mandatory = True,
             providers = [ErlcOptsInfo, ErlAnalyzeInfo],
-        )
+        ),
     },
-    provides = [ErlcOptsInfo, ErlAnalyzeInfo, ErlangAppSourcesInfo]
+    provides = [ErlcOptsInfo, ErlAnalyzeInfo, ErlangAppSourcesInfo],
 )

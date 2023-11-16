@@ -5,7 +5,7 @@ load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 ErlAnalyzeInfo = provider(
     doc = "Produced by the erl_analyze rule",
     fields = {
-        "suffix": "the suffix used for the filenames, ModuleName.Suffix.json"
+        "suffix": "the suffix used for the filenames, ModuleName.Suffix.json",
     },
 )
 

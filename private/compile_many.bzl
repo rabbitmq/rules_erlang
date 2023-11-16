@@ -7,12 +7,14 @@ load(":util.bzl", "additional_file_dest_relative_path")
 CompileManyInfo = provider(
     doc = "An ERL_LIBS dir layout of compiled erlang apps",
     fields = {
-        "module_index": "A map modulename to application name",
+        "module_index": "A map of modulename to application name",
+        "apps": "A map of applications to outputs",
     },
 )
 
 def _impl(ctx):
     module_index = {}
+    apps = {}
 
     compiler_flags = {
         "dest_dir": path_join(
@@ -57,6 +59,10 @@ def _impl(ctx):
             o.path
             for o in app_outs
         ]
+        apps[source_info.app_name] = struct(
+            source_info = source_info,
+            outs = app_outs,
+        )
         outputs.extend(app_outs)
 
     # need to merge the module_index props from all the erl_libs, and add
@@ -99,8 +105,13 @@ def _impl(ctx):
     )
 
     return [
-        CompileManyInfo(module_index = module_index),
-        DefaultInfo(files = depset(outputs)),
+        CompileManyInfo(
+            module_index = module_index,
+            apps = apps,
+        ),
+        DefaultInfo(
+            files = depset(outputs),
+        ),
     ]
 
 compile_many = rule(
