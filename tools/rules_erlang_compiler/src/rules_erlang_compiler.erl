@@ -48,9 +48,11 @@ main([ConfigJsonPath]) ->
     %% TreeOut = os:cmd("/usr/local/bin/tree"),
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
+    AnalysisFileContentsTable = ets:new(analysis_file_contents, [set]),
+
     ok = clone_sources(DestDir, Targets),
 
-    G = app_graph(Targets, ModuleIndex),
+    G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
 
     AppCompileOrder = consume_to_list(G),
 
@@ -59,9 +61,9 @@ main([ConfigJsonPath]) ->
     lists:foreach(
       fun (AppName) ->
               #{AppName := Props} = Targets,
-              compile(AppName, Props, DestDir, ModuleIndex)
+              compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable)
       end, AppCompileOrder),
-
+    ets:delete(AnalysisFileContentsTable),
     ok;
 main(_) ->
     exit(1).
@@ -114,25 +116,24 @@ clone_sources(DestDir, Targets) ->
               ok = clone_app(DestDir, AppName, Props)
       end, Targets).
 
-app_graph(Targets, ModuleIndex) ->
+app_graph(Targets, ModuleIndex, T) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (App) ->
                       digraph:add_vertex(G, App)
                   end, maps:keys(Targets)),
-    app_graph(maps:keys(Targets), Targets, ModuleIndex, G).
+    app_graph(maps:keys(Targets), Targets, ModuleIndex, G, T).
 
-app_graph([], _, _, G) ->
+app_graph([], _, _, G, _) ->
     G;
-app_graph([App | Rest], Targets, ModuleIndex, G) ->
+app_graph([App | Rest], Targets, ModuleIndex, G, T) ->
     #{App := #{analysis := AnalysisFiles}} = Targets,
-    app_deps(App, AnalysisFiles, ModuleIndex, G),
-    app_graph(Rest, Targets, ModuleIndex, G).
+    app_deps(App, AnalysisFiles, ModuleIndex, G, T),
+    app_graph(Rest, Targets, ModuleIndex, G, T).
 
-app_deps(_, [], _, _) ->
+app_deps(_, [], _, _, _) ->
     ok;
-app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G) ->
-    {ok, Contents} = file:read_file(AnalysisFile),
-    {ok, ErlAttrs} = thoas:decode(Contents),
+app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
+    ErlAttrs = get_analysis_file_contents(AnalysisFile, T),
 
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
@@ -151,26 +152,25 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G) ->
       fun (IncludeLib) ->
               io:format(standard_error, "~p: ~p~n", [AppName, IncludeLib])
       end, IncludeLibs),
-    app_deps(AppName, Rest, ModuleIndex, G).
+    app_deps(AppName, Rest, ModuleIndex, G, T).
 
-src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex) ->
+src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, T) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (Src) ->
                           digraph:add_vertex(G, Src)
                   end, Srcs),
-    src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, G).
+    src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, G, T).
 
-src_graph(_, _, [], _, _, G) ->
+src_graph(_, _, [], _, _, G, _) ->
     G;
-src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G) ->
+src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
     ModuleName = filename:basename(filename:basename(A, ".json"), "." ++ Suffix),
     %% io:format(standard_error, "Checking deps for ~p~n", [ModuleName]),
     {value, Src} = lists:search(
                      fun (S) ->
                              filename:basename(S, ".erl") == ModuleName
                      end, Srcs),
-    {ok, Contents} = file:read_file(A),
-    {ok, ErlAttrs} = thoas:decode(Contents),
+    ErlAttrs = get_analysis_file_contents(A, T),
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
     lists:foreach(
@@ -191,7 +191,7 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G) ->
               end
       end, Behaviours ++ Transforms),
 
-    src_graph(AppName, Suffix, Rest, Srcs, G).
+    src_graph(AppName, Suffix, Rest, Srcs, G, T).
 
 is_erlang_source(F) ->
     case filename:extension(F) of
@@ -207,7 +207,8 @@ compile(AppName,
           analysis_suffix := Suffix,
           outs := Outs},
         DestDir,
-        ModuleIndex) ->
+        ModuleIndex,
+        AFCT) ->
 
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
     OutDir = filename:join([DestDir, AppName, "ebin"]),
@@ -217,7 +218,7 @@ compile(AppName,
                    fun is_erlang_source/1,
                    Outs),
 
-    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex),
+    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex, AFCT),
     %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
 
     Srcs = consume_to_list(G),
@@ -285,3 +286,14 @@ transform_erlc_opts(ErlcOpts) ->
                       {d, list_to_atom(A), string_to_term(V)}
               end
       end, ErlcOpts).
+
+get_analysis_file_contents(F, T) ->
+    case ets:lookup(T, F) of
+        [{F, ErlAttrs}] ->
+            ErlAttrs;
+        [] ->
+            {ok, Contents} = file:read_file(F),
+            {ok, ErlAttrs} = thoas:decode(Contents),
+            true = ets:insert_new(T, {F, ErlAttrs}),
+            ErlAttrs
+    end.
