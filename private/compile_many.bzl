@@ -1,7 +1,6 @@
 load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 load("//:util.bzl", "path_join")
-load(":erl_analyze.bzl", "ErlAnalyzeInfo")
-load(":erlang_app_sources.bzl", "ErlangAppSourcesInfo")
+load(":erlang_app_sources_analysis.bzl", "ErlangAppSourcesInfo")
 load(":util.bzl", "additional_file_dest_relative_path")
 
 CompileManyInfo = provider(
@@ -25,17 +24,34 @@ def _impl(ctx):
         "targets": {},
     }
 
+    ## Note: if we write the analysis info out to additional files,
+    ##       we could feed those into a rule that produced a deferred
+    ##       compilation script that could be used by source debs
+
     outputs = []
+    apps_inputs = []
     for app in ctx.attr.apps:
         erlc_opts = app[ErlcOptsInfo]
         source_info = app[ErlangAppSourcesInfo]
+        compiler_srcs = (source_info.public_hdrs +
+                         source_info.private_hdrs +
+                         source_info.srcs)
         compiler_flags["targets"][source_info.app_name] = {
             "path": path_join(app.label.workspace_root, app.label.package),
             "erlc_opts": erlc_opts.values,
-            "srcs": [s.path for s in source_info.srcs],
+            "app_src": (source_info.app_src.path if source_info.app_src != None else None),
+            "srcs": [s.path for s in compiler_srcs],
             "analysis": [a.path for a in source_info.analysis],
-            "analysis_suffix": app[ErlAnalyzeInfo].suffix,
+            "analysis_id": source_info.analysis_id,
         }
+
+        apps_inputs.extend(source_info.public_hdrs)
+        apps_inputs.extend(source_info.private_hdrs)
+        apps_inputs.extend(source_info.srcs)
+        apps_inputs.extend(source_info.analysis)
+        if source_info.app_src != None:
+            apps_inputs.append(source_info.app_src)
+
         app_outs = []
         for src in source_info.srcs:
             if src.basename.endswith(".erl"):
@@ -102,8 +118,13 @@ def _impl(ctx):
     if len(erl_libs_dirs) > 0:
         env["ERL_LIBS"] = ctx.configuration.host_path_separator.join(erl_libs_dirs)
 
+    inputs = (compiler_runfiles.files.to_list() +
+              ctx.files.erl_libs +
+              apps_inputs +
+              [targets_file])
+
     ctx.actions.run(
-        inputs = compiler_runfiles.files.to_list() + ctx.files.erl_libs + ctx.files.apps + [targets_file],
+        inputs = inputs,
         outputs = outputs,
         executable = ctx.executable.rules_erlang_compiler,
         arguments = [args],

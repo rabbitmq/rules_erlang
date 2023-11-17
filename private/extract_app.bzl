@@ -8,22 +8,9 @@ def _impl(ctx):
     if ctx.attr.app_name not in apps:
         fail("requested app not present in erl_libs")
 
+    beam = []
+
     app_info = apps[ctx.attr.app_name]
-
-    files = struct(
-        include = [],
-        beam = [],
-        priv = [],
-        license_files = [],
-        srcs = [],
-    )
-
-    for src in app_info.source_info.srcs:
-        if src.basename.endswith(".hrl"):
-            # need to determine if "private" header
-            files.include.append(src)
-        elif not src.basename.endswith(".erl"):
-            files.priv.append(src)
     for out in app_info.outs:
         if out.basename.endswith(".beam") or out.basename.endswith(".app"):
             dest = ctx.actions.declare_file(path_join(
@@ -34,24 +21,25 @@ def _impl(ctx):
                 output = dest,
                 target_file = out,
             )
-            files.beam.append(dest)
-
-    runfiles = ctx.runfiles(files.beam + files.priv)
+            beam.append(dest)
 
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
-            extra_apps = [],
-            include = files.include,
-            beam = files.beam,
-            priv = files.priv,
-            license_files = files.license_files,
-            srcs = app_info.source_info.srcs,
+            extra_apps = app_info.source_info.extra_apps,
+            include = app_info.source_info.public_hdrs,
+            beam = beam,
+            priv = app_info.source_info.priv,
+            license_files = app_info.source_info.license_files,
+            srcs = (app_info.source_info.public_hdrs +
+                    app_info.source_info.private_hdrs +
+                    app_info.source_info.srcs +
+                    [app_info.source_info.app_src] if app_info.source_info.app_src != None else []),
             deps = [],
         ),
         DefaultInfo(
-            files = depset(files.beam + files.priv),
-            runfiles = runfiles,
+            files = depset(beam + app_info.source_info.priv),
+            runfiles = ctx.runfiles(beam + app_info.source_info.priv),
         ),
     ]
 

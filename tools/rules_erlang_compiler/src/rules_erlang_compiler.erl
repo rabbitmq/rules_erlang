@@ -24,9 +24,10 @@
                     module_index := #{string() := string()},
                     targets := #{string() := #{path := string(),
                                                erlc_opts := [string()],
+                                               app_src := string(),
                                                srcs := [string()],
                                                analysis := [string()],
-                                               analysis_suffix := string(),
+                                               analysis_id := string(),
                                                outs := [string()]}}}.
 
 -spec main([string()]) -> no_return().
@@ -71,15 +72,17 @@ main(_) ->
 
 conform_target(#{<<"path">> := Path,
                  <<"erlc_opts">> := ErlcOpts,
+                 <<"app_src">> := AppSrc,
                  <<"srcs">> := Srcs,
                  <<"analysis">> := Analysis,
-                 <<"analysis_suffix">> := Suffix,
+                 <<"analysis_id">> := AnalysisId,
                  <<"outs">> := Outs}) ->
     #{path => binary_to_list(Path),
       erlc_opts => lists:map(fun binary_to_list/1, ErlcOpts),
+      app_src => binary_to_list(AppSrc),
       srcs => lists:map(fun binary_to_list/1, Srcs),
       analysis => lists:map(fun binary_to_list/1, Analysis),
-      analysis_suffix => binary_to_list(Suffix),
+      analysis_id => binary_to_list(AnalysisId),
       outs => lists:map(fun binary_to_list/1, Outs)}.
 
 conform_targets(Targets) ->
@@ -106,7 +109,7 @@ clone_app(DestDir, AppName, #{path := AppPath, srcs := Srcs, outs := Outs}) ->
       fun (Src) ->
               RP = case AppPath of
                        "" -> Src;
-                       _ ->string:prefix(Src, AppPath ++ "/")
+                       _ -> string:prefix(Src, AppPath ++ "/")
                    end,
               %% io:format(standard_error, "App: ~p, Src: ~p, AppPath: ~p, RP: ~p~n", [AppName, Src, AppPath, RP]),
               Dest = filename:join([DestDir, AppName, RP]),
@@ -212,7 +215,7 @@ is_erlang_source(F) ->
 compile(AppName,
         #{erlc_opts := ErlcOpts,
           analysis := Analysis,
-          analysis_suffix := Suffix,
+          analysis_id := Suffix,
           outs := Outs},
         DestDir,
         ModuleIndex,
@@ -257,7 +260,7 @@ find_root(G, V) ->
               fun (E1, E2) ->
                       {E1, P1, V, _} = digraph:edge(G, E1),
                       {E2, P2, V, _} = digraph:edge(G, E2),
-                      case lists:sort([P1, P1]) of
+                      case lists:sort([P1, P2]) of
                           [P1, P2] -> true;
                           [P2, P1] -> false
                       end
@@ -307,17 +310,16 @@ get_analysis_file_contents(F, Table) ->
             ErlAttrs
     end.
 
-render_dot_app_file(AppNameString, #{srcs := Srcs, outs := Outs}, DestDir) ->
+render_dot_app_file(AppNameString,
+                    #{app_src := AppSrc, outs := Outs},
+                    DestDir) ->
     AppName = list_to_atom(AppNameString),
-    Contents = case lists:search(
-                      fun(Src) ->
-                              filename:basename(Src) == AppNameString ++ ".app.src"
-                      end, Srcs) of
-                   {value, DotAppSrc} ->
-                       {ok, [AppInfo]} = file:consult(DotAppSrc),
-                       AppInfo;
+    Contents = case AppSrc of
+                   null ->
+                       {application, AppName, []};
                    _ ->
-                       {application, AppName, []}
+                       {ok, [AppInfo]} = file:consult(AppSrc),
+                       AppInfo
                end,
     Modules = lists:filtermap(
                 fun (Out) ->
