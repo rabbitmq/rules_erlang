@@ -144,9 +144,10 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
       <<"parse_transform">> := Transforms,
       <<"include_lib">> := IncludeLibs} = ErlAttrs,
     lists:foreach(
-      fun (Behavior) ->
+      fun (ModuleBin) ->
+              ModuleString = binary_to_list(ModuleBin),
               case ModuleIndex of
-                  #{Behavior := OtherApp} ->
+                  #{ModuleString := OtherApp} ->
                       io:format(standard_error, "Adding edge ~p -> ~p~n", [OtherApp, AppName]),
                       digraph:add_edge(G, OtherApp, AppName);
                   _ ->
@@ -179,19 +180,20 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
     lists:foreach(
-      fun (Behaviour) ->
-              io:format(standard_error, "Behavior: ~p~n", [Behaviour]),
+      fun (ModuleBin) ->
+              ModuleString = binary_to_list(ModuleBin),
+              %% io:format(standard_error, "Behavior: ~p~n", [Behaviour]),
               case ModuleIndex of
-                  #{Behaviour := AppName} ->
-                      {value, BS} = lists:search(
+                  #{ModuleString := AppName} ->
+                      {value, MS} = lists:search(
                                       fun (S) ->
                                               case filename:basename(S, ".erl") of
-                                                  Behaviour -> true;
+                                                  ModuleString -> true;
                                                   _ -> false
                                               end
                                       end, Srcs),
-                      io:format(standard_error, "Adding edge ~p -> ~p~n", [BS, Src]),
-                      digraph:add_edge(G, BS, Src);
+                      io:format(standard_error, "Adding edge ~p -> ~p~n", [MS, Src]),
+                      digraph:add_edge(G, MS, Src);
                   _ ->
                       ok
               end
