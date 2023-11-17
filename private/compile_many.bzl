@@ -55,6 +55,13 @@ def _impl(ctx):
                 rp,
             ))
             app_outs.append(out)
+        dot_app = ctx.actions.declare_file(path_join(
+            ctx.label.name,
+            source_info.app_name,
+            "ebin",
+            source_info.app_name + ".app",
+        ))
+        app_outs.append(dot_app)
         compiler_flags["targets"][source_info.app_name]["outs"] = [
             o.path
             for o in app_outs

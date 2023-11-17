@@ -25,7 +25,7 @@ def _impl(ctx):
         elif not src.basename.endswith(".erl"):
             files.priv.append(src)
     for out in app_info.outs:
-        if out.basename.endswith(".beam"):
+        if out.basename.endswith(".beam") or out.basename.endswith(".app"):
             dest = ctx.actions.declare_file(path_join(
                 ctx.attr.beam_dest,
                 out.basename,

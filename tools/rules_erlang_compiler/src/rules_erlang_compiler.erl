@@ -61,7 +61,8 @@ main([ConfigJsonPath]) ->
     lists:foreach(
       fun (AppName) ->
               #{AppName := Props} = Targets,
-              compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable)
+              compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable),
+              render_dot_app_file(AppName, Props, DestDir)
       end, AppCompileOrder),
     ets:delete(AnalysisFileContentsTable),
     ok;
@@ -178,13 +179,14 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
     lists:foreach(
-      fun (Behavior) ->
+      fun (Behaviour) ->
+              io:format(standard_error, "Behavior: ~p~n", [Behaviour]),
               case ModuleIndex of
-                  #{Behavior := AppName} ->
+                  #{Behaviour := AppName} ->
                       {value, BS} = lists:search(
                                       fun (S) ->
                                               case filename:basename(S, ".erl") of
-                                                  Behavior -> true;
+                                                  Behaviour -> true;
                                                   _ -> false
                                               end
                                       end, Srcs),
@@ -291,13 +293,44 @@ transform_erlc_opts(ErlcOpts) ->
               end
       end, ErlcOpts).
 
-get_analysis_file_contents(F, T) ->
-    case ets:lookup(T, F) of
+-spec get_analysis_file_contents(string(), ets:table()) -> thoas:json_term().
+get_analysis_file_contents(F, Table) ->
+    case ets:lookup(Table, F) of
         [{F, ErlAttrs}] ->
             ErlAttrs;
         [] ->
             {ok, Contents} = file:read_file(F),
             {ok, ErlAttrs} = thoas:decode(Contents),
-            true = ets:insert_new(T, {F, ErlAttrs}),
+            true = ets:insert_new(Table, {F, ErlAttrs}),
             ErlAttrs
     end.
+
+render_dot_app_file(AppNameString, #{srcs := Srcs, outs := Outs}, DestDir) ->
+    AppName = list_to_atom(AppNameString),
+    Contents = case lists:search(
+                      fun(Src) ->
+                              filename:basename(Src) == AppNameString ++ ".app.src"
+                      end, Srcs) of
+                   {value, DotAppSrc} ->
+                       {ok, [AppInfo]} = file:consult(DotAppSrc),
+                       AppInfo;
+                   _ ->
+                       {application, AppName, []}
+               end,
+    Modules = lists:filtermap(
+                fun (Out) ->
+                        case filename:extension(Out) of
+                            ".beam" ->
+                                {true,
+                                 list_to_atom(filename:basename(Out, ".beam"))};
+                            _ ->
+                                false
+                        end
+                end, Outs),
+    {application, AppName, Props0} = Contents,
+    Props = lists:keystore(modules, 1, Props0, {modules, Modules}),
+    Dest = filename:join([DestDir, AppName, "ebin", AppNameString ++ ".app"]),
+    file:write_file(Dest,
+                    io_lib:format("~tp.~n", [{application,
+                                              AppName,
+                                              Props}])).
