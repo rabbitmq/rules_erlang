@@ -94,7 +94,7 @@ erlang_app_sources_analysis = rule(
         "app_name": attr.string(
             mandatory = True,
         ),
-        "extra_apps": attr.string_list(),
+        "extra_apps": attr.string_list(),  # maybe we should take this out and always use .app.src. We can have a rule to create an .app.src if we want
         "app_src": attr.label(
             allow_single_file = [".app.src"],
         ),

@@ -224,14 +224,13 @@ def _hex_package_repo(hex_package):
             package_name = package_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
+            build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
+                app_name = hex_package.name,
+                testonly = hex_package.testonly,
+            ),
             patches = hex_package.patches,
             patch_args = hex_package.patch_args,
-            patch_cmds = hex_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = hex_package.name,
-                version = hex_package.version,
-                deps = deps,
-                testonly = hex_package.testonly,
-            )],
+            patch_cmds = hex_package.patch_cmds,
         )
 
 def _git_package_repo(git_package):
@@ -262,124 +261,30 @@ def _git_package_repo(git_package):
             branch = git_package.branch,
             tag = git_package.tag,
             commit = git_package.commit,
-            patch_cmds = git_package.patch_cmds + [PATCH_AUTO_BUILD_BAZEL.format(
-                name = git_package.name,
-                version = "",
-                deps = [],
+            build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
+                app_name = git_package.name,
                 testonly = git_package.testonly,
-            )],
+            ),
+            patch_cmds = git_package.patch_cmds,
         )
 
-PATCH_AUTO_BUILD_BAZEL = """set -euo pipefail
+DEFAULT_BUILD_FILE_CONTENT = """\
+load("@rules_erlang//:erlc_opts.bzl", "erlc_opts")
+load("@rules_erlang//:erlang_app_sources_analysis.bzl", "erlang_app_sources_analysis")
 
-echo "Generating BUILD.bazel for {name}..."
-
-# if there is a Makefile and erlang.mk, use make to infer
-# the version and deps, error on name mismatch, and error
-# if the deps mismatch
-if [ ! -f BUILD.bazel ]; then
-    if [ -f Makefile ]; then
-        if [ -f erlang.mk ]; then
-            if [ -n "${{MAKE:=make}}" ]; then
-                echo "\tAttempting auto-configure from erlang.mk files..."
-
-                cat << 'MK' > bazel-autobuild.mk
-comma:= ,
-project:= $(lastword $(subst ., ,$(PROJECT)))
-ifnappsrc:= $(if $(wildcard src/$(project).app.src),,$1)
-
-define BUILD_FILE_CONTENT
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "$(project)",
-    $(call ifnappsrc,$(if $(PROJECT_DESCRIPTION),app_description = \"""$(PROJECT_DESCRIPTION)\"""$(comma)))
-    $(call ifnappsrc,app_version = "$(PROJECT_VERSION)"$(comma))
-    $(call ifnappsrc,app_env = \"""$(PROJECT_ENV)\"""$(comma))
-    $(call ifnappsrc,$(if $(PROJECT_APP_EXTRA_KEYS),app_extra = \"""$(PROJECT_APP_EXTRA_KEYS)\"""$(comma)))
-    $(if $(LOCAL_DEPS),extra_apps = [$(foreach dep,$(LOCAL_DEPS),\n        "$(dep)",)\n    ]$(comma))
-    $(if $(BUILD_DEPS),build_deps = [$(foreach dep,$(BUILD_DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
-    $(if $(DEPS),deps = [$(foreach dep,$(DEPS),\n        "@$(dep)//:erlang_app",)\n    ]$(comma))
-    erlc_opts = select({{
+erlc_opts(
+    name = "erlc_opts",
+    values = select({{
         "@rules_erlang//:debug_build": ["+debug_info"],
         "//conditions:default": ["+deterministic", "+debug_info"],
     }}),
-    stamp = 0,
-    testonly = {testonly},
 )
-endef
 
-export BUILD_FILE_CONTENT
-
-BUILD.bazel:
-	echo "$$BUILD_FILE_CONTENT" >> $@
-MK
-                cat bazel-autobuild.mk
-                ${{MAKE}} -f Makefile -f bazel-autobuild.mk BUILD.bazel
-            else
-                echo "Skipping erlang.mk import as make is unavailable"
-            fi
-        fi
-    fi
-fi
-
-# fallback to BUILD file with just the name, version & deps
-if [ ! -f BUILD.bazel ]; then
-    if [ -n "{version}" ]; then
-        if [ -n "{deps}" ]; then
-            cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    app_version = "{version}",
-    erlc_opts = select({{
-        "@rules_erlang//:debug_build": ["+debug_info"],
-        "//conditions:default": ["+deterministic", "+debug_info"],
-    }}),
-    deps = {deps},
-    stamp = 0,
+erlang_app_sources_analysis(
+    name = "srcs",
+    app_name = "{app_name}",
+    erlc_opts = ":erlc_opts",
     testonly = {testonly},
+    visibility = ["//visibility:public"],
 )
-EOF
-        fi
-    fi
-fi
-
-# fallback to BUILD file with just the name and version
-if [ ! -f BUILD.bazel ]; then
-    if [ -n "{version}" ]; then
-        cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    app_version = "{version}",
-    erlc_opts = select({{
-        "@rules_erlang//:debug_build": ["+debug_info"],
-        "//conditions:default": ["+deterministic", "+debug_info"],
-    }}),
-    stamp = 0,
-    testonly = {testonly},
-)
-EOF
-    fi
-fi
-
-# fallback to BUILD file with just the name
-if [ ! -f BUILD.bazel ]; then
-    cat << EOF > BUILD.bazel
-load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{name}",
-    erlc_opts = select({{
-        "@rules_erlang//:debug_build": ["+debug_info"],
-        "//conditions:default": ["+deterministic", "+debug_info"],
-    }}),
-    stamp = 0,
-    testonly = {testonly},
-)
-EOF
-fi
 """
