@@ -32,9 +32,7 @@ main(["--persistent_worker"] = Args) ->
             Response = execute(Request),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),
-            io:format("~ts", [Json]),
-            % signal to caller that the json response is written
-            io:format(<<0>>),
+            io:format("~ts~n", [Json]),
             main(Args)
     end;
 main(["@" ++ FlagsFilePath]) ->
