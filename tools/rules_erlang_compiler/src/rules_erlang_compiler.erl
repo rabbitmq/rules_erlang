@@ -53,6 +53,11 @@ main([ConfigJsonPath]) ->
 
     ok = clone_sources(DestDir, Targets),
 
+    %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
+    %% io:format(standard_error, "~s~n", [TreeOut]),
+
+    true = code:add_path(DestDir),
+
     G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
 
     AppCompileOrder = consume_to_list(G),
@@ -243,6 +248,7 @@ compile(AppName,
     CompileOpts = [{outdir, "ebin"},
                    {i, "include"},
                    {i, "src"},
+                   {i, "../"},
                    report | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
     CopiedSrcs = lists:filter(
