@@ -24,7 +24,7 @@
                     module_index := #{string() := string()},
                     targets := #{string() := #{path := string(),
                                                erlc_opts := [string()],
-                                               app_src := string(),
+                                               app_src := string() | null,
                                                srcs := [string()],
                                                analysis := [string()],
                                                analysis_id := string(),
@@ -42,7 +42,9 @@ main([ConfigJsonPath]) ->
 
     %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
 
-    %% io:format(standard_error, "Targets: ~p~n", [Targets]),
+    io:format(standard_error, "Targets: ~p~n", [Targets]),
+
+    %% io:format(standard_error, "ModuleIndex: ~p~n", [ModuleIndex]),
 
     %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
 
@@ -56,7 +58,10 @@ main([ConfigJsonPath]) ->
     %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
-    true = code:add_path(DestDir),
+    %% it seems we would need to add each app individually after compilation,
+    %% which would be fine, but maybe we just add DestDir to ERL_LIBS?
+    %% true = code:add_path(DestDir),
+    %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
     G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
 
@@ -159,7 +164,7 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
               ModuleString = binary_to_list(ModuleBin),
               case ModuleIndex of
                   #{ModuleString := OtherApp} when OtherApp =/= AppName ->
-                      io:format(standard_error, "Adding edge ~p -> ~p~n", [OtherApp, AppName]),
+                      io:format(standard_error, "app_graph: adding edge ~p <- ~p~n", [OtherApp, AppName]),
                       digraph:add_edge(G, OtherApp, AppName);
                   _ ->
                       ok
@@ -172,7 +177,7 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
                   [OtherApp, _] when OtherApp =/= AppName ->
                       case lists:member(OtherApp, maps:values(ModuleIndex)) of
                           true ->
-                              io:format(standard_error, "Adding hdr edge ~p -> ~p~n", [OtherApp, AppName]),
+                              io:format(standard_error, "app_graph: adding hdr edge ~p <- ~p~n", [OtherApp, AppName]),
                               digraph:add_edge(G, OtherApp, AppName);
                           false ->
                               ok
@@ -181,6 +186,7 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
       end, IncludeLibs),
     app_deps(AppName, Rest, ModuleIndex, G, T).
 
+-spec src_graph(string(), string(), [string()], [string()], #{string() := string()}, ets:table()) -> digraph:graph().
 src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, T) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (Src) ->
@@ -206,7 +212,9 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
-              %% io:format(standard_error, "Behavior: ~p~n", [Behaviour]),
+              %% io:format(standard_error, "BehaviorOrXform: ~p~n", [ModuleString]),
+              %% io:format(standard_error, "ModuleIndex: ~p => ~p~n", [ModuleString, maps:find(ModuleString, ModuleIndex)]),
+
               case ModuleIndex of
                   #{ModuleString := AppName} ->
                       {value, MS} = lists:search(
@@ -216,14 +224,16 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
                                                   _ -> false
                                               end
                                       end, Srcs),
-                      io:format(standard_error, "Adding edge ~p -> ~p~n", [MS, Src]),
+                      %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
                       digraph:add_edge(G, MS, Src);
                   _ ->
+                      % if this is to a built-in app, we can handle extra_app automatically?
+                      %% io:format(standard_error, "src_graph: ignoring ~p <- ~p~n", [ModuleString, AppName]),
                       ok
               end
       end, Behaviours ++ Transforms),
 
-    src_graph(AppName, Suffix, Rest, Srcs, G, T).
+    src_graph(AppName, Suffix, Rest, Srcs, ModuleIndex, G, T).
 
 is_erlang_source(F) ->
     case filename:extension(F) of
@@ -263,12 +273,25 @@ compile(AppName,
 
     {ok, OldCwd} = file:get_cwd(),
     AppDir = filename:join(DestDir, AppName),
+    %% true = code:add_path(filename:join(AppDir, "ebin")),
     ok = file:set_cwd(AppDir),
     %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
     lists:foreach(
       fun (Src) ->
               SrcRel = string:prefix(Src, AppDir ++ "/"),
-              {ok, _} = compile:file(SrcRel, CompileOpts)
+              io:format(standard_error, "\t~s~n", [SrcRel]),
+              {ok, Module} = compile:file(SrcRel, CompileOpts),
+              %% TreeOut = os:cmd("/usr/local/bin/tree"),
+              %% io:format(standard_error, "~s~n", [TreeOut]),
+              %% io:format(standard_error, "loading ~p~n", [Module]),
+              %% {module, Module} = code:ensure_loaded(Module),
+              ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
+              {ok, Contents} = file:read_file(ModulePath),
+              %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
+              {module, Module} = code:load_binary(Module, ModulePath, Contents),
+              %% io:format(standard_error, "\t\t~p~n",
+              %%           [code:module_status(Module)]),
+              ok
       end, Srcs),
     ok = file:set_cwd(OldCwd).
 

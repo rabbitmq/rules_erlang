@@ -114,9 +114,14 @@ def _impl(ctx):
 
     compiler_runfiles = ctx.attr.rules_erlang_compiler[DefaultInfo].default_runfiles
 
-    env = {}
-    if len(erl_libs_dirs) > 0:
-        env["ERL_LIBS"] = ctx.configuration.host_path_separator.join(erl_libs_dirs)
+    env = {
+        "ERL_LIBS": ctx.configuration.host_path_separator.join(
+            erl_libs_dirs + [compiler_flags["dest_dir"]],
+        ),
+    }
+    # env = {}
+    # if len(erl_libs_dirs) > 0:
+    #     env["ERL_LIBS"] = ctx.configuration.host_path_separator.join(erl_libs_dirs)
 
     inputs = (compiler_runfiles.files.to_list() +
               ctx.files.erl_libs +
