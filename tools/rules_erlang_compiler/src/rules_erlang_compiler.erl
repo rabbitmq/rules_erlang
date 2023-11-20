@@ -222,8 +222,12 @@ compile(AppName,
         AFCT) ->
 
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
-    OutDir = filename:join([DestDir, AppName, "ebin"]),
-    CompileOpts = [{outdir, OutDir} | CompileOpts0],
+    %% OutDir = filename:join([DestDir, AppName, "ebin"]),
+    %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
+    CompileOpts = [{outdir, "ebin"},
+                   {i, "include"},
+                   {i, "src"},
+                   report | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
     CopiedSrcs = lists:filter(
                    fun is_erlang_source/1,
@@ -235,10 +239,16 @@ compile(AppName,
     Srcs = consume_to_list(G),
     %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
+    {ok, OldCwd} = file:get_cwd(),
+    AppDir = filename:join(DestDir, AppName),
+    ok = file:set_cwd(AppDir),
+    %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
     lists:foreach(
       fun (Src) ->
-              {ok, _} = compile:file(Src, CompileOpts)
-      end, Srcs).
+              SrcRel = string:prefix(Src, AppDir ++ "/"),
+              {ok, _} = compile:file(SrcRel, CompileOpts)
+      end, Srcs),
+    ok = file:set_cwd(OldCwd).
 
 -spec consume_to_list(digraph:graph()) -> [digraph:vertex()].
 consume_to_list(G) ->

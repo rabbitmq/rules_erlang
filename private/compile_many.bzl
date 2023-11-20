@@ -53,7 +53,7 @@ def _impl(ctx):
             apps_inputs.append(source_info.app_src)
 
         app_outs = []
-        for src in source_info.srcs:
+        for src in source_info.public_hdrs + source_info.private_hdrs + source_info.srcs:
             if src.basename.endswith(".erl"):
                 module_name = src.basename.removesuffix(".erl")
                 out = ctx.actions.declare_file(path_join(
