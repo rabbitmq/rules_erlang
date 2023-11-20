@@ -79,7 +79,10 @@ conform_target(#{<<"path">> := Path,
                  <<"outs">> := Outs}) ->
     #{path => binary_to_list(Path),
       erlc_opts => lists:map(fun binary_to_list/1, ErlcOpts),
-      app_src => binary_to_list(AppSrc),
+      app_src => case AppSrc of
+                     null -> null;
+                     _ -> binary_to_list(AppSrc)
+                 end,
       srcs => lists:map(fun binary_to_list/1, Srcs),
       analysis => lists:map(fun binary_to_list/1, Analysis),
       analysis_id => binary_to_list(AnalysisId),
@@ -150,7 +153,7 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
               case ModuleIndex of
-                  #{ModuleString := OtherApp} ->
+                  #{ModuleString := OtherApp} when OtherApp =/= AppName ->
                       io:format(standard_error, "Adding edge ~p -> ~p~n", [OtherApp, AppName]),
                       digraph:add_edge(G, OtherApp, AppName);
                   _ ->
@@ -158,8 +161,18 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, T) ->
               end
       end, Behaviours ++ Transforms),
     lists:foreach(
-      fun (IncludeLib) ->
-              io:format(standard_error, "~p: ~p~n", [AppName, IncludeLib])
+      fun (IncludeLibBin) ->
+              IncludeLib = binary_to_list(IncludeLibBin),
+              case string:split(IncludeLib, "/") of
+                  [OtherApp, _] when OtherApp =/= AppName ->
+                      case lists:member(OtherApp, maps:values(ModuleIndex)) of
+                          true ->
+                              io:format(standard_error, "Adding hdr edge ~p -> ~p~n", [OtherApp, AppName]),
+                              digraph:add_edge(G, OtherApp, AppName);
+                          false ->
+                              ok
+                      end
+              end
       end, IncludeLibs),
     app_deps(AppName, Rest, ModuleIndex, G, T).
 
@@ -182,6 +195,9 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, T) ->
     ErlAttrs = get_analysis_file_contents(A, T),
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
+    %% we can safely ignore include_lib here, as we compile applications
+    %% as units for now, and will always recompile the app when any of
+    %% its files change
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
