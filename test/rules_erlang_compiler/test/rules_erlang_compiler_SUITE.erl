@@ -53,7 +53,11 @@ render_dot_app_file(Config) ->
     DataDir = ?config(data_dir, Config),
     DestDir = ?config(priv_dir, Config),
 
+    Deps = sets:new(),
+    sets:add_element("other", Deps),
+
     Target = #{app_src => filename:join(DataDir, "basic.app.src"),
+               deps => Deps,
                outs => ["bazel-out/darwin-fastbuild/bin/deps_dir/basic/ebin/basic.beam",
                         "bazel-out/darwin-fastbuild/bin/deps_dir/basic/src/basic.erl",
                         "bazel-out/darwin-fastbuild/bin/deps_dir/basic/ebin/basic_acceptor.beam",
