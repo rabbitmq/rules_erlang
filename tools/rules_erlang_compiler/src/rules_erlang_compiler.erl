@@ -378,11 +378,6 @@ get_analysis_file_contents(F, Table) ->
 render_dot_app_file(AppNameString,
                     #{app_src := AppSrc, outs := Outs} = Target,
                     DestDir) ->
-    % if the .app.src doesn't contain applications, inject
-    % what's detected
-    Deps = sets:to_list(maps:get(deps, Target, sets:new())),
-    io:format(standard_error, "~s deps: ~p~n",
-              [AppNameString, Deps]),
     AppName = list_to_atom(AppNameString),
     Contents = case AppSrc of
                    null ->
@@ -402,7 +397,17 @@ render_dot_app_file(AppNameString,
                         end
                 end, Outs),
     {application, AppName, Props0} = Contents,
-    Props = lists:keystore(modules, 1, Props0, {modules, Modules}),
+    Props1 = lists:keystore(modules, 1, Props0, {modules, Modules}),
+    Props = case lists:keymember(applications, 1, Props1) of
+                true ->
+                    Props1;
+                false ->
+                    Deps = sets:to_list(maps:get(deps, Target, sets:new())),
+                    Apps = [kernel, stdlib] ++ lists:map(fun list_to_atom/1, Deps),
+                    io:format("Target: ~p~n", [Target]),
+                    lists:keystore(applications, 1, Props1,
+                                   {applications, Apps})
+            end,
     Dest = filename:join([DestDir, AppName, "ebin", AppNameString ++ ".app"]),
     ok = file:write_file(Dest,
                          io_lib:format("~tp.~n", [{application,
