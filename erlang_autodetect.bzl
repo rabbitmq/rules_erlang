@@ -1,5 +1,8 @@
-load("@rules_erlang//compat:erlang_mk.bzl",
-    "erlc_opts_from_erlang_mk_makefile", "app_src_from_erlang_mk_makefile")
+load(
+    "@rules_erlang//compat:erlang_mk.bzl",
+    "app_src_from_erlang_mk_makefile",
+    "erlc_opts_from_erlang_mk_makefile",
+)
 load("@rules_erlang//compat:rebar.bzl", "erlc_opts_from_rebar_config")
 load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
 load("@rules_erlang//:erlang_app_sources_analysis.bzl", "erlang_app_sources_analysis")
@@ -19,10 +22,12 @@ def erlang_autodetect(name = None, testonly = False):
         if app_src == None:
             app_src_from_erlang_mk_makefile(
                 name = "app_src",
-                makefile = "Makefile",
+                srcs = native.glob([
+                    "**/*",
+                ]),
                 out = "src/%s.app.src" % name,
             )
-            app_src = ":app_src",
+            app_src = ":app_src"
     elif len(native.glob(["rebar.config"])) == 1:
         erlc_opts_from_rebar_config(
             name = "erlc_opts_file",
@@ -32,10 +37,10 @@ def erlang_autodetect(name = None, testonly = False):
     else:
         erlc_opts_file(
             name = "erlc_opts_file",
-            values = select({{
+            values = select({
                 "@rules_erlang//:debug_build": ["+debug_info"],
                 "//conditions:default": ["+deterministic", "+debug_info"],
-            }}),
+            }),
             out = "erlc_opts",
         )
 

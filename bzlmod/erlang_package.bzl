@@ -272,7 +272,7 @@ DEFAULT_BUILD_FILE_CONTENT = """\
 load("@rules_erlang//:erlang_autodetect.bzl", "erlang_autodetect")
 
 erlang_autodetect(
-    name = {app_name},
+    name = "{app_name}",
     testonly = {testonly},
 )
 """
