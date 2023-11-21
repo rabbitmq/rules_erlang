@@ -22,7 +22,7 @@
 % -type response() :: #{exit_code := integer(), output := string()}.
 
 -type target() :: #{path := string(),
-                    erlc_opts := [string()],
+                    erlc_opts_file := string(),
                     app_src := string() | null,
                     srcs := [string()],
                     analysis := [string()],
@@ -90,14 +90,14 @@ main(_) ->
     exit(1).
 
 conform_target(#{<<"path">> := Path,
-                 <<"erlc_opts">> := ErlcOpts,
+                 <<"erlc_opts_file">> := ErlcOptsFile,
                  <<"app_src">> := AppSrc,
                  <<"srcs">> := Srcs,
                  <<"analysis">> := Analysis,
                  <<"analysis_id">> := AnalysisId,
                  <<"outs">> := Outs}) ->
     #{path => binary_to_list(Path),
-      erlc_opts => lists:map(fun binary_to_list/1, ErlcOpts),
+      erlc_opts_file => binary_to_list(ErlcOptsFile),
       app_src => case AppSrc of
                      null -> null;
                      _ -> binary_to_list(AppSrc)
@@ -253,7 +253,7 @@ is_erlang_source(F) ->
     end.
 
 compile(AppName,
-        #{erlc_opts := ErlcOpts,
+        #{erlc_opts_file := ErlcOptsFile,
           analysis := Analysis,
           analysis_id := Suffix,
           outs := Outs},
@@ -261,6 +261,7 @@ compile(AppName,
         ModuleIndex,
         AFCT) ->
 
+    ErlcOpts = read_flags_file(ErlcOptsFile),
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
     %% OutDir = filename:join([DestDir, AppName, "ebin"]),
     %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
@@ -354,9 +355,10 @@ transform_erlc_opts(ErlcOpts) ->
           ("+" ++ Term) ->
               list_to_atom(Term);
           ("-D" ++ Macro) ->
-              case string:split(Macro, "=") of
-                  [A] ->
-                      {d, list_to_atom(A)};
+              {d, list_to_atom(Macro)};
+          ("'-D" ++ Macro) ->
+              M = string:strip(Macro, right, $'),
+              case string:split(M, "=") of
                   [A, V] ->
                       {d, list_to_atom(A), string_to_term(V)}
               end
@@ -438,3 +440,15 @@ add_deps_to_targets(Targets, V, [E | Rest], G) ->
                               sets:new(), Target0),
     %% io:format(standard_error, "Target: ~p~n", [Target]),
     add_deps_to_targets(Targets#{Dependent := Target}, V, Rest, G).
+
+read_flags_file(Path) ->
+    {ok, D} = file:open(Path, [read]),
+    try all_lines(D)
+    after file:close(D)
+    end.
+
+all_lines(D) ->
+    case io:get_line(D, "") of
+        eof -> [];
+        L -> [string:trim(L, trailing, "\n") | all_lines(D)]
+    end.

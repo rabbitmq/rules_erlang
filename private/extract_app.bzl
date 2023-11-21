@@ -26,7 +26,7 @@ def _impl(ctx):
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
-            extra_apps = app_info.source_info.extra_apps,
+            extra_apps = [],
             include = app_info.source_info.public_hdrs,
             beam = beam,
             priv = app_info.source_info.priv,

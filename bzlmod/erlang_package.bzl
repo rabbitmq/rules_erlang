@@ -269,22 +269,10 @@ def _git_package_repo(git_package):
         )
 
 DEFAULT_BUILD_FILE_CONTENT = """\
-load("@rules_erlang//:erlc_opts.bzl", "erlc_opts")
-load("@rules_erlang//:erlang_app_sources_analysis.bzl", "erlang_app_sources_analysis")
+load("@rules_erlang//:erlang_autodetect.bzl", "erlang_autodetect")
 
-erlc_opts(
-    name = "erlc_opts",
-    values = select({{
-        "@rules_erlang//:debug_build": ["+debug_info"],
-        "//conditions:default": ["+deterministic", "+debug_info"],
-    }}),
-)
-
-erlang_app_sources_analysis(
-    name = "srcs",
-    app_name = "{app_name}",
-    erlc_opts = ":erlc_opts",
+erlang_autodetect(
+    name = {app_name},
     testonly = {testonly},
-    visibility = ["//visibility:public"],
 )
 """

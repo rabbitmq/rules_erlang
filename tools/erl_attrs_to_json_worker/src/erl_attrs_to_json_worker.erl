@@ -53,12 +53,14 @@ main([]) ->
     exit(1).
 
 -spec conform_request(thoas:json_term()) -> request().
-conform_request(#{<<"arguments">> := [InFile, OutFile | Rest],
+conform_request(#{<<"arguments">> := [InFile, OutFile, <<"--erlc_opts">>, ErlcOptsFile | Rest],
                   <<"inputs">> := RawInputs} = Request)
-  when is_binary(InFile), is_binary(OutFile) ->
+  when is_binary(InFile), is_binary(OutFile), is_binary(ErlcOptsFile) ->
     Flags = parse_flags(Rest),
+    ErlcOpts = read_flags_file(ErlcOptsFile),
     Args = Flags#{in => binary_to_list(InFile),
-                  out => binary_to_list(OutFile)},
+                  out => binary_to_list(OutFile),
+                  macros => macros(ErlcOpts)},
 
     Inputs = lists:map(fun(#{<<"path">> := Path,
                              <<"digest">> := Digest}) ->
@@ -111,15 +113,6 @@ binary_string_to_term(B) when is_binary(B) ->
 
 parse_flags([], Acc) ->
     Acc;
-parse_flags([<<"-D", MacroString/binary>> | Rest], Acc) ->
-    Macro = case string:split(MacroString, "=") of
-                [A] -> binary_to_atom(A);
-                [A, V] -> {binary_to_atom(A), binary_string_to_term(V)}
-            end,
-    parse_flags(Rest,
-                maps:update_with(macros,
-                                 fun(L) -> [Macro | L] end,
-                                 Acc));
 parse_flags([<<"-I">>, Path | Rest], Acc) when is_binary(Path) ->
     parse_flags(Rest,
                 maps:update_with(includes,
@@ -128,9 +121,23 @@ parse_flags([<<"-I">>, Path | Rest], Acc) when is_binary(Path) ->
                                  end,
                                  Acc)).
 
--spec parse_flags([binary()]) -> #{macros := [macro()], includes := [include()]}.
+-spec parse_flags([binary()]) -> #{includes := [include()]}.
 parse_flags(Flags) ->
-    parse_flags(Flags, #{macros => [], includes => []}).
+    parse_flags(Flags, #{includes => []}).
+
+-spec macros([binary()]) -> [macro()].
+macros(ErlcOpts) ->
+    lists:filtermap(
+      fun
+          (<<"-D", MacroString/binary>>) ->
+              Macro = case string:split(MacroString, "=") of
+                          [A] -> binary_to_atom(A);
+                          [A, V] -> {binary_to_atom(A), binary_string_to_term(V)}
+                      end,
+              {true, Macro};
+          (_) ->
+              false
+      end, ErlcOpts).
 
 read_flags_file(Path) ->
     {ok, D} = file:open(Path, [read]),

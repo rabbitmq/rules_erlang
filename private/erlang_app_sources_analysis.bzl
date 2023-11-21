@@ -1,11 +1,11 @@
 load(":erlang_bytecode.bzl", "unique_dirnames")
-load(":erlc_opts.bzl", "ErlcOptsInfo")
 load(":util.bzl", "additional_file_dest_relative_path")
 
 ErlangAppSourcesInfo = provider(
     doc = "Produced by the erlang_app_sources rule",
     fields = {
         "app_name": "Name of the erlang application",
+        "erlc_opts_file": "A file containing the erlc options",
         "extra_apps": "Extra applications in the applications key of the .app file",
         "app_src": ".app.src file if available",
         "public_hdrs": "Public header files",
@@ -20,17 +20,14 @@ ErlangAppSourcesInfo = provider(
     },
 )
 
-def _macros(erlc_opts):
-    return [opt for opt in erlc_opts if opt.startswith("-D")]
-
 def _impl(ctx):
     analysis_id = ctx.label.name
 
-    macros = _macros(ctx.attr.erlc_opts[ErlcOptsInfo].values)
     hdrs_dirs = unique_dirnames(ctx.files.public_hdrs + ctx.files.private_hdrs)
 
     worker_runfiles = ctx.attr.erl_attrs_to_json_worker[DefaultInfo].default_runfiles
     common_inputs = (worker_runfiles.files.to_list() +
+                     ctx.files.erlc_opts_file +
                      ctx.files.public_hdrs +
                      ctx.files.private_hdrs)
 
@@ -42,9 +39,11 @@ def _impl(ctx):
 
         out = ctx.actions.declare_file(outpath)
 
-        args = [src.path, out.path]
-        if ctx.attr.erlc_opts != None:
-            args.extend(macros)
+        args = [
+            src.path,
+            out.path,
+            "--erlc_opts", ctx.file.erlc_opts_file.path,
+        ]
         for d in hdrs_dirs:
             args.extend(["-I", d])
 
@@ -69,10 +68,9 @@ def _impl(ctx):
         outputs.append(out)
 
     return [
-        ctx.attr.erlc_opts[ErlcOptsInfo],
         ErlangAppSourcesInfo(
             app_name = ctx.attr.app_name,
-            extra_apps = ctx.attr.extra_apps,
+            erlc_opts_file = ctx.file.erlc_opts_file,
             app_src = ctx.file.app_src,
             public_hdrs = ctx.files.public_hdrs,
             private_hdrs = ctx.files.private_hdrs,
@@ -94,8 +92,8 @@ erlang_app_sources_analysis = rule(
         "app_name": attr.string(
             mandatory = True,
         ),
-        "extra_apps": attr.string_list(),  # maybe we should take this out and always use .app.src. We can have a rule to create an .app.src if we want
         "app_src": attr.label(
+            mandatory = True,
             allow_single_file = [".app.src"],
         ),
         "public_hdrs": attr.label_list(
@@ -117,9 +115,9 @@ erlang_app_sources_analysis = rule(
         # "precompiled_beam": attr.label_list(
         #     allow_files = [".beam"],
         # ),
-        "erlc_opts": attr.label(
+        "erlc_opts_file": attr.label(
             mandatory = True,
-            providers = [ErlcOptsInfo],
+            allow_single_file = True,
         ),
         "erl_attrs_to_json_worker": attr.label(
             mandatory = True,
@@ -127,5 +125,5 @@ erlang_app_sources_analysis = rule(
             cfg = "exec",
         ),
     },
-    provides = [ErlcOptsInfo, ErlangAppSourcesInfo],
+    provides = [ErlangAppSourcesInfo],
 )

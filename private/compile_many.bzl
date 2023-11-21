@@ -1,4 +1,3 @@
-load("//:erlang_bytecode2.bzl", "ErlcOptsInfo")
 load("//:util.bzl", "path_join")
 load(":erlang_app_sources_analysis.bzl", "ErlangAppSourcesInfo")
 load(":util.bzl", "additional_file_dest_relative_path")
@@ -31,15 +30,14 @@ def _impl(ctx):
     outputs = []
     apps_inputs = []
     for app in ctx.attr.apps:
-        erlc_opts = app[ErlcOptsInfo]
         source_info = app[ErlangAppSourcesInfo]
         compiler_srcs = (source_info.public_hdrs +
                          source_info.private_hdrs +
                          source_info.srcs)
         compiler_flags["targets"][source_info.app_name] = {
             "path": path_join(app.label.workspace_root, app.label.package),
-            "erlc_opts": erlc_opts.values,
-            "app_src": (source_info.app_src.path if source_info.app_src != None else None),
+            "erlc_opts_file": source_info.erlc_opts_file.path,
+            "app_src": source_info.app_src.path,
             "srcs": [s.path for s in compiler_srcs],
             "analysis": [a.path for a in source_info.analysis],
             "analysis_id": source_info.analysis_id,
@@ -49,8 +47,8 @@ def _impl(ctx):
         apps_inputs.extend(source_info.private_hdrs)
         apps_inputs.extend(source_info.srcs)
         apps_inputs.extend(source_info.analysis)
-        if source_info.app_src != None:
-            apps_inputs.append(source_info.app_src)
+        apps_inputs.append(source_info.app_src)
+        apps_inputs.append(source_info.erlc_opts_file)
 
         app_outs = []
         for src in source_info.public_hdrs + source_info.private_hdrs + source_info.srcs:
@@ -152,7 +150,7 @@ compile_many = rule(
     attrs = {
         "apps": attr.label_list(
             mandatory = True,
-            providers = [ErlcOptsInfo, ErlangAppSourcesInfo],
+            providers = [ErlangAppSourcesInfo],
         ),
         "erl_libs": attr.label_list(
             providers = [CompileManyInfo],

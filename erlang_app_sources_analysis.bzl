@@ -16,11 +16,6 @@ def erlang_app_sources_analysis(
     app_src_paths = native.glob(["src/%s.app.src" % app_name])
     if len(app_src_paths) == 1:
         app_src = app_src_paths[0]
-    elif len(app_src_paths) > 1:
-        fail("Multiple {}.app.src files found: {}".format(
-            app_name,
-            app_src_paths,
-        ))
 
     if public_hdrs == None:
         public_hdrs = native.glob([

@@ -9,12 +9,15 @@ all() -> [
           conform_request
          ].
 
-conform_request(_) ->
+conform_request(Config) ->
+    ErlcOptsFile1 = filename:join(?config(priv_dir, Config), "erlc_opts1"),
+    ok = file:write_file(ErlcOptsFile1, <<"-DTEST">>),
+
     Request1 = thoas:encode(
                  #{arguments => [
                                  <<"path/foo.erl">>,
                                  <<"bazel-bin/foo-arch/path/foo.json">>,
-                                 <<"-DTEST">>,
+                                 <<"--erlc_opts">>, list_to_binary(ErlcOptsFile1),
                                  <<"-I">>, <<"/some/path">>
                                 ],
                    inputs => []}),
@@ -28,11 +31,14 @@ conform_request(_) ->
          inputs => []},
        erl_attrs_to_json_worker:conform_request(Request1Decoded)),
 
+    ErlcOptsFile2 = filename:join(?config(priv_dir, Config), "erlc_opts2"),
+    ok = file:write_file(ErlcOptsFile2, <<"-DTEST=1">>),
+
     Request2 = thoas:encode(
                  #{arguments => [
                                  <<"path/foo.erl">>,
                                  <<"bazel-bin/foo-arch/path/foo.json">>,
-                                 <<"-DTEST=1">>,
+                                 <<"--erlc_opts">>, list_to_binary(ErlcOptsFile2),
                                  <<"-I">>, <<"/some/path">>
                                 ],
                    inputs => []}),

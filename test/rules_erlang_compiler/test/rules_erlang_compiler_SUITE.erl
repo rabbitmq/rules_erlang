@@ -53,7 +53,7 @@ transform_erlc_opts(_) ->
                                                             "-Werror",
                                                             "+deterministic",
                                                             "-Dnamespaced_dicts",
-                                                            "-DTEST=1"
+                                                            "'-DTEST=1'"
                                                            ])).
 
 injects_modules(Config) ->
