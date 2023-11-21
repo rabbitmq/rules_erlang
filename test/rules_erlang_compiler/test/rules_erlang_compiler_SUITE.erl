@@ -5,10 +5,9 @@
 
 -compile(export_all).
 
-all() -> [
-          consume_to_list,
-          transform_erlc_opts
-         ].
+all() -> [consume_to_list,
+          transform_erlc_opts,
+          render_dot_app_file].
 
 consume_to_list(_) ->
     G1 = digraph:new([acyclic]),
@@ -50,3 +49,27 @@ transform_erlc_opts(_) ->
                                                             "-DTEST=1"
                                                            ])).
 
+render_dot_app_file(Config) ->
+    DataDir = ?config(data_dir, Config),
+    DestDir = ?config(priv_dir, Config),
+
+    Target = #{app_src => filename:join(DataDir, "basic.app.src"),
+               outs => ["bazel-out/darwin-fastbuild/bin/deps_dir/basic/ebin/basic.beam",
+                        "bazel-out/darwin-fastbuild/bin/deps_dir/basic/src/basic.erl",
+                        "bazel-out/darwin-fastbuild/bin/deps_dir/basic/ebin/basic_acceptor.beam",
+                        "bazel-out/darwin-fastbuild/bin/deps_dir/basic/src/basic_acceptor.erl",
+                        "bazel-out/darwin-fastbuild/bin/deps_dir/basic/ebin/basic_acceptors_sup.beam",
+                        "bazel-out/darwin-fastbuild/bin/deps_dir/basic/src/basic_acceptors_sup.erl"]},
+
+    Output = filename:join([DestDir, "basic", "ebin", "basic.app"]),
+    %% bazel normally creates the dest dir for us
+    ok = filelib:ensure_dir(Output),
+
+    rules_erlang_compiler:render_dot_app_file("basic", Target, DestDir),
+
+    {ok, [{application, basic, Props}]} = file:consult(Output),
+
+    ?assertEqual({modules, [basic,
+                            basic_acceptor,
+                            basic_acceptors_sup]},
+                 lists:keyfind(modules, 1, Props)).

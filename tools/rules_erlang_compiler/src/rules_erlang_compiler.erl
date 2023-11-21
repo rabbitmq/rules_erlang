@@ -5,6 +5,7 @@
 -ifdef(TEST).
 -export([
          consume_to_list/1,
+         render_dot_app_file/3,
          transform_erlc_opts/1
         ]).
 -endif.
@@ -20,15 +21,17 @@
 
 % -type response() :: #{exit_code := integer(), output := string()}.
 
+-type target() :: #{path := string(),
+                    erlc_opts := [string()],
+                    app_src := string() | null,
+                    srcs := [string()],
+                    analysis := [string()],
+                    analysis_id := string(),
+                    outs := [string()]}.
+
 -type config() :: #{dest_dir := string(),
                     module_index := #{string() := string()},
-                    targets := #{string() := #{path := string(),
-                                               erlc_opts := [string()],
-                                               app_src := string() | null,
-                                               srcs := [string()],
-                                               analysis := [string()],
-                                               analysis_id := string(),
-                                               outs := [string()]}}}.
+                    targets := #{string() := target()}}.
 
 -spec main([string()]) -> no_return().
 main([ConfigJsonPath]) ->
@@ -64,6 +67,10 @@ main([ConfigJsonPath]) ->
     %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
     G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
+
+    % lets update the targets with the deps, before we consume the graph, so that
+    % the .app can be generated correctly
+    % we might also have to write this to a file so that dialyze rules can use it?
 
     AppCompileOrder = consume_to_list(G),
 
@@ -365,6 +372,7 @@ get_analysis_file_contents(F, Table) ->
             ErlAttrs
     end.
 
+-spec render_dot_app_file(string(), target(), string()) -> ok.
 render_dot_app_file(AppNameString,
                     #{app_src := AppSrc, outs := Outs},
                     DestDir) ->
@@ -389,7 +397,7 @@ render_dot_app_file(AppNameString,
     {application, AppName, Props0} = Contents,
     Props = lists:keystore(modules, 1, Props0, {modules, Modules}),
     Dest = filename:join([DestDir, AppName, "ebin", AppNameString ++ ".app"]),
-    file:write_file(Dest,
-                    io_lib:format("~tp.~n", [{application,
-                                              AppName,
-                                              Props}])).
+    ok = file:write_file(Dest,
+                         io_lib:format("~tp.~n", [{application,
+                                                   AppName,
+                                                   Props}])).
