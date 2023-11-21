@@ -45,7 +45,7 @@ main([ConfigJsonPath]) ->
 
     %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
 
-    io:format(standard_error, "Targets: ~p~n", [Targets]),
+    %% io:format(standard_error, "Targets: ~p~n", [Targets]),
 
     %% io:format(standard_error, "ModuleIndex: ~p~n", [ModuleIndex]),
 
@@ -68,9 +68,11 @@ main([ConfigJsonPath]) ->
 
     G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
 
+    TargetsWithDeps = add_deps_to_targets(Targets, G),
     % lets update the targets with the deps, before we consume the graph, so that
     % the .app can be generated correctly
     % we might also have to write this to a file so that dialyze rules can use it?
+    %% io:format(standard_error, "TargetsWithDeps: ~p~n", [TargetsWithDeps]),
 
     AppCompileOrder = consume_to_list(G),
 
@@ -78,7 +80,7 @@ main([ConfigJsonPath]) ->
 
     lists:foreach(
       fun (AppName) ->
-              #{AppName := Props} = Targets,
+              #{AppName := Props} = TargetsWithDeps,
               compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable),
               render_dot_app_file(AppName, Props, DestDir)
       end, AppCompileOrder),
@@ -374,8 +376,13 @@ get_analysis_file_contents(F, Table) ->
 
 -spec render_dot_app_file(string(), target(), string()) -> ok.
 render_dot_app_file(AppNameString,
-                    #{app_src := AppSrc, outs := Outs},
+                    #{app_src := AppSrc, outs := Outs} = Target,
                     DestDir) ->
+    % if the .app.src doesn't contain applications, inject
+    % what's detected
+    Deps = sets:to_list(maps:get(deps, Target, sets:new())),
+    io:format(standard_error, "~s deps: ~p~n",
+              [AppNameString, Deps]),
     AppName = list_to_atom(AppNameString),
     Contents = case AppSrc of
                    null ->
@@ -401,3 +408,28 @@ render_dot_app_file(AppNameString,
                          io_lib:format("~tp.~n", [{application,
                                                    AppName,
                                                    Props}])).
+
+add_deps_to_targets(Targets, G) ->
+    add_deps_to_targets(Targets, digraph:vertices(G), G).
+
+add_deps_to_targets(Targets, [], _ ) ->
+    Targets;
+add_deps_to_targets(Targets0, [V | Rest], G) ->
+    Edges = digraph:edges(G, V),
+    %% io:format(standard_error, "V: ~p, Edges: ~p~n", [V, Edges]),
+    Targets = add_deps_to_targets(Targets0, V, Edges, G),
+    add_deps_to_targets(Targets, Rest, G).
+
+add_deps_to_targets(Targets, _, [], _) ->
+    Targets;
+add_deps_to_targets(Targets, V, [E | Rest], G) ->
+    {E, Dep, Dependent, _ } = digraph:edge(G, E),
+    #{Dependent := Target0} = Targets,
+    %% io:format(standard_error, "~p <- ~p~n", [Dep, Dependent]),
+    Target = maps:update_with(deps,
+                              fun (S) ->
+                                      sets:add_element(Dep, S)
+                              end,
+                              sets:new(), Target0),
+    %% io:format(standard_error, "Target: ~p~n", [Target]),
+    add_deps_to_targets(Targets#{Dependent := Target}, V, Rest, G).
