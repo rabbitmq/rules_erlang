@@ -1,15 +1,8 @@
 load(
-    ":hex_pm.bzl",
-    "hex_package_info",
-    "satisfies",
-)
-load(
     ":erlang_package.bzl",
     "git_package",
     "hex_package",
-    "hex_tree",
     "log",
-    "without_requirement",
 )
 load(
     ":semver.bzl",
@@ -26,6 +19,10 @@ load(
     "INSTALLATION_TYPE_EXTERNAL",
     "INSTALLATION_TYPE_INTERNAL",
     _erlang_config_rule = "erlang_config",
+)
+load(
+    "//repositories:erlang_packages.bzl",
+    "erlang_packages",
 )
 load(
     "//tools:erlang.bzl",
@@ -155,65 +152,6 @@ erlang_config = module_extension(
     },
 )
 
-_RESOLVE_MAX_PASSES = 500
-
-def _resolve_pass(ctx, packages):
-    all_requirements = []
-    for p in packages:
-        # print("checking reqs for", p.name)
-        all_requirements.extend(getattr(p, "requirements", []))
-    if len(all_requirements) == 0:
-        # no unmet requirements, end recursion
-        return (True, packages)
-    else:
-        # at least one unmet requirement exists...
-        name = all_requirements[0]["app"]
-        requirements = []
-        for r in all_requirements:
-            if r["app"] == name:
-                requirements.append(r["requirement"])
-        requirers = []
-        for p in packages:
-            for r in getattr(p, "requirements", []):
-                if r["app"] == name:
-                    requirers.append(p.name)
-
-        # check if it's already in our package list
-        for p in packages:
-            if p.name == name:
-                if not all([satisfies(p.version, r) for r in requirements]):
-                    log(ctx, "Ignoring conflicting requirements for {}, {} does not satisfy {} as required by {}".format(
-                        name,
-                        p.version,
-                        requirements,
-                        requirers,
-                    ))
-                return (False, [without_requirement(name, p) for p in packages])
-
-        # check if a version exists on hex
-        log(ctx, "Fetching package info for {} from hex.pm".format(name))
-        package_info = hex_package_info(ctx, name)
-        for release in package_info["releases"]:
-            if all([satisfies(release["version"], r) for r in requirements]):
-                log(ctx, "Using {}@{} required by {} satisfying {}".format(
-                    name,
-                    release["version"],
-                    requirers,
-                    requirements,
-                ))
-                hp = hex_package(ctx, name, release["version"], "", "")
-                return (False, [without_requirement(name, p) for p in packages] + [hp])
-
-        fail("Unable to find a version of {} satisfying".format(name), requirements)
-
-def _resolve_hex_pm(ctx, packages):
-    resolved = packages
-    for i in range(0, _RESOLVE_MAX_PASSES):
-        (done, resolved) = _resolve_pass(ctx, resolved)
-        if done:
-            return resolved
-    fail("Dependencies were not resolved after {} passes.".format(_RESOLVE_MAX_PASSES))
-
 def _newest(a, b):
     if a.version == b.version:
         return a
@@ -274,47 +212,24 @@ def _erlang_package(ctx):
 
     packages = []
     for mod in ctx.modules:
-        for dep in mod.tags.hex_package_tree:
-            packages.append(hex_tree(
-                ctx,
-                module = mod,
-                name = dep.name,
-                pkg = dep.pkg,
-                version = dep.version,
-            ))
         for dep in mod.tags.hex_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
-            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
-                fail("testonly has no effect when build_file or build_file_content is set:", dep.name)
             packages.append(hex_package(
                 ctx,
                 module = mod,
-                name = dep.name,
-                pkg = dep.pkg,
-                version = dep.version,
-                sha256 = dep.sha256,
-                build_file = dep.build_file,
-                build_file_content = dep.build_file_content,
-                patches = dep.patches,
-                patch_args = dep.patch_args,
-                patch_cmds = dep.patch_cmds,
-                testonly = dep.testonly,
+                dep = dep,
             ))
         for dep in mod.tags.git_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
-            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
-                fail("testonly has no effect when build_file or build_file_content is set:", dep.remote, dep.repository)
             packages.append(git_package(
                 ctx,
                 module = mod,
                 dep = dep,
             ))
 
-    deduped = _resolve_local(ctx, packages)
-
-    resolved = _resolve_hex_pm(ctx, deduped)
+    resolved = _resolve_local(ctx, packages)
 
     if len(resolved) > 0:
         log(ctx, "Final package list:")
@@ -323,6 +238,24 @@ def _erlang_package(ctx):
 
     for p in resolved:
         p.f_fetch(p)
+
+    apps = [
+        p.name
+        for p in resolved
+        if not p.testonly
+    ]
+
+    test_apps = [
+        p.name
+        for p in resolved
+        if p.testonly
+    ]
+
+    erlang_packages(
+        name = "erlang_packages",
+        apps = sorted(apps),
+        test_apps = sorted(test_apps),
+    )
 
 hex_package_tree_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),

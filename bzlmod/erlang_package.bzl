@@ -7,15 +7,12 @@ load(
     "//:hex_archive.bzl",
     "hex_archive",
 )
-load(
-    ":hex_pm.bzl",
-    "hex_release_info",
-)
 
 HexPackage = provider(fields = [
     "module",
     "name",
     "pkg",
+    "app_name",
     "version",
     "sha256",
     "build_file",
@@ -32,6 +29,7 @@ HexPackage = provider(fields = [
 GitPackage = provider(fields = [
     "module",
     "name",
+    "app_name",
     "version",
     "remote",
     "repository",
@@ -48,67 +46,25 @@ GitPackage = provider(fields = [
 def log(ctx, msg):
     ctx.execute(["echo", "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
 
-def hex_tree(
-        ctx,
-        module = None,
-        name = None,
-        pkg = None,
-        version = None):
-    log(ctx, "Fetching release info for {}@{} from hex.pm".format(name, version))
-    release_info = hex_release_info(ctx, name, version)
-
-    sha256 = release_info["checksum"]
-
-    deps = []
-    requirements = []
-    for (_, props) in release_info["requirements"].items():
-        if not props["optional"]:
-            deps.append(props["app"])
-            requirements.append(props)
-
-    return HexPackage(
-        module = module,
-        name = name,
-        pkg = pkg,
-        version = version,
-        sha256 = sha256,
-        build_file_content = "",
-        patches = [],
-        patch_args = ["-p0"],
-        patch_cmds = [],
-        testonly = False,
-        deps = deps,
-        requirements = requirements,
-        f_fetch = _hex_package_repo,
-    )
-
 def hex_package(
         _ctx,
         module = None,
-        name = None,
-        pkg = None,
-        version = None,
-        sha256 = None,
-        build_file = None,
-        build_file_content = None,
-        patches = [],
-        patch_args = ["-p0"],
-        patch_cmds = None,
-        testonly = False):
+        dep = None):
+    app_name = dep.pkg if dep.pkg != "" else dep.name
+
     return HexPackage(
         module = module,
-        name = name,
-        pkg = pkg,
-        version = version,
-        sha256 = sha256,
-        build_file = build_file,
-        build_file_content = build_file_content,
-        patches = patches,
-        patch_args = patch_args,
-        patch_cmds = patch_cmds,
-        testonly = testonly,
-        deps = None,
-        requirements = [],
+        name = dep.name,
+        pkg = dep.pkg,
+        app_name = app_name,
+        version = dep.version,
+        sha256 = dep.sha256,
+        build_file = dep.build_file,
+        build_file_content = dep.build_file_content,
+        patches = dep.patches,
+        patch_args = dep.patch_args,
+        patch_cmds = dep.patch_cmds,
+        testonly = dep.testonly,
         f_fetch = _hex_package_repo,
     )
 
@@ -149,6 +105,7 @@ def git_package(
     return GitPackage(
         module = module,
         name = name,
+        app_name = name,
         version = version,
         remote = remote,
         branch = dep.branch,
@@ -161,40 +118,11 @@ def git_package(
         f_fetch = _git_package_repo,
     )
 
-def without_requirement(name, package):
-    requirements = getattr(package, "requirements", [])
-    if len(requirements) == 0:
-        return package
-    else:
-        # currently only HexPackage has "requirements", so we
-        # can always return one
-        new_requirements = []
-        for r in requirements:
-            if r["app"] != name:
-                new_requirements.append(r)
-
-        return HexPackage(
-            module = package.module,
-            name = package.name,
-            version = package.version,
-            sha256 = package.sha256,
-            build_file = package.build_file,
-            build_file_content = package.build_file_content,
-            patches = package.patches,
-            patch_args = package.patch_args,
-            patch_cmds = package.patch_cmds,
-            testonly = package.testonly,
-            deps = package.deps,
-            requirements = new_requirements,
-            f_fetch = package.f_fetch,
-        )
-
 def _hex_package_repo(hex_package):
-    package_name = hex_package.pkg if hex_package.pkg != "" else hex_package.name
     if hex_package.build_file != None:
         hex_archive(
             name = hex_package.name,
-            package_name = package_name,
+            package_name = hex_package.app_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file = hex_package.build_file,
@@ -205,7 +133,7 @@ def _hex_package_repo(hex_package):
     elif hex_package.build_file_content != "":
         hex_archive(
             name = hex_package.name,
-            package_name = package_name,
+            package_name = hex_package.app_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = hex_package.build_file_content,
@@ -214,18 +142,13 @@ def _hex_package_repo(hex_package):
             patch_cmds = hex_package.patch_cmds,
         )
     else:
-        if hex_package.deps != None:
-            deps = ["@{}//:erlang_app".format(d) for d in hex_package.deps]
-        else:
-            deps = ""
-
         hex_archive(
             name = hex_package.name,
-            package_name = package_name,
+            package_name = hex_package.app_name,
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
-                app_name = package_name,
+                app_name = hex_package.app_name,
                 testonly = hex_package.testonly,
             ),
             patches = hex_package.patches,
@@ -262,7 +185,7 @@ def _git_package_repo(git_package):
             tag = git_package.tag,
             commit = git_package.commit,
             build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
-                app_name = git_package.name,
+                app_name = git_package.app_name,
                 testonly = git_package.testonly,
             ),
             patch_cmds = git_package.patch_cmds,
