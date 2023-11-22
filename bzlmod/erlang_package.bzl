@@ -225,7 +225,7 @@ def _hex_package_repo(hex_package):
             version = hex_package.version,
             sha256 = hex_package.sha256,
             build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
-                app_name = hex_package.name,
+                app_name = package_name,
                 testonly = hex_package.testonly,
             ),
             patches = hex_package.patches,
