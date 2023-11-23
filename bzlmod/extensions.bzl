@@ -185,7 +185,7 @@ def _dedupe_by_version(packages):
         by_version[p.version] = p
     return by_version.values()
 
-def _resolve_local(ctx, packages):
+def resolve_local(ctx, packages):
     deduped = []
     packages_by_name = {}
     for p in packages:
@@ -207,16 +207,16 @@ def _resolve_local(ctx, packages):
             ))
     return deduped
 
-def _erlang_package(ctx):
+def _erlang_package(module_ctx):
     xref_runner_sources()
 
     packages = []
-    for mod in ctx.modules:
+    for mod in module_ctx.modules:
         for dep in mod.tags.hex_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
             packages.append(hex_package(
-                ctx,
+                module_ctx,
                 module = mod,
                 dep = dep,
             ))
@@ -224,17 +224,17 @@ def _erlang_package(ctx):
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
             packages.append(git_package(
-                ctx,
+                module_ctx,
                 module = mod,
                 dep = dep,
             ))
 
-    resolved = _resolve_local(ctx, packages)
+    resolved = resolve_local(module_ctx, packages)
 
     if len(resolved) > 0:
-        log(ctx, "Final package list:")
+        log(module_ctx, "Final package list:")
     for p in resolved:
-        log(ctx, "    {}@{}".format(p.name, p.version))
+        log(module_ctx, "    {}@{}".format(p.name, p.version))
 
     for p in resolved:
         p.f_fetch(p)
@@ -256,12 +256,6 @@ def _erlang_package(ctx):
         apps = sorted(apps),
         test_apps = sorted(test_apps),
     )
-
-hex_package_tree_tag = tag_class(attrs = {
-    "name": attr.string(mandatory = True),
-    "pkg": attr.string(),
-    "version": attr.string(mandatory = True),
-})
 
 hex_package_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
@@ -295,7 +289,6 @@ erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
         "hex_package": hex_package_tag,
-        "hex_package_tree": hex_package_tree_tag,
         "git_package": git_package_tag,
     },
 )
