@@ -129,7 +129,7 @@ The example above follows these conventions.
 
 ## Copyright and License
 
-(c) 2020-2022, VMware Inc or its affiliates.
+(c) 2020-2023 Broadcom. All Rights Reserved. The term “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.  All rights reserved.
 
 Dual licensed under the Apache License Version 2.0 and
 Mozilla Public License Version 2.0.
