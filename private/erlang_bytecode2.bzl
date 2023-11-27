@@ -135,6 +135,7 @@ erlang_bytecode = rule(
             allow_files = [".ez"],
         ),
         "erlc_opts": attr.label(
+            mandatory = True,
             providers = [ErlcOptsInfo],
         ),
         "outs": attr.output_list(

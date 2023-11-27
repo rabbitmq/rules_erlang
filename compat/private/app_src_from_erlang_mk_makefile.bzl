@@ -14,6 +14,9 @@ ${{MAKE:-gmake}} -f Makefile -f $ABS_EXTRACT $ABS_OUT
             makefile = src
             break
 
+    if makefile == None:
+        fail("Makefile not found in {}".format(ctx.attr.srcs))
+
     ctx.actions.run_shell(
         inputs = ctx.files.srcs + ctx.files.extract_mk,
         outputs = [ctx.outputs.out],
