@@ -29,8 +29,7 @@
                     analysis_id := string(),
                     outs := [string()]}.
 
--type config() :: #{dest_dir := string(),
-                    module_index := #{string() := string()},
+-type config() :: #{module_index := #{string() := string()},
                     targets := #{string() := target()}}.
 
 -spec main([string()]) -> no_return().
@@ -39,8 +38,7 @@ main([ConfigJsonPath]) ->
     {ok, RawConfig} = thoas:decode(ConfigJson),
     Config = conform_config(RawConfig),
 
-    #{dest_dir := DestDir,
-      module_index := ModuleIndex,
+    #{module_index := ModuleIndex,
       targets := Targets} = Config,
 
     %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
@@ -49,14 +47,14 @@ main([ConfigJsonPath]) ->
 
     %% io:format(standard_error, "ModuleIndex: ~p~n", [ModuleIndex]),
 
-    %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
-
     %% TreeOut = os:cmd("/usr/local/bin/tree"),
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
     AnalysisFileContentsTable = ets:new(analysis_file_contents, [set]),
 
-    ok = clone_sources(DestDir, Targets),
+    DestDir = clone_sources(Targets),
+
+    %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
 
     %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
     %% io:format(standard_error, "~s~n", [TreeOut]),
@@ -121,30 +119,46 @@ conform_index(ModuleIndex) ->
       end, #{}, ModuleIndex).
 
 -spec conform_config(thoas:json_term()) -> config().
-conform_config(#{<<"dest_dir">> := DD, <<"module_index">> := MI, <<"targets">> := T}) ->
-    #{dest_dir => binary_to_list(DD),
-      module_index => conform_index(MI),
+conform_config(#{<<"module_index">> := MI, <<"targets">> := T}) ->
+    #{module_index => conform_index(MI),
       targets => conform_targets(T)}.
 
-clone_app(DestDir, AppName, #{path := AppPath, srcs := Srcs, outs := Outs}) ->
+clone_app(_AppName, #{srcs := Srcs, outs := Outs}) ->
     lists:foreach(
       fun (Src) ->
-              RP = case AppPath of
-                       "" -> Src;
-                       _ -> string:prefix(Src, AppPath ++ "/")
-                   end,
-              %% io:format(standard_error, "App: ~p, Src: ~p, AppPath: ~p, RP: ~p~n", [AppName, Src, AppPath, RP]),
-              Dest = filename:join([DestDir, AppName, RP]),
-              true = lists:member(Dest, Outs),
+              Module = filename:basename(Src, ".erl"),
+              %% RP = case AppPath of
+              %%          "" -> Src;
+              %%          _ -> string:prefix(Src, AppPath ++ "/")
+              %%      end,
+              {value, Dest} = lists:search(
+                                fun(Out) ->
+                                        case filename:basename(Out, ".erl") of
+                                            Module -> true;
+                                            _ -> false
+                                        end
+                                end, Outs),
               %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
               {ok, _} = file:copy(Src, Dest)
-      end, Srcs).
+      end, Srcs),
+    {value, Beam} = lists:search(
+                      fun (Out) ->
+                              case filename:extension(Out) of
+                                  ".beam" -> true;
+                                  _ -> false
+                              end
+                      end, Outs),
+    filename:dirname(filename:dirname(Beam)).
 
-clone_sources(DestDir, Targets) ->
-    maps:foreach(
-      fun (AppName, Props) ->
-              ok = clone_app(DestDir, AppName, Props)
-      end, Targets).
+-spec clone_sources(#{string() := target()}) -> string().
+clone_sources(Targets) ->
+    maps:fold(
+      fun
+          (AppName, Props, unknown) ->
+              filename:dirname(clone_app(AppName, Props));
+          (AppName, Props, DestDir) ->
+              DestDir = filename:dirname(clone_app(AppName, Props))
+      end, unknown, Targets).
 
 app_graph(Targets, ModuleIndex, T) ->
     G = digraph:new([acyclic]),
@@ -290,9 +304,9 @@ compile(AppName,
       fun (Src) ->
               SrcRel = string:prefix(Src, AppDir ++ "/"),
               io:format(standard_error, "\t~s~n", [SrcRel]),
-              {ok, Module} = compile:file(SrcRel, CompileOpts),
               %% TreeOut = os:cmd("/usr/local/bin/tree"),
               %% io:format(standard_error, "~s~n", [TreeOut]),
+              {ok, Module} = compile:file(SrcRel, CompileOpts),
               %% io:format(standard_error, "loading ~p~n", [Module]),
               %% {module, Module} = code:ensure_loaded(Module),
               ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),

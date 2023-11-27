@@ -242,19 +242,28 @@ def _erlang_package(module_ctx):
     apps = [
         p.name
         for p in resolved
-        if not p.testonly
+        if (not p.name == "thoas_rules_erlang") and (not p.testonly)
     ]
 
     test_apps = [
         p.name
         for p in resolved
-        if p.testonly
+        if p.module.is_root and p.testonly
     ]
 
+    # should we make one of these for every module?
+    # then we can hide transitive deps...
     erlang_packages(
         name = "erlang_packages",
         apps = sorted(apps),
         test_apps = sorted(test_apps),
+    )
+
+    direct_deps = ["deps"] if len(apps) > 0 else []
+    direct_dev_deps = ["test_deps"] if len(test_apps) > 0 else []
+    module_ctx.extension_metadata(
+        root_module_direct_deps = direct_deps,
+        root_module_direct_dev_deps = direct_dev_deps,
     )
 
 hex_package_tag = tag_class(attrs = {
