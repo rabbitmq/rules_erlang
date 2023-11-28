@@ -26,7 +26,7 @@ def _impl(ctx):
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
-            extra_apps = [],
+            extra_apps = ctx.attr.extra_apps,
             include = app_info.source_info.public_hdrs,
             beam = beam,
             priv = app_info.source_info.priv,
@@ -35,7 +35,7 @@ def _impl(ctx):
                     app_info.source_info.private_hdrs +
                     app_info.source_info.srcs +
                     [app_info.source_info.app_src] if app_info.source_info.app_src != None else []),
-            deps = [],
+            deps = ctx.attr.deps,
         ),
         DefaultInfo(
             files = depset(beam + app_info.source_info.priv),
@@ -55,6 +55,10 @@ extract_app = rule(
         ),
         "beam_dest": attr.string(
             default = "ebin",
+        ),
+        "extra_apps": attr.string_list(),
+        "deps": attr.label_list(
+            providers = [ErlangAppInfo],
         ),
     },
     provides = [ErlangAppInfo],

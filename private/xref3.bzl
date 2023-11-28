@@ -44,23 +44,10 @@ def _app_path(files):
             parts = f.short_path.split("/")
             return path_join(*parts[:-2])
 
-def _expand_xref_erl(ctx, method = None, arg = None):
-    for scope in ctx.attr.scopes:
-        if not scope in ALLOWED_SCOPES:
-            fail("scope {} is not one of {}", scope, ALLOWED_SCOPES)
-
-    additional_libs_dir = ctx.label.name + "_additional_libs"
-    erl_libs_files = erl_libs_contents(
-        ctx,
-        deps = ctx.attr.additional_libs,
-        dir = additional_libs_dir,
-    )
-    erl_libs_dirs = []
-    if len(ctx.attr.additional_libs) > 0:
-        erl_libs_dirs.append(path_join(ctx.label.package, additional_libs_dir))
-
+def _process_deps(deps, erl_libs_files, erl_libs_dirs, ctx):
     deps_dirs = []
-    for dep in ctx.attr.deps:
+    for d in deps:
+        dep = d[ErlangAppInfo].app_name
         dep_path = None
         for cm in ctx.attr.erl_libs:
             info = cm[CompileManyInfo]
@@ -71,33 +58,48 @@ def _expand_xref_erl(ctx, method = None, arg = None):
                         erl_libs_files.append(out)
         if dep_path == None:
             fail("{} is not found in any of {}".format(dep, ctx.attr.erl_libs))
+        deps_dirs.append(dep_path)
         (parent, _, _) = dep_path.rpartition("/")
         if parent not in erl_libs_dirs:
             # print("adding {} to erl_libs_dirs".format(parent))
             erl_libs_dirs.append(parent)
+    return deps_dirs
 
-    apps_dirs = []
-    for app in ctx.attr.apps:
-        app_path = None
-        for cm in ctx.attr.erl_libs:
-            info = cm[CompileManyInfo]
-            if app in info.apps:
-                app_path = _app_path(info.apps[app].outs)
-                for out in info.apps[app].outs:
-                    if out.basename.endswith(".beam"):
-                        erl_libs_files.append(out)
-        if app_path == None:
-            fail("{} is not found in any of {}".format(app, ctx.attr.erl_libs))
-        (parent, _, _) = app_path.rpartition("/")
-        if parent not in erl_libs_dirs:
-            # print("adding {} to erl_libs_dirs".format(parent))
-            erl_libs_dirs.append(parent)
+def _expand_xref_erl(ctx, method = None, arg = None):
+    for scope in ctx.attr.scopes:
+        if not scope in ALLOWED_SCOPES:
+            fail("scope {} is not one of {}", scope, ALLOWED_SCOPES)
+
+    target_info = ctx.attr.target[ErlangAppInfo]
+
+    additional_libs_dir = ctx.label.name + "_additional_libs"
+    erl_libs_files = erl_libs_contents(
+        ctx,
+        deps = target_info.deps + ctx.attr.additional_libs + ctx.attr.extra_apps,
+        dir = additional_libs_dir,
+    )
+    erl_libs_dirs = []
+    if len(ctx.attr.additional_libs) > 0:
+        erl_libs_dirs.append(path_join(ctx.label.package, additional_libs_dir))
+
+    deps = []
+    apps = []
+    # note that this only works if the deps are in @erlang_packages
+    for app in target_info.deps:
+        if app.label.workspace_root != "":
+            deps.append(app)
+        else:
+            apps.append(app)
+
+    deps_dirs = _process_deps(deps, erl_libs_files, erl_libs_dirs, ctx)
+    apps_dirs = _process_deps(apps, erl_libs_files, erl_libs_dirs, ctx)
+    extra_app_dirs = _process_deps(ctx.attr.extra_apps, erl_libs_files, erl_libs_dirs, ctx)
 
     extra_dirs = [f.short_path for f in ctx.files.extra_dirs]
 
     xref_erl = replace_all(XREF_ERL, {
         SCOPE_PATTERN: to_erlang_atom_list(ctx.attr.scopes),
-        EXTRA_APP_DIRS_PATTERN: "[]", # to_erlang_string_list(extra_app_dirs),
+        EXTRA_APP_DIRS_PATTERN: to_erlang_string_list(extra_app_dirs),
         DEPS_DIRS_PATTERN: to_erlang_string_list(deps_dirs),
         APPS_DIRS_PATTERN: to_erlang_string_list(apps_dirs),
         TARGET_DIR_PATTERN: ".",
@@ -206,17 +208,15 @@ _XREF_ATTRS = {
         providers = [ErlangAppInfo],
         mandatory = True,
     ),
-    "deps": attr.string_list(),
-    "apps": attr.string_list(),
     "checks": attr.string_list(
         default = ["undefined_function_calls"],
     ),
     "scopes": attr.string_list(
         default = ["app"],
     ),
-    # "extra_apps": attr.label_list(
-    #     providers = [ErlangAppInfo],
-    # ),
+    "extra_apps": attr.label_list(
+        providers = [ErlangAppInfo],
+    ),
     "extra_dirs": attr.label_list(
         allow_files = True,
     ),
