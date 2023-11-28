@@ -15,7 +15,6 @@ def _impl(repository_ctx):
 
     BUILD_FILE_CONTENT = """\
 load("@rules_erlang//:compile_many.bzl", "compile_many")
-load("@rules_erlang//:extract_app.bzl", "extract_app")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -37,33 +36,47 @@ compile_many(
     test_apps = _to_string_list(test_apps_srcs),
 )
 
+    repository_ctx.file(
+        "BUILD.bazel",
+        content = BUILD_FILE_CONTENT,
+    )
+
     for app in repository_ctx.attr.apps:
         BUILD_FILE_CONTENT += """\
+load("@rules_erlang//:extract_app.bzl", "extract_app")
+
 extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
     erl_libs = ":deps",
+    include_headers = True,
     verify = False,
 )
 
 """.format(app_name = app)
+        repository_ctx.file(
+            "{}/BUILD.bazel".format(app),
+            content = BUILD_FILE_CONTENT,
+        )
 
     for test_app in repository_ctx.attr.test_apps:
         BUILD_FILE_CONTENT += """\
+load("@rules_erlang//:extract_app.bzl", "extract_app")
+
 extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
     erl_libs = ":test_deps",
+    include_headers = True,
     testonly = True,
     verify = False,
 )
 
 """.format(app_name = test_app)
-
-    repository_ctx.file(
-        "BUILD.bazel",
-        content = BUILD_FILE_CONTENT,
-    )
+        repository_ctx.file(
+            "{}/BUILD.bazel".format(test_app),
+            content = BUILD_FILE_CONTENT,
+        )
 
 erlang_packages = repository_rule(
     implementation = _impl,

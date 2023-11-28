@@ -8,9 +8,21 @@ def _impl(ctx):
     if ctx.attr.app_name not in apps:
         fail("requested app not present in erl_libs")
 
-    beam = []
-
     app_info = apps[ctx.attr.app_name]
+
+    beam = []
+    public_hdrs = []
+    if not ctx.attr.include_headers:
+        public_hdrs = app_info.source_info.public_hdrs
+
+    out_base = None
+    if ctx.attr.include_headers:
+        for out in app_info.outs:
+            if out.basename.endswith(".beam") or out.basename.endswith(".app"):
+                (base, sep, _) = out.dirname.rpartition("/")
+                out_base = base + sep
+                break
+
     for out in app_info.outs:
         if out.basename.endswith(".beam") or out.basename.endswith(".app"):
             dest = ctx.actions.declare_file(path_join(
@@ -22,12 +34,27 @@ def _impl(ctx):
                 target_file = out,
             )
             beam.append(dest)
+        elif ctx.attr.include_headers and out.basename.endswith(".hrl"):
+            rp = out.path.removeprefix(out_base)
+            if rp.startswith("include/"):
+                dest = ctx.actions.declare_file(rp)
+                ctx.actions.symlink(
+                    output = dest,
+                    target_file = out,
+                )
+                public_hdrs.append(dest)
+            else:
+                print("Skipped private header", rp)
+
+    outs = beam + app_info.source_info.priv
+    if ctx.attr.include_headers:
+        outs += public_hdrs
 
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
             extra_apps = ctx.attr.extra_apps,
-            include = app_info.source_info.public_hdrs,
+            include = public_hdrs,
             beam = beam,
             priv = app_info.source_info.priv,
             license_files = app_info.source_info.license_files,
@@ -38,8 +65,8 @@ def _impl(ctx):
             deps = ctx.attr.deps,
         ),
         DefaultInfo(
-            files = depset(beam + app_info.source_info.priv),
-            runfiles = ctx.runfiles(beam + app_info.source_info.priv),
+            files = depset(outs),
+            runfiles = ctx.runfiles(outs),
         ),
     ]
 
@@ -59,6 +86,9 @@ extract_app = rule(
         "extra_apps": attr.string_list(),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
+        ),
+        "include_headers": attr.bool(
+            default = False,
         ),
     },
     provides = [ErlangAppInfo],
