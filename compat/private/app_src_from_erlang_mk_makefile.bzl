@@ -5,7 +5,7 @@ ABS_EXTRACT="$PWD/{extract}"
 ABS_OUT="$PWD/{out}"
 
 cd $(dirname "{makefile}")
-${{MAKE:-gmake}} -f Makefile -f $ABS_EXTRACT $ABS_OUT
+{gmake} -f Makefile -f $ABS_EXTRACT $ABS_OUT
 """
 
     makefile = None
@@ -17,10 +17,13 @@ ${{MAKE:-gmake}} -f Makefile -f $ABS_EXTRACT $ABS_OUT
     if makefile == None:
         fail("Makefile not found in {}".format(ctx.attr.srcs))
 
+    gmake_path = ctx.toolchains["//gmake:toolchain_type"].gmake_path
+
     ctx.actions.run_shell(
         inputs = ctx.files.srcs + ctx.files.extract_mk,
         outputs = [ctx.outputs.out],
         command = script.format(
+            gmake = gmake_path,
             makefile = makefile.path,
             extract = ctx.file.extract_mk.path,
             out = ctx.outputs.out.path,
@@ -41,4 +44,5 @@ app_src_from_erlang_mk_makefile = rule(
             allow_single_file = True,
         ),
     },
+    toolchains = ["//gmake:toolchain_type"],
 )

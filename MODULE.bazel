@@ -55,7 +55,17 @@ use_repo(
     "erlang_config",
 )
 
+gmake_config_extension = use_extension(
+    "@rules_erlang//bzlmod:extensions.bzl",
+    "gmake_config",
+)
+use_repo(
+    gmake_config_extension,
+    "gmake_config",
+)
+
 register_toolchains(
     "@erlang_config//external:toolchain_major",
     "@erlang_config//external:toolchain_major_minor",
+    "@gmake_config//:default_toolchain",
 )

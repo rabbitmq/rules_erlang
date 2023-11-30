@@ -17,7 +17,7 @@ exec "{erlang_home}"/bin/escript "{escript}" $@
     )
 
     ctx.actions.write(
-        output = ctx.outputs.executable,
+        output = ctx.outputs.out,
         content = script,
         is_executable = True,
     )
@@ -29,7 +29,7 @@ exec "{erlang_home}"/bin/escript "{escript}" $@
     return [
         DefaultInfo(
             runfiles = runfiles,
-            executable = ctx.outputs.executable,
+            executable = ctx.outputs.out,
         ),
     ]
 
@@ -39,6 +39,9 @@ escript_wrapper = rule(
         "escript": attr.label(
             mandatory = True,
             allow_single_file = True,
+        ),
+        "out": attr.output(
+            mandatory = True,
         ),
     },
     toolchains = ["//tools:toolchain_type"],

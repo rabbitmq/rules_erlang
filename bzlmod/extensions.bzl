@@ -21,6 +21,10 @@ load(
     _erlang_config_rule = "erlang_config",
 )
 load(
+    "//repositories:gmake_config.bzl",
+    _gmake_config_rule = "gmake_config",
+)
+load(
     "//repositories:erlang_packages.bzl",
     "erlang_packages",
 )
@@ -149,6 +153,51 @@ erlang_config = module_extension(
         "external_erlang_from_path": external_erlang_from_path,
         "internal_erlang_from_http_archive": internal_erlang_from_http_archive,
         "internal_erlang_from_github_release": internal_erlang_from_github_release,
+    },
+)
+
+GMAKE_DEFAULT_TOOLCHAIN_NAME = "default"
+
+def _gmake_config(module_ctx):
+    gmakes = {}
+
+    for mod in module_ctx.modules:
+        for gmake in mod.tags.gmake:
+            if gmake.name not in gmakes:
+                gmakes[gmake.name] = gmake.path
+            else:
+                module_ctx.report_progress("Ignoring duplicate gmake: {}".format(gmake))
+
+    if "MAKE" in module_ctx.os.environ:
+        gmake_path = module_ctx.os.environ["MAKE"]
+        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = gmake_path
+        log(module_ctx, "using make from env var MAKE: {}".for_target(gmake_path))
+    elif module_ctx.which("make") != None:
+        gmake_path = module_ctx.which("make")
+        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = str(gmake_path)
+        log(module_ctx, "found make at: {}".format(gmake_path))
+    else:
+        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = "make"
+
+    _gmake_config_rule(
+        name = "gmake_config",
+        gmakes = gmakes,
+    )
+
+    module_ctx.extension_metadata(
+        root_module_direct_deps = gmakes.keys(),
+        root_module_direct_dev_deps = [],
+    )
+
+gmake = tag_class(attrs = {
+    "name": attr.string(),
+    "path": attr.string(),
+})
+
+gmake_config = module_extension(
+    implementation = _gmake_config,
+    tag_classes = {
+        "gmake": gmake,
     },
 )
 

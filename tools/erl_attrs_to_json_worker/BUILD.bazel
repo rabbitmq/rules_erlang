@@ -32,5 +32,6 @@ escript_archive(
 escript_wrapper(
     name = "wrapper",
     escript = ":%s" % APP_NAME,
+    out = "wrapper",
     visibility = ["//visibility:public"],
 )
