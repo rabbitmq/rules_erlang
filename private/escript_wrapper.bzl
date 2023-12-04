@@ -7,11 +7,14 @@ load(
 def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    script = """set -euo pipefail
+    script = """#!/usr/bin/env bash
+set -euo pipefail
+
 {maybe_install_erlang}
+
 exec "{erlang_home}"/bin/escript "{escript}" $@
 """.format(
-        maybe_install_erlang = maybe_install_erlang(ctx, True),
+        maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
         escript = ctx.file.escript.path,
     )
