@@ -11,12 +11,13 @@ CompileManyInfo = provider(
 )
 
 def _impl(ctx):
-    module_index = {}
     apps = {}
 
-    compiler_flags = {
-        "targets": {},
-    }
+    compiler_flags = struct(
+        module_index = {},
+        code_paths = [],
+        targets = {},
+    )
 
     ## Note: if we write the analysis info out to additional files,
     ##       we could feed those into a rule that produced a deferred
@@ -29,7 +30,7 @@ def _impl(ctx):
         compiler_srcs = (source_info.public_hdrs +
                          source_info.private_hdrs +
                          source_info.srcs)
-        compiler_flags["targets"][source_info.app_name] = {
+        compiler_flags.targets[source_info.app_name] = {
             "path": path_join(app.label.workspace_root, app.label.package),
             "erlc_opts_file": source_info.erlc_opts_file.path,
             "app_src": source_info.app_src.path,
@@ -56,7 +57,7 @@ def _impl(ctx):
                     module_name + ".beam",
                 ))
                 app_outs.append(out)
-                module_index[module_name] = source_info.app_name
+                compiler_flags.module_index[module_name] = source_info.app_name
             rp = additional_file_dest_relative_path(app.label, src)
             out = ctx.actions.declare_file(path_join(
                 ctx.label.name,
@@ -71,7 +72,7 @@ def _impl(ctx):
             source_info.app_name + ".app",
         ))
         app_outs.append(dot_app)
-        compiler_flags["targets"][source_info.app_name]["outs"] = [
+        compiler_flags.targets[source_info.app_name]["outs"] = [
             o.path
             for o in app_outs
         ]
@@ -81,18 +82,18 @@ def _impl(ctx):
         )
         outputs.extend(app_outs)
 
-    compiler_flags["module_index"] = module_index
-
-    # we should probably expand this to all the ebin dirs...
-    compiler_flags["erl_libs_dirs"] = [
-        path_join(
-            ctx.bin_dir.path,
-            eld.label.workspace_root,
-            eld.label.package,
-            eld.label.name,
-        )
-        for eld in ctx.attr.erl_libs
-    ]
+    for eld in ctx.attr.erl_libs:
+        compiler_flags.code_paths.extend([
+            path_join(
+                ctx.bin_dir.path,
+                eld.label.workspace_root,
+                eld.label.package,
+                eld.label.name,
+                app,
+                "ebin",
+            )
+            for app in eld[CompileManyInfo].apps.keys()
+        ])
 
     targets_file = ctx.actions.declare_file(ctx.label.name + "_targets.json")
     ctx.actions.write(
@@ -120,7 +121,7 @@ def _impl(ctx):
 
     return [
         CompileManyInfo(
-            module_index = module_index,
+            module_index = compiler_flags.module_index,
             apps = apps,
         ),
         DefaultInfo(
