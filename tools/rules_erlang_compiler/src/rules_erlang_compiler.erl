@@ -61,18 +61,6 @@ main([ConfigJsonPath]) ->
     %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
     %% io:format(standard_error, "~s~n", [TreeOut]),
 
-    %% it seems we would need to add each app individually after compilation,
-    %% which would be fine, but maybe we just add DestDir to ERL_LIBS?
-    %% true = code:add_path(DestDir),
-    %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
-
-    %% CodePaths = lists:flatmap(
-    %%               fun(ErlLibsDir) ->
-    %%                       {ok, Apps} = file:list_dir(ErlLibsDir),
-    %%                       [filename:join([ErlLibsDir, App, "ebin"])
-    %%                        || App <- Apps]
-    %%               end, ErlLibsDirs),
-
     %% io:format(standard_error, "CodePaths: ~p~n", [CodePaths]),
 
     code:add_paths(CodePaths),
@@ -143,14 +131,10 @@ conform_config(#{<<"module_index">> := MI,
       code_paths => conform_code_paths(CP),
       targets => conform_targets(T)}.
 
-clone_app(_AppName, #{srcs := Srcs, outs := Outs}) ->
+clone_app(#{srcs := Srcs, outs := Outs}) ->
     lists:foreach(
       fun (Src) ->
               Module = filename:basename(Src, ".erl"),
-              %% RP = case AppPath of
-              %%          "" -> Src;
-              %%          _ -> string:prefix(Src, AppPath ++ "/")
-              %%      end,
               {value, Dest} = lists:search(
                                 fun(Out) ->
                                         case filename:basename(Out, ".erl") of
@@ -174,10 +158,10 @@ clone_app(_AppName, #{srcs := Srcs, outs := Outs}) ->
 clone_sources(Targets) ->
     maps:fold(
       fun
-          (AppName, Props, unknown) ->
-              filename:dirname(clone_app(AppName, Props));
-          (AppName, Props, DestDir) ->
-              DestDir = filename:dirname(clone_app(AppName, Props))
+          (_, Props, unknown) ->
+              filename:dirname(clone_app(Props));
+          (_, Props, DestDir) ->
+              DestDir = filename:dirname(clone_app(Props))
       end, unknown, Targets).
 
 app_graph(Targets, ModuleIndex, T) ->
