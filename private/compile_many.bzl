@@ -81,10 +81,18 @@ def _impl(ctx):
         )
         outputs.extend(app_outs)
 
-    # need to merge the module_index props from all the erl_libs, and add
-    # them to the json
-    # correction, we don't have to do that, as erl_libs are already compiled
     compiler_flags["module_index"] = module_index
+
+    # we should probably expand this to all the ebin dirs...
+    compiler_flags["erl_libs_dirs"] = [
+        path_join(
+            ctx.bin_dir.path,
+            eld.label.workspace_root,
+            eld.label.package,
+            eld.label.name,
+        )
+        for eld in ctx.attr.erl_libs
+    ]
 
     targets_file = ctx.actions.declare_file(ctx.label.name + "_targets.json")
     ctx.actions.write(
@@ -95,21 +103,7 @@ def _impl(ctx):
     args = ctx.actions.args()
     args.add(targets_file)
 
-    erl_libs_dirs = [
-        path_join(
-            ctx.bin_dir.path,
-            eld.label.workspace_root,
-            eld.label.package,
-            eld.label.name,
-        )
-        for eld in ctx.attr.erl_libs
-    ]
-
     compiler_runfiles = ctx.attr.rules_erlang_compiler[DefaultInfo].default_runfiles
-
-    env = {}
-    if len(erl_libs_dirs) > 0:
-        env["ERL_LIBS"] = ctx.configuration.host_path_separator.join(erl_libs_dirs)
 
     inputs = (compiler_runfiles.files.to_list() +
               ctx.files.erl_libs +
@@ -122,7 +116,6 @@ def _impl(ctx):
         executable = ctx.executable.rules_erlang_compiler,
         arguments = [args],
         mnemonic = "RulesErlangErlc",
-        env = env,
     )
 
     return [

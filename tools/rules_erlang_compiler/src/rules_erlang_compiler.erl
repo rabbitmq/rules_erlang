@@ -30,6 +30,7 @@
                     outs := [string()]}.
 
 -type config() :: #{module_index := #{string() := string()},
+                    erl_libs_dirs := [string()],
                     targets := #{string() := target()}}.
 
 -spec main([string()]) -> no_return().
@@ -39,6 +40,7 @@ main([ConfigJsonPath]) ->
     Config = conform_config(RawConfig),
 
     #{module_index := ModuleIndex,
+      erl_libs_dirs := ErlLibsDirs,
       targets := Targets} = Config,
 
     %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
@@ -62,6 +64,18 @@ main([ConfigJsonPath]) ->
     %% it seems we would need to add each app individually after compilation,
     %% which would be fine, but maybe we just add DestDir to ERL_LIBS?
     %% true = code:add_path(DestDir),
+    %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
+
+    CodePaths = lists:flatmap(
+                  fun(ErlLibsDir) ->
+                          {ok, Apps} = file:list_dir(ErlLibsDir),
+                          [filename:join([ErlLibsDir, App, "ebin"])
+                           || App <- Apps]
+                  end, ErlLibsDirs),
+
+    %% io:format(standard_error, "CodePaths: ~p~n", [CodePaths]),
+
+    code:add_paths(CodePaths),
     %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
     G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
@@ -118,9 +132,15 @@ conform_index(ModuleIndex) ->
               Acc#{binary_to_list(K) => binary_to_list(V)}
       end, #{}, ModuleIndex).
 
+conform_erl_libs_dirs(Dirs) ->
+    lists:map(fun binary_to_list/1, Dirs).
+
 -spec conform_config(thoas:json_term()) -> config().
-conform_config(#{<<"module_index">> := MI, <<"targets">> := T}) ->
+conform_config(#{<<"module_index">> := MI,
+                 <<"erl_libs_dirs">> := ELD,
+                 <<"targets">> := T}) ->
     #{module_index => conform_index(MI),
+      erl_libs_dirs => conform_erl_libs_dirs(ELD),
       targets => conform_targets(T)}.
 
 clone_app(_AppName, #{srcs := Srcs, outs := Outs}) ->
