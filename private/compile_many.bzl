@@ -101,22 +101,31 @@ def _impl(ctx):
         content = json.encode(compiler_flags),
     )
 
-    args = ctx.actions.args()
-    args.add(targets_file)
+    args_file = ctx.actions.declare_file(ctx.label.name + ".args_file")
+    ctx.actions.write(
+        output = args_file,
+        content = "\n".join([
+            targets_file.path,
+        ]),
+    )
 
     compiler_runfiles = ctx.attr.rules_erlang_compiler[DefaultInfo].default_runfiles
 
     inputs = (compiler_runfiles.files.to_list() +
               ctx.files.erl_libs +
               apps_inputs +
-              [targets_file])
+              [targets_file, args_file])
 
     ctx.actions.run(
         inputs = inputs,
         outputs = outputs,
         executable = ctx.executable.rules_erlang_compiler,
-        arguments = [args],
         mnemonic = "RulesErlangErlc",
+        execution_requirements = {
+            "supports-workers": "1",
+            "requires-worker-protocol": "json",
+        },
+        arguments = ["@%s" % args_file.path],
     )
 
     return [

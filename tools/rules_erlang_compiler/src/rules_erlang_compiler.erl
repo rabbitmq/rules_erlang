@@ -10,16 +10,13 @@
         ]).
 -endif.
 
-% -type input() :: #{path := string(), digest := string()}.
-% -type request_args() :: #{in := string(),
-%                           out := string(),
-%                           macros := [macro()],
-%                           includes := [include()]}.
-% -type request() :: #{arguments := request_args(),
-%                      inputs := [input()],
-%                      request_id => integer()}.
+-type input() :: #{path := string(), digest := string()}.
+-type request_args() :: #{targets_file := string()}.
+-type request() :: #{arguments := request_args(),
+                     inputs := [input()],
+                     request_id => integer()}.
 
-% -type response() :: #{exit_code := integer(), output := string()}.
+-type response() :: #{exit_code := integer(), output := string()}.
 
 -type target() :: #{path := string(),
                     erlc_opts_file := string(),
@@ -34,60 +31,140 @@
                     targets := #{string() := target()}}.
 
 -spec main([string()]) -> no_return().
-main([ConfigJsonPath]) ->
-    {ok, ConfigJson} = file:read_file(ConfigJsonPath),
-    {ok, RawConfig} = thoas:decode(ConfigJson),
-    Config = conform_config(RawConfig),
-
-    #{module_index := ModuleIndex,
-      code_paths := CodePaths,
-      targets := Targets} = Config,
-
-    %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
-
-    %% io:format(standard_error, "Targets: ~p~n", [Targets]),
-
-    %% io:format(standard_error, "ModuleIndex: ~p~n", [ModuleIndex]),
-
-    %% TreeOut = os:cmd("/usr/local/bin/tree"),
-    %% io:format(standard_error, "~s~n", [TreeOut]),
-
-    AnalysisFileContentsTable = ets:new(analysis_file_contents, [set]),
-
-    DestDir = clone_sources(Targets),
-
-    %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
-
-    %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
-    %% io:format(standard_error, "~s~n", [TreeOut]),
-
-    %% io:format(standard_error, "CodePaths: ~p~n", [CodePaths]),
-
-    code:add_paths(CodePaths),
-    %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
-
-    G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
-
-    TargetsWithDeps = add_deps_to_targets(Targets, G),
-    % lets update the targets with the deps, before we consume the graph, so that
-    % the .app can be generated correctly
-    % we might also have to write this to a file so that dialyze rules can use it?
-    %% io:format(standard_error, "TargetsWithDeps: ~p~n", [TargetsWithDeps]),
-
-    AppCompileOrder = consume_to_list(G),
-
-    %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
-
-    lists:foreach(
-      fun (AppName) ->
-              #{AppName := Props} = TargetsWithDeps,
-              compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable),
-              render_dot_app_file(AppName, Props, DestDir)
-      end, AppCompileOrder),
-    ets:delete(AnalysisFileContentsTable),
-    ok;
-main(_) ->
+main(["--persistent_worker"] = Args) ->
+    case io:get_line("") of
+        eof ->
+            ok;
+        Line ->
+            {ok, RawRequest} = thoas:decode(Line),
+            io:format(standard_error, "RawRequest: ~p~n", [RawRequest]),
+            Request = conform_request(RawRequest),
+            % io:format(standard_error, "Request: ~p~n", [Request]),
+            Response = execute(Request),
+            %% io:format(standard_error, "Map: ~p~n", [Map]),
+            Json = thoas:encode(conform_response(Response)),
+            io:format("~ts~n", [Json]),
+            main(Args)
+    end;
+main(["@" ++ FlagsFilePath]) ->
+    RawRequest = #{<<"arguments">> => read_flags_file(FlagsFilePath),
+                   <<"inputs">> => []},
+    Request = conform_request(RawRequest),
+    %% io:format(standard_error, "One Shot Request: ~p~n", [Request]),
+    #{exit_code := ExitCode, output := Output} = execute(Request),
+    case ExitCode of
+        0 ->
+            io:format(standard_error, "~s", [Output]),
+            ok;
+        _ ->
+            io:format(standard_error, "ERROR: ~s", [Output]),
+            exit(ExitCode)
+    end;
+main([]) ->
     exit(1).
+
+-spec conform_request(thoas:json_term()) -> request().
+conform_request(#{<<"arguments">> := [ConfigJsonPath],
+                  <<"inputs">> := RawInputs} = Request)
+  when is_binary(ConfigJsonPath) ->
+    Args = #{targets_file => binary_to_list(ConfigJsonPath)},
+
+    Inputs = lists:map(fun(#{<<"path">> := Path,
+                             <<"digest">> := Digest}) ->
+                               #{path => binary_to_list(Path),
+                                 digest => binary_to_list(Digest)}
+                       end, RawInputs),
+
+    case Request of
+        #{<<"request_id">> := Id} ->
+            #{arguments => Args,
+              inputs => Inputs,
+              request_id => Id};
+        _ ->
+            #{arguments => Args,
+              inputs => Inputs}
+    end.
+
+-spec conform_response(response()) -> thoas:input_term().
+conform_response(#{exit_code := ExitCode, output := Output}) ->
+    #{exitCode => ExitCode,
+      output => list_to_binary(Output)}.
+
+-spec read_config_file(string()) -> {ok, config()} | {error, term()}.
+read_config_file(ConfigJsonPath) ->
+    case file:read_file(ConfigJsonPath) of
+        {ok, ConfigJson} ->
+            case thoas:decode(ConfigJson) of
+                {ok, RawConfig} ->
+                    case catch conform_config(RawConfig) of
+                        bad_match ->
+                            {error, "config did not match expected shape"};
+                        Config ->
+                            {ok, Config}
+                    end;
+                E ->
+                    E
+            end;
+        E ->
+            E
+    end.
+
+-spec execute(request()) -> response().
+execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
+    case read_config_file(ConfigJsonPath) of
+        {ok, Config} ->
+            #{module_index := ModuleIndex,
+              code_paths := CodePaths,
+              targets := Targets} = Config,
+
+            %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
+
+            %% io:format(standard_error, "Targets: ~p~n", [Targets]),
+
+            %% io:format(standard_error, "ModuleIndex: ~p~n", [ModuleIndex]),
+
+            %% TreeOut = os:cmd("/usr/local/bin/tree"),
+            %% io:format(standard_error, "~s~n", [TreeOut]),
+
+            AnalysisFileContentsTable = ets:new(analysis_file_contents, [set]),
+
+            DestDir = clone_sources(Targets),
+
+            %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
+
+            %% TreeOut = os:cmd("/usr/local/bin/tree " ++ DestDir),
+            %% io:format(standard_error, "~s~n", [TreeOut]),
+
+            %% io:format(standard_error, "CodePaths: ~p~n", [CodePaths]),
+
+            code:add_paths(CodePaths),
+            %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
+
+            G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
+
+            TargetsWithDeps = add_deps_to_targets(Targets, G),
+                                                % lets update the targets with the deps, before we consume the graph, so that
+                                                % the .app can be generated correctly
+                                                % we might also have to write this to a file so that dialyze rules can use it?
+            %% io:format(standard_error, "TargetsWithDeps: ~p~n", [TargetsWithDeps]),
+
+            AppCompileOrder = consume_to_list(G),
+
+            %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
+
+            Count = lists:foldl(
+                      fun (AppName, Acc) ->
+                              #{AppName := Props} = TargetsWithDeps,
+                              {ok, C} = compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable),
+                              render_dot_app_file(AppName, Props, DestDir),
+                              Acc + C
+                      end, 0, AppCompileOrder),
+            ets:delete(AnalysisFileContentsTable),
+            #{exit_code => 0, output => io_lib:format("Compiled ~p files.~n", [Count])};
+        {error, Reason} ->
+            #{exit_code => 1,
+              output => io_lib:format("Could not read ~s: ~p~n", [ConfigJsonPath, Reason])}
+    end.
 
 conform_target(#{<<"path">> := Path,
                  <<"erlc_opts_file">> := ErlcOptsFile,
@@ -270,6 +347,7 @@ is_erlang_source(F) ->
             false
     end.
 
+%% maybe we should accumulate the warnings?
 compile(AppName,
         #{erlc_opts_file := ErlcOptsFile,
           analysis := Analysis,
@@ -287,7 +365,7 @@ compile(AppName,
                    {i, "include"},
                    {i, "src"},
                    {i, "../"},
-                   report | CompileOpts0],
+                   return | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
     CopiedSrcs = lists:filter(
                    fun is_erlang_source/1,
@@ -304,24 +382,48 @@ compile(AppName,
     %% true = code:add_path(filename:join(AppDir, "ebin")),
     ok = file:set_cwd(AppDir),
     %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
-    lists:foreach(
-      fun (Src) ->
-              SrcRel = string:prefix(Src, AppDir ++ "/"),
-              io:format(standard_error, "\t~s~n", [SrcRel]),
-              %% TreeOut = os:cmd("/usr/local/bin/tree"),
-              %% io:format(standard_error, "~s~n", [TreeOut]),
-              {ok, Module} = compile:file(SrcRel, CompileOpts),
-              %% io:format(standard_error, "loading ~p~n", [Module]),
-              %% {module, Module} = code:ensure_loaded(Module),
-              ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-              {ok, Contents} = file:read_file(ModulePath),
-              %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
-              {module, Module} = code:load_binary(Module, ModulePath, Contents),
-              %% io:format(standard_error, "\t\t~p~n",
-              %%           [code:module_status(Module)]),
-              ok
-      end, Srcs),
-    ok = file:set_cwd(OldCwd).
+    R = lists:foldl(
+          fun
+              (Src, {ok, C}) ->
+                  SrcRel = string:prefix(Src, AppDir ++ "/"),
+                  io:format(standard_error, "\t~s~n", [SrcRel]),
+                  %% TreeOut = os:cmd("/usr/local/bin/tree"),
+                  %% io:format(standard_error, "~s~n", [TreeOut]),
+                  case compile:file(SrcRel, CompileOpts) of
+                      {ok, Module} ->
+                          %% io:format(standard_error, "loading ~p~n", [Module]),
+                          %% {module, Module} = code:ensure_loaded(Module),
+                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
+                          {ok, Contents} = file:read_file(ModulePath),
+                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
+                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
+                          %% io:format(standard_error, "\t\t~p~n",
+                          %%           [code:module_status(Module)]),
+                          {ok, C + 1};
+                      {ok, Module, Warnings} ->
+                          lists:foreach(
+                            fun (Warning) ->
+                                    io:format(standard_error, "~p: ~p~n", [SrcRel, Warning])
+                            end, Warnings),
+                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
+                          {ok, Contents} = file:read_file(ModulePath),
+                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
+                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
+                          %% io:format(standard_error, "\t\t~p~n",
+                          %%           [code:module_status(Module)]),
+                          {ok, C + 1};
+                      {error, Errors, Warnings} ->
+                          lists:foreach(
+                            fun (Warning) ->
+                                    io:format(standard_error, "~p: ~p~n", [SrcRel, Warning])
+                            end, Warnings),
+                          {error, Errors}
+                  end;
+              (_, E) ->
+                  E
+          end, {ok, 0}, Srcs),
+    ok = file:set_cwd(OldCwd),
+    R.
 
 -spec consume_to_list(digraph:graph()) -> [digraph:vertex()].
 consume_to_list(G) ->
