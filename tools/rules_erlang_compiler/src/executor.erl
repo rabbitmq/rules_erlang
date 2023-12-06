@@ -142,6 +142,78 @@ clone_sources(Targets) ->
               DestDir = filename:dirname(clone_app(Props))
       end, unknown, Targets).
 
+-spec compile(string(), target(), string(), module_index(), cas:cas_context()) ->
+          {ok, Modules :: [module()], Warnings :: warnings_list()} |
+          {error, Errors :: errors_list(), Warnings :: warnings_list()}.
+compile(AppName,
+        #{erlc_opts_file := ErlcOptsFile,
+          analysis := Analysis,
+          analysis_id := Suffix,
+          outs := Outs},
+        DestDir,
+        ModuleIndex,
+        CC) ->
+
+    ErlcOpts = flags_file:read(ErlcOptsFile),
+    CompileOpts0 = transform_erlc_opts(ErlcOpts),
+    %% OutDir = filename:join([DestDir, AppName, "ebin"]),
+    %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
+    CompileOpts = [{outdir, "ebin"},
+                   {i, "include"},
+                   {i, "src"},
+                   {i, "../"},
+                   return | CompileOpts0],
+    io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
+    CopiedSrcs = lists:filter(
+                   fun is_erlang_source/1,
+                   Outs),
+
+    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex, CC),
+    %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
+
+    Srcs = digraph_tools:consume_to_list(G),
+    %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
+
+    {ok, OldCwd} = file:get_cwd(),
+    AppDir = filename:join(DestDir, AppName),
+    %% true = code:add_path(filename:join(AppDir, "ebin")),
+    ok = file:set_cwd(AppDir),
+    %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
+    R = lists:foldl(
+          fun
+              (Src, {ok, Modules, Warnings}) ->
+                  SrcRel = string:prefix(Src, AppDir ++ "/"),
+                  io:format(standard_error, "\t~s~n", [SrcRel]),
+                  %% TreeOut = os:cmd("/usr/local/bin/tree"),
+                  %% io:format(standard_error, "~s~n", [TreeOut]),
+                  case compile:file(SrcRel, CompileOpts) of
+                      {ok, Module} ->
+                          %% io:format(standard_error, "loading ~p~n", [Module]),
+                          %% {module, Module} = code:ensure_loaded(Module),
+                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
+                          {ok, Contents} = file:read_file(ModulePath),
+                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
+                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
+                          %% io:format(standard_error, "\t\t~p~n",
+                          %%           [code:module_status(Module)]),
+                          {ok, [Module | Modules], Warnings};
+                      {ok, Module, W} ->
+                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
+                          {ok, Contents} = file:read_file(ModulePath),
+                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
+                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
+                          %% io:format(standard_error, "\t\t~p~n",
+                          %%           [code:module_status(Module)]),
+                          {ok, [Module | Modules], Warnings ++ W};
+                      {error, Errors, Warnings} ->
+                          {error, Errors, Warnings}
+                  end;
+              (_, E) ->
+                  E
+          end, {ok, [], []}, Srcs),
+    ok = file:set_cwd(OldCwd),
+    R.
+
 -spec app_graph(#{string() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
 app_graph(Targets, ModuleIndex, CC) ->
     G = digraph:new([acyclic]),
@@ -248,78 +320,6 @@ is_erlang_source(F) ->
         _ ->
             false
     end.
-
--spec compile(string(), target(), string(), module_index(), cas:cas_context()) ->
-          {ok, Modules :: [module()], Warnings :: warnings_list()} |
-          {error, Errors :: errors_list(), Warnings :: warnings_list()}.
-compile(AppName,
-        #{erlc_opts_file := ErlcOptsFile,
-          analysis := Analysis,
-          analysis_id := Suffix,
-          outs := Outs},
-        DestDir,
-        ModuleIndex,
-        CC) ->
-
-    ErlcOpts = flags_file:read(ErlcOptsFile),
-    CompileOpts0 = transform_erlc_opts(ErlcOpts),
-    %% OutDir = filename:join([DestDir, AppName, "ebin"]),
-    %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
-    CompileOpts = [{outdir, "ebin"},
-                   {i, "include"},
-                   {i, "src"},
-                   {i, "../"},
-                   return | CompileOpts0],
-    io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
-    CopiedSrcs = lists:filter(
-                   fun is_erlang_source/1,
-                   Outs),
-
-    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex, CC),
-    %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
-
-    Srcs = digraph_tools:consume_to_list(G),
-    %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
-
-    {ok, OldCwd} = file:get_cwd(),
-    AppDir = filename:join(DestDir, AppName),
-    %% true = code:add_path(filename:join(AppDir, "ebin")),
-    ok = file:set_cwd(AppDir),
-    %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
-    R = lists:foldl(
-          fun
-              (Src, {ok, Modules, Warnings}) ->
-                  SrcRel = string:prefix(Src, AppDir ++ "/"),
-                  io:format(standard_error, "\t~s~n", [SrcRel]),
-                  %% TreeOut = os:cmd("/usr/local/bin/tree"),
-                  %% io:format(standard_error, "~s~n", [TreeOut]),
-                  case compile:file(SrcRel, CompileOpts) of
-                      {ok, Module} ->
-                          %% io:format(standard_error, "loading ~p~n", [Module]),
-                          %% {module, Module} = code:ensure_loaded(Module),
-                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-                          {ok, Contents} = file:read_file(ModulePath),
-                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
-                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
-                          %% io:format(standard_error, "\t\t~p~n",
-                          %%           [code:module_status(Module)]),
-                          {ok, [Module | Modules], Warnings};
-                      {ok, Module, W} ->
-                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-                          {ok, Contents} = file:read_file(ModulePath),
-                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
-                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
-                          %% io:format(standard_error, "\t\t~p~n",
-                          %%           [code:module_status(Module)]),
-                          {ok, [Module | Modules], Warnings ++ W};
-                      {error, Errors, Warnings} ->
-                          {error, Errors, Warnings}
-                  end;
-              (_, E) ->
-                  E
-          end, {ok, [], []}, Srcs),
-    ok = file:set_cwd(OldCwd),
-    R.
 
 -spec string_to_term(string()) -> term().
 string_to_term(S) ->
