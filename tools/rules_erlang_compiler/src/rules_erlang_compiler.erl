@@ -26,7 +26,9 @@
                     analysis_id := string(),
                     outs := [string()]}.
 
--type config() :: #{module_index := #{string() := string()},
+-type module_index() :: #{string() := string()}.
+
+-type config() :: #{module_index := module_index(),
                     code_paths := [string()],
                     targets := #{string() := target()}}.
 
@@ -152,15 +154,42 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
 
             %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
 
-            Count = lists:foldl(
-                      fun (AppName, Acc) ->
-                              #{AppName := Props} = TargetsWithDeps,
-                              {ok, C} = compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable),
-                              render_dot_app_file(AppName, Props, DestDir),
-                              Acc + C
-                      end, 0, AppCompileOrder),
+            R = lists:foldl(
+                  fun
+                      (_, {_, {error, _, _} = E}) ->
+                          E;
+                      (AppName, {FilesSoFar, {ok, Warnings}}) ->
+                          #{AppName := Props} = TargetsWithDeps,
+                          R = case compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable) of
+                                  {ok, C, []} ->
+                                      {FilesSoFar + C, {ok, Warnings}};
+                                  {ok, C, W} ->
+                                      {FilesSoFar + C, {ok,
+                                                        Warnings ++ [{list_to_atom(AppName), W}]}};
+                                  {error, Errors, []} ->
+                                      {FilesSoFar, {error,
+                                                    {AppName, Errors},
+                                                    Warnings}};
+                                  {error, Errors, W} ->
+                                      {FilesSoFar, {error,
+                                                    {AppName, Errors},
+                                                    Warnings ++ [{list_to_atom(AppName), W}]}}
+                              end,
+                          render_dot_app_file(AppName, Props, DestDir),
+                          R
+                  end, {0, {ok, []}}, AppCompileOrder),
             ets:delete(AnalysisFileContentsTable),
-            #{exit_code => 0, output => io_lib:format("Compiled ~p files.~n", [Count])};
+            case R of
+                {_, {error, Errors, _}} ->
+                    #{exit_code => 1, output => io_lib:format("Failed to compile.~nErrors: ~p~n",
+                                                              [Errors])};
+                {Count, {ok, []}} ->
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p files.~n",
+                                                              [Count])};
+                {Count, {ok, Warnings}} ->
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p files.~nWarnings: ~p~n",
+                                                              [Count, Warnings])}
+            end;
         {error, Reason} ->
             #{exit_code => 1,
               output => io_lib:format("Could not read ~s: ~p~n", [ConfigJsonPath, Reason])}
@@ -347,7 +376,9 @@ is_erlang_source(F) ->
             false
     end.
 
-%% maybe we should accumulate the warnings?
+-spec compile(string(), target(), string(), module_index(), ets:table()) ->
+          {ok, ModuleCount :: non_neg_integer(), Warnings :: [string()]} |
+          {error, Errors :: [string()], Warnings :: [string()]}.
 compile(AppName,
         #{erlc_opts_file := ErlcOptsFile,
           analysis := Analysis,
@@ -384,7 +415,7 @@ compile(AppName,
     %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
     R = lists:foldl(
           fun
-              (Src, {ok, C}) ->
+              (Src, {ok, C, Acc}) ->
                   SrcRel = string:prefix(Src, AppDir ++ "/"),
                   io:format(standard_error, "\t~s~n", [SrcRel]),
                   %% TreeOut = os:cmd("/usr/local/bin/tree"),
@@ -411,17 +442,17 @@ compile(AppName,
                           {module, Module} = code:load_binary(Module, ModulePath, Contents),
                           %% io:format(standard_error, "\t\t~p~n",
                           %%           [code:module_status(Module)]),
-                          {ok, C + 1};
+                          {ok, C + 1, Acc ++ Warnings};
                       {error, Errors, Warnings} ->
                           lists:foreach(
                             fun (Warning) ->
                                     io:format(standard_error, "~p: ~p~n", [SrcRel, Warning])
                             end, Warnings),
-                          {error, Errors}
+                          {error, Errors, Warnings}
                   end;
               (_, E) ->
                   E
-          end, {ok, 0}, Srcs),
+          end, {ok, 0, []}, Srcs),
     ok = file:set_cwd(OldCwd),
     R.
 
