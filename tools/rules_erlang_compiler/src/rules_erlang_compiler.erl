@@ -3,8 +3,7 @@
 -include("types.hrl").
 
 -export([
-         main/1,
-         read_flags_file/1
+         main/1
         ]).
 
 -spec main([string()]) -> no_return().
@@ -24,7 +23,7 @@ main(["--persistent_worker"] = Args) ->
             main(Args)
     end;
 main(["@" ++ FlagsFilePath]) ->
-    RawRequest = #{<<"arguments">> => read_flags_file(FlagsFilePath),
+    RawRequest = #{<<"arguments">> => flags_file:read(FlagsFilePath),
                    <<"inputs">> => []},
     Request = conform_request(RawRequest),
     %% io:format(standard_error, "One Shot Request: ~p~n", [Request]),
@@ -66,15 +65,3 @@ conform_request(#{<<"arguments">> := [ConfigJsonPath],
 conform_response(#{exit_code := ExitCode, output := Output}) ->
     #{exitCode => ExitCode,
       output => list_to_binary(Output)}.
-
-read_flags_file(Path) ->
-    {ok, D} = file:open(Path, [read]),
-    try all_lines(D)
-    after file:close(D)
-    end.
-
-all_lines(D) ->
-    case io:get_line(D, "") of
-        eof -> [];
-        L -> [string:trim(L, trailing, "\n") | all_lines(D)]
-    end.

@@ -245,7 +245,7 @@ compile(AppName,
         ModuleIndex,
         AFCT) ->
 
-    ErlcOpts = rules_erlang_compiler:read_flags_file(ErlcOptsFile),
+    ErlcOpts = flags_file:read(ErlcOptsFile),
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
     %% OutDir = filename:join([DestDir, AppName, "ebin"]),
     %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
