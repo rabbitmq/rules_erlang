@@ -49,7 +49,7 @@ ct_suite(
 )
 
 ct_suite(
-    name = "rules_erlang_compiler_SUITE",
+    name = "executor_SUITE",
     size = "small",
 )
 
