@@ -80,8 +80,20 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
                           dot_app_file:render(AppName, Props, DestDir),
                           R
                   end, {[], {ok, []}}, AppCompileOrder),
+
             ets:delete(AnalysisFileContentsTable),
-            %% need to unload the code paths and modules now
+            {Modules, _} = R,
+            lists:foreach(
+              fun (Module) ->
+                      case code:purge(Module) of
+                          true ->
+                              code:delete(Module);
+                          _ ->
+                              ok
+                      end
+              end, Modules),
+            code:del_paths(CodePaths),
+
             case R of
                 {_, {error, Errors, _}} ->
                     #{exit_code => 1, output => io_lib:format("Failed to compile.~nErrors: ~p~n",
