@@ -10,6 +10,9 @@
         ]).
 -endif.
 
+-type warnings_list() :: [{file:name(), [term()]}].
+-type errors_list() :: warnings_list().
+
 -spec execute(request()) -> response().
 execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
     case config_file:read(ConfigJsonPath) of
@@ -57,37 +60,38 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
                   fun
                       (_, {_, {error, _, _} = E}) ->
                           E;
-                      (AppName, {FilesSoFar, {ok, Warnings}}) ->
+                      (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                           #{AppName := Props} = TargetsWithDeps,
                           R = case compile(AppName, Props, DestDir, ModuleIndex, AnalysisFileContentsTable) of
-                                  {ok, C, []} ->
-                                      {FilesSoFar + C, {ok, Warnings}};
-                                  {ok, C, W} ->
-                                      {FilesSoFar + C, {ok,
-                                                        Warnings ++ [{list_to_atom(AppName), W}]}};
+                                  {ok, M, []} ->
+                                      {ModulesSoFar ++ M, {ok, Warnings}};
+                                  {ok, M, W} ->
+                                      {ModulesSoFar ++ M, {ok,
+                                                           Warnings ++ [{list_to_atom(AppName), W}]}};
                                   {error, Errors, []} ->
-                                      {FilesSoFar, {error,
-                                                    {AppName, Errors},
-                                                    Warnings}};
+                                      {ModulesSoFar, {error,
+                                                      {AppName, Errors},
+                                                      Warnings}};
                                   {error, Errors, W} ->
-                                      {FilesSoFar, {error,
-                                                    {AppName, Errors},
-                                                    Warnings ++ [{list_to_atom(AppName), W}]}}
+                                      {ModulesSoFar, {error,
+                                                      {AppName, Errors},
+                                                      Warnings ++ [{list_to_atom(AppName), W}]}}
                               end,
                           dot_app_file:render(AppName, Props, DestDir),
                           R
-                  end, {0, {ok, []}}, AppCompileOrder),
+                  end, {[], {ok, []}}, AppCompileOrder),
             ets:delete(AnalysisFileContentsTable),
+            %% need to unload the code paths and modules now
             case R of
                 {_, {error, Errors, _}} ->
                     #{exit_code => 1, output => io_lib:format("Failed to compile.~nErrors: ~p~n",
                                                               [Errors])};
-                {Count, {ok, []}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p files.~n",
-                                                              [Count])};
-                {Count, {ok, Warnings}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p files.~nWarnings: ~p~n",
-                                                              [Count, Warnings])}
+                {Modules, {ok, []}} ->
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n",
+                                                              [length(Modules)])};
+                {Modules, {ok, Warnings}} ->
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nWarnings: ~p~n",
+                                                              [length(Modules), Warnings])}
             end;
         {error, Reason} ->
             #{exit_code => 1,
@@ -234,8 +238,8 @@ is_erlang_source(F) ->
     end.
 
 -spec compile(string(), target(), string(), module_index(), ets:table()) ->
-          {ok, ModuleCount :: non_neg_integer(), Warnings :: [string()]} |
-          {error, Errors :: [string()], Warnings :: [string()]}.
+          {ok, Modules :: [module()], Warnings :: warnings_list()} |
+          {error, Errors :: errors_list(), Warnings :: warnings_list()}.
 compile(AppName,
         #{erlc_opts_file := ErlcOptsFile,
           analysis := Analysis,
@@ -272,7 +276,7 @@ compile(AppName,
     %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
     R = lists:foldl(
           fun
-              (Src, {ok, C, Acc}) ->
+              (Src, {ok, Modules, Warnings}) ->
                   SrcRel = string:prefix(Src, AppDir ++ "/"),
                   io:format(standard_error, "\t~s~n", [SrcRel]),
                   %% TreeOut = os:cmd("/usr/local/bin/tree"),
@@ -287,29 +291,21 @@ compile(AppName,
                           {module, Module} = code:load_binary(Module, ModulePath, Contents),
                           %% io:format(standard_error, "\t\t~p~n",
                           %%           [code:module_status(Module)]),
-                          {ok, C + 1};
-                      {ok, Module, Warnings} ->
-                          lists:foreach(
-                            fun (Warning) ->
-                                    io:format(standard_error, "~p: ~p~n", [SrcRel, Warning])
-                            end, Warnings),
+                          {ok, [Module | Modules], Warnings};
+                      {ok, Module, W} ->
                           ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
                           {ok, Contents} = file:read_file(ModulePath),
                           %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
                           {module, Module} = code:load_binary(Module, ModulePath, Contents),
                           %% io:format(standard_error, "\t\t~p~n",
                           %%           [code:module_status(Module)]),
-                          {ok, C + 1, Acc ++ Warnings};
+                          {ok, [Module | Modules], Warnings ++ W};
                       {error, Errors, Warnings} ->
-                          lists:foreach(
-                            fun (Warning) ->
-                                    io:format(standard_error, "~p: ~p~n", [SrcRel, Warning])
-                            end, Warnings),
                           {error, Errors, Warnings}
                   end;
               (_, E) ->
                   E
-          end, {ok, 0, []}, Srcs),
+          end, {ok, [], []}, Srcs),
     ok = file:set_cwd(OldCwd),
     R.
 
