@@ -1,11 +1,12 @@
 -module(rules_erlang_compiler).
 
+-include("types.hrl").
+
 -export([main/1]).
 
 -ifdef(TEST).
 -export([
          consume_to_list/1,
-         render_dot_app_file/3,
          transform_erlc_opts/1
         ]).
 -endif.
@@ -17,14 +18,6 @@
                      request_id => integer()}.
 
 -type response() :: #{exit_code := integer(), output := string()}.
-
--type target() :: #{path := string(),
-                    erlc_opts_file := string(),
-                    app_src := string() | null,
-                    srcs := [string()],
-                    analysis := [string()],
-                    analysis_id := string(),
-                    outs := [string()]}.
 
 -type module_index() :: #{string() := string()}.
 
@@ -145,9 +138,9 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
             G = app_graph(Targets, ModuleIndex, AnalysisFileContentsTable),
 
             TargetsWithDeps = add_deps_to_targets(Targets, G),
-                                                % lets update the targets with the deps, before we consume the graph, so that
-                                                % the .app can be generated correctly
-                                                % we might also have to write this to a file so that dialyze rules can use it?
+            % lets update the targets with the deps, before we consume the graph, so that
+            % the .app can be generated correctly
+            % we might also have to write this to a file so that dialyze rules can use it?
             %% io:format(standard_error, "TargetsWithDeps: ~p~n", [TargetsWithDeps]),
 
             AppCompileOrder = consume_to_list(G),
@@ -175,7 +168,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}) ->
                                                     {AppName, Errors},
                                                     Warnings ++ [{list_to_atom(AppName), W}]}}
                               end,
-                          render_dot_app_file(AppName, Props, DestDir),
+                          dot_app_file:render(AppName, Props, DestDir),
                           R
                   end, {0, {ok, []}}, AppCompileOrder),
             ets:delete(AnalysisFileContentsTable),
@@ -526,46 +519,6 @@ get_analysis_file_contents(F, Table) ->
             true = ets:insert_new(Table, {F, ErlAttrs}),
             ErlAttrs
     end.
-
--spec render_dot_app_file(string(), target(), string()) -> ok.
-render_dot_app_file(AppNameString,
-                    #{app_src := AppSrc, outs := Outs} = Target,
-                    DestDir) ->
-    AppName = list_to_atom(AppNameString),
-    Contents = case AppSrc of
-                   null ->
-                       {application, AppName, []};
-                   _ ->
-                       {ok, [AppInfo]} = file:consult(AppSrc),
-                       AppInfo
-               end,
-    Modules = lists:filtermap(
-                fun (Out) ->
-                        case filename:extension(Out) of
-                            ".beam" ->
-                                {true,
-                                 list_to_atom(filename:basename(Out, ".beam"))};
-                            _ ->
-                                false
-                        end
-                end, Outs),
-    {application, AppName, Props0} = Contents,
-    Props1 = lists:keystore(modules, 1, Props0, {modules, Modules}),
-    Props = case lists:keymember(applications, 1, Props1) of
-                true ->
-                    Props1;
-                false ->
-                    Deps = sets:to_list(maps:get(deps, Target, sets:new())),
-                    Apps = [kernel, stdlib] ++ lists:map(fun list_to_atom/1, Deps),
-                    io:format("Target: ~p~n", [Target]),
-                    lists:keystore(applications, 1, Props1,
-                                   {applications, Apps})
-            end,
-    Dest = filename:join([DestDir, AppName, "ebin", AppNameString ++ ".app"]),
-    ok = file:write_file(Dest,
-                         io_lib:format("~tp.~n", [{application,
-                                                   AppName,
-                                                   Props}])).
 
 add_deps_to_targets(Targets, G) ->
     add_deps_to_targets(Targets, digraph:vertices(G), G).
