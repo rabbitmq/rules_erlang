@@ -39,6 +39,11 @@ dialyze(
 )
 
 ct_suite(
+    name = "digraph_tools_SUITE",
+    size = "small",
+)
+
+ct_suite(
     name = "dot_app_file_SUITE",
     size = "small",
 )
