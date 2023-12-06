@@ -91,16 +91,18 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}, CC) ->
               end, Modules),
             code:del_paths(CodePaths),
 
+            #{hits := AH, misses := AM} = cas:analysis_file_stats(CC),
+            AFCR = 100 * AH / (AH + AM),
             case R of
                 {_, {error, Errors, _}} ->
                     #{exit_code => 1, output => io_lib:format("Failed to compile.~nErrors: ~p~n",
                                                               [Errors])};
                 {Modules, {ok, []}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n",
-                                                              [length(Modules)])};
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nAFC Hit Rate: ~.1f%~n",
+                                                              [length(Modules), AFCR])};
                 {Modules, {ok, Warnings}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nWarnings: ~p~n",
-                                                              [length(Modules), Warnings])}
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nAFC Hit Rate: ~.1f%~nWarnings: ~p~n",
+                                                              [length(Modules), AFCR, Warnings])}
             end;
         {error, Reason} ->
             #{exit_code => 1,
