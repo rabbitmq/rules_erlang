@@ -49,6 +49,7 @@ worker_loop(CAS) ->
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),
             io:format("~ts~n", [Json]),
+            %% we should have the cas evict old stuff now
             worker_loop(CAS)
     end.
 

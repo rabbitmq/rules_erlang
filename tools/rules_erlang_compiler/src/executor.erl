@@ -202,8 +202,12 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                 end,
                   Contents = case cas:has_inputs(CC) of
                                  true ->
-                                     % erlc_opts need to be part of this key, and probably the erlang version?
-                                     Key = beam_file_contents_key(Src, AppName, Targets, ModuleIndex, CC),
+                                     Key = beam_file_contents_key(Src,
+                                                                  CompileOpts0,
+                                                                  AppName,
+                                                                  Targets,
+                                                                  ModuleIndex,
+                                                                  CC),
                                      cas:get_beam_file_contents(Key, ContentsFun, CAS);
                                  false ->
                                      ContentsFun()
@@ -223,8 +227,10 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
     ok = file:set_cwd(OldCwd),
     R.
 
--spec beam_file_contents_key(file:name(), string(), #{string() := target()}, module_index(), cas:cas_context()) -> binary().
-beam_file_contents_key(Src, AppName, Targets, ModuleIndex, CC) ->
+-spec beam_file_contents_key(file:name(), proplists:proplist(), string(),
+                             #{string() := target()},
+                             module_index(), cas:cas_context()) -> binary().
+beam_file_contents_key(Src, ErlcOpts, AppName, Targets, ModuleIndex, CC) ->
     #{AppName := #{analysis := Analysis, analysis_id := Suffix, srcs := Srcs}} = Targets,
     SrcBasename = filename:basename(Src),
     {value, OriginalSrc} = lists:search(
@@ -265,7 +271,9 @@ beam_file_contents_key(Src, AppName, Targets, ModuleIndex, CC) ->
                      end
              end, Deps0, Behaviours ++ Transforms),
     %% io:format(standard_error, "~p appears to depend on ~p~n", [OriginalSrc, Deps]),
-    cas:digest_in_context(CC, lists:reverse(Deps)).
+    ErlcOptsBin = term_to_binary(ErlcOpts),
+    FilesDigests = cas:digests_in_context(CC, lists:reverse(Deps)),
+    crypto:hash(sha, [ErlcOptsBin | FilesDigests]).
 
 -spec app_graph(#{string() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
 app_graph(Targets, ModuleIndex, CC) ->

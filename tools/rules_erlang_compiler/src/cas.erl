@@ -12,7 +12,7 @@
          analysis_file_stats/1,
          get_beam_file_contents/3,
          beam_file_stats/1,
-         digest_in_context/2
+         digests_in_context/2
         ]).
 
 -record(?MODULE, {analysis_file_contents :: ets:table(),
@@ -112,10 +112,9 @@ beam_file_stats(#?MODULE{beam_file_contents = Table}) ->
               Acc#{hits := Hits + C, misses := Misses + 1}
       end, #{hits => 0, misses => 0}, Table).
 
--spec digest_in_context(cas_context(), [string()]) -> binary().
-digest_in_context({_, Inputs}, Files) ->
-    Digests = lists:map(
-                fun (File) ->
-                        base64:decode(maps:get(File, Inputs))
-                end, Files),
-    erlang:iolist_to_binary(Digests).
+-spec digests_in_context(cas_context(), [string()]) -> iolist().
+digests_in_context({_, Inputs}, Files) ->
+    lists:map(
+      fun (File) ->
+              base64:decode(maps:get(File, Inputs))
+      end, Files).
