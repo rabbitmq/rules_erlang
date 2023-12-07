@@ -10,11 +10,9 @@
         ]).
 -endif.
 
--type warnings_list() :: [{file:name(), [term()]}].
--type errors_list() :: warnings_list().
-
--spec execute(request(), cas:cas_context()) -> response().
-execute(#{arguments := #{targets_file := ConfigJsonPath}}, CC) ->
+-spec execute(request(), cas:cas()) -> response().
+execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS) ->
+    CC = cas:context(CAS, Inputs),
     case config_file:read(ConfigJsonPath) of
         {ok, Config} ->
             #{module_index := ModuleIndex,
@@ -60,7 +58,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}, CC) ->
                           E;
                       (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                           #{AppName := Props} = TargetsWithDeps,
-                          R = case compile(AppName, Props, DestDir, ModuleIndex, CC) of
+                          R = case compile(AppName, TargetsWithDeps, DestDir, ModuleIndex, CC) of
                                   {ok, M, []} ->
                                       {ModulesSoFar ++ M, {ok, Warnings}};
                                   {ok, M, W} ->
@@ -91,18 +89,26 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}}, CC) ->
               end, Modules),
             code:del_paths(CodePaths),
 
-            #{hits := AH, misses := AM} = cas:analysis_file_stats(CC),
+            #{hits := AH, misses := AM} = cas:analysis_file_stats(CAS),
             AFCR = 100 * AH / (AH + AM),
+            #{hits := BH, misses := BM} = cas:beam_file_stats(CAS),
+            BFCR = 100 * BH / (BH + BM),
             case R of
                 {_, {error, Errors, _}} ->
-                    #{exit_code => 1, output => io_lib:format("Failed to compile.~nErrors: ~p~n",
+                    #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
+                                                              "Errors: ~p~n",
                                                               [Errors])};
                 {Modules, {ok, []}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nAFC Hit Rate: ~.1f%~n",
-                                                              [length(Modules), AFCR])};
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
+                                                              "Analysis File Cache Hit Rate: ~.1f%~n"
+                                                              "Beam File Cache Hit Rate: ~.1f%~n",
+                                                              [length(Modules), AFCR, BFCR])};
                 {Modules, {ok, Warnings}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~nAFC Hit Rate: ~.1f%~nWarnings: ~p~n",
-                                                              [length(Modules), AFCR, Warnings])}
+                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
+                                                              "Analysis File Cache Hit Rate: ~.1f%~n"
+                                                              "Beam File Cache Hit Rate: ~.1f%~n"
+                                                              "Warnings: ~p~n",
+                                                              [length(Modules), AFCR, BFCR, Warnings])}
             end;
         {error, Reason} ->
             #{exit_code => 1,
@@ -142,17 +148,16 @@ clone_sources(Targets) ->
               DestDir = filename:dirname(clone_app(Props))
       end, unknown, Targets).
 
--spec compile(string(), target(), string(), module_index(), cas:cas_context()) ->
+-spec compile(string(), #{string() := target()}, string(), module_index(), cas:cas_context()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Errors :: errors_list(), Warnings :: warnings_list()}.
-compile(AppName,
-        #{erlc_opts_file := ErlcOptsFile,
-          analysis := Analysis,
-          analysis_id := Suffix,
-          outs := Outs},
-        DestDir,
-        ModuleIndex,
-        CC) ->
+compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
+    #{AppName := #{erlc_opts_file := ErlcOptsFile,
+                   analysis := Analysis,
+                   analysis_id := Suffix,
+                   outs := Outs}} = Targets,
+
+    CAS = cas:uncontext(CC),
 
     ErlcOpts = flags_file:read(ErlcOptsFile),
     CompileOpts0 = transform_erlc_opts(ErlcOpts),
@@ -162,6 +167,7 @@ compile(AppName,
                    {i, "include"},
                    {i, "src"},
                    {i, "../"},
+                   binary,
                    return | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
     CopiedSrcs = lists:filter(
@@ -183,36 +189,83 @@ compile(AppName,
           fun
               (Src, {ok, Modules, Warnings}) ->
                   SrcRel = string:prefix(Src, AppDir ++ "/"),
-                  io:format(standard_error, "\t~s~n", [SrcRel]),
+                  %% io:format(standard_error, "\t~s~n", [SrcRel]),
                   %% TreeOut = os:cmd("/usr/local/bin/tree"),
                   %% io:format(standard_error, "~s~n", [TreeOut]),
-                  case compile:file(SrcRel, CompileOpts) of
-                      {ok, Module} ->
-                          %% io:format(standard_error, "loading ~p~n", [Module]),
-                          %% {module, Module} = code:ensure_loaded(Module),
+                  ContentsFun = fun () ->
+                                        case compile:file(SrcRel, CompileOpts) of
+                                            {ok, Module, ModuleBin} ->
+                                                {ok, Module, ModuleBin, []};
+                                            R ->
+                                                R
+                                        end
+                                end,
+                  Contents = case cas:has_inputs(CC) of
+                                 true ->
+                                     % erlc_opts need to be part of this key, and probably the erlang version?
+                                     Key = beam_file_contents_key(Src, AppName, Targets, ModuleIndex, CC),
+                                     cas:get_beam_file_contents(Key, ContentsFun, CAS);
+                                 false ->
+                                     ContentsFun()
+                             end,
+                  case Contents of
+                      {ok, Module, ModuleBin, W} ->
                           ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-                          {ok, Contents} = file:read_file(ModulePath),
-                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
-                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
-                          %% io:format(standard_error, "\t\t~p~n",
-                          %%           [code:module_status(Module)]),
-                          {ok, [Module | Modules], Warnings};
-                      {ok, Module, W} ->
-                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-                          {ok, Contents} = file:read_file(ModulePath),
-                          %% io:format(standard_error, "~p SIZE: ~p~n", [ModulePath, filelib:file_size(ModulePath)]),
-                          {module, Module} = code:load_binary(Module, ModulePath, Contents),
-                          %% io:format(standard_error, "\t\t~p~n",
-                          %%           [code:module_status(Module)]),
-                          {ok, [Module | Modules], Warnings ++ W};
-                      {error, Errors, Warnings} ->
-                          {error, Errors, Warnings}
+                          ok = file:write_file(ModulePath, ModuleBin),
+                          {module, Module} = code:load_binary(Module, ModulePath, ModuleBin),
+                          {ok, Modules ++ [Module], Warnings ++ W};
+                      {error, Errors, W} ->
+                          {error, Errors, Warnings ++ W}
                   end;
               (_, E) ->
                   E
           end, {ok, [], []}, Srcs),
     ok = file:set_cwd(OldCwd),
     R.
+
+-spec beam_file_contents_key(file:name(), string(), #{string() := target()}, module_index(), cas:cas_context()) -> binary().
+beam_file_contents_key(Src, AppName, Targets, ModuleIndex, CC) ->
+    #{AppName := #{analysis := Analysis, analysis_id := Suffix, srcs := Srcs}} = Targets,
+    SrcBasename = filename:basename(Src),
+    {value, OriginalSrc} = lists:search(
+                             fun (S) ->
+                                     filename:basename(S) == SrcBasename
+                             end, Srcs),
+    SrcModuleName = filename:basename(OriginalSrc, ".erl"),
+    {value, A} = lists:search(
+                   fun (AF) ->
+                           filename:basename(
+                             filename:basename(AF, ".json"),
+                             "." ++ Suffix) == SrcModuleName
+                   end, Analysis),
+    #{<<"behaviour">> := Behaviours,
+      <<"parse_transform">> := Transforms,
+      <<"include">> := _Include,
+      <<"include_lib">> := _IncludeLib} = cas:get_analysis_file_contents(A, CC),
+    Deps0 = [OriginalSrc],
+    Deps = lists:foldl(
+             fun (ModuleNameBinary, Acc) ->
+                     ModuleName = binary_to_list(ModuleNameBinary),
+                     %% need to find the file declaring this behaviour, and add it to the deps
+                     case ModuleIndex of
+                         #{ModuleName := OwnerApp} ->
+                             #{OwnerApp := OwnerTarget} = Targets,
+                             #{srcs := OwnerSrcs} = OwnerTarget,
+                             {value, ModuleSrc} = lists:search(
+                                                    fun (OwnerSrc) ->
+                                                            filename:basename(OwnerSrc, ".erl") == ModuleName
+                                                    end, OwnerSrcs),
+                             [ModuleSrc | Acc];
+                         _ ->
+                             %% we also need to track the erlang version through all of this?
+                             %% maybe not because this escript depends on it too...
+
+                             %% we also need to look for this module in erl_libs...
+                             Acc
+                     end
+             end, Deps0, Behaviours ++ Transforms),
+    %% io:format(standard_error, "~p appears to depend on ~p~n", [OriginalSrc, Deps]),
+    cas:digest_in_context(CC, lists:reverse(Deps)).
 
 -spec app_graph(#{string() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
 app_graph(Targets, ModuleIndex, CC) ->

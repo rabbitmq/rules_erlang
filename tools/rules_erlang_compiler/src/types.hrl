@@ -19,3 +19,9 @@
 -type config() :: #{module_index := module_index(),
                     code_paths := [string()],
                     targets := #{string() := target()}}.
+
+-type warnings_list() :: [{file:name(), [term()]}].
+-type errors_list() :: warnings_list().
+
+-type compilation_result() :: {ok, module(), binary(), warnings_list()} |
+                              {error, errors_list(), warnings_list()}.
