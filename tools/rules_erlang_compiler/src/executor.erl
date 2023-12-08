@@ -182,6 +182,15 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                    binary,
                    return | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
+
+    IncludePaths = lists:filtermap(
+                     fun
+                         ({i, P}) ->
+                             {true, P};
+                         (_) ->
+                             false
+                     end, CompileOpts),
+
     CopiedSrcs = lists:filter(
                    fun is_erlang_source/1,
                    Outs),
@@ -189,7 +198,7 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
     G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex, CC),
     %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
 
-    Srcs = digraph_tools:consume_to_list(G),
+    OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
     %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
     {ok, OldCwd} = file:get_cwd(),
@@ -216,7 +225,7 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                  true ->
                                      #{AppName := Target} = Targets,
                                      {OriginalSrc, ErlAttrs} = get_analysis(Src, Target, CC),
-                                     case deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, CC) of
+                                     case deps(OriginalSrc, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, CC) of
                                          {ok, Deps, []} ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           Deps,
@@ -247,7 +256,7 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                   end;
               (_, E) ->
                   E
-          end, {ok, [], []}, Srcs),
+          end, {ok, [], []}, OrderedCopiedSrcs),
     ok = file:set_cwd(OldCwd),
     R.
 
@@ -287,9 +296,10 @@ resolve_module(ModuleName, Targets, ModuleIndex) ->
             %% we also need to look for this module in erl_libs...
             case code:which(list_to_atom(ModuleName)) of
                 non_existing ->
-                    M = io_lib:format("Could not locate source for module ~p.~n", [ModuleName]),
-                    io:format(standard_error, "~s~n", [M]),
-                    {warning, M};
+                    io:format(standard_error,
+                              "Could not locate source for module ~p.~n",
+                              [ModuleName]),
+                    {warning, {module_not_found, ModuleName}};
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
@@ -317,8 +327,9 @@ join_resolving_relative(Name1, Name2) ->
             join_resolving_relative(filename:dirname(Name1), R)
     end.
 
--spec resolve_include(file:name(), string(), string(), #{string() := target()}) -> ok | {ok, file:name()} | {warning, term()}.
-resolve_include(OriginalSrc, Include, AppName, Targets) ->
+-spec resolve_include(file:name(), string(), string(), [string()], #{string() := target()}) ->
+          ok | {ok, file:name()} | {warning, term()}.
+resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
     case string:prefix(Include, os:getenv("ERLANG_HOME")) of
         nomatch ->
             %% Note: since we are working with OriginalSrc, arguably
@@ -327,34 +338,33 @@ resolve_include(OriginalSrc, Include, AppName, Targets) ->
             %% was actually done againts the OriginalSrc, so it's
             %% probably fine
             #{AppName := Target} = Targets,
-            #{srcs := Srcs} = Target,
-            case string:prefix(Include, "../") of
-                nomatch ->
-                    % unfortunately, we have to check relative to the file, the working
-                    % directory, and then the include paths
+            #{path := Path, srcs := Srcs} = Target,
+            SearchPaths = [Path |
+                           lists:map(fun (IncludePath) ->
+                                             join_resolving_relative(Path, IncludePath)
+                                     end, IncludePaths)],
 
-                    ExpectedPath = filename:join(filename:dirname(OriginalSrc), Include),
-                    case lists:search(fun (Src) -> Src == ExpectedPath end, Srcs) of
-                        {value, IncludeSrc} ->
-                            {ok, IncludeSrc};
-                        _ ->
-                            M = io_lib:format("Could not locate source for ~p relative to ~p",
-                                              [Include, OriginalSrc]),
-                            io:format(standard_error, "~s~n", [M]),
-                            {warning, M}
-                    end;
+            ExpectedPaths = lists:map(
+                              fun (SearchPath) ->
+                                      case string:prefix(Include, "../") of
+                                          nomatch ->
+                                              filename:join(SearchPath, Include);
+                                          R ->
+                                              join_resolving_relative(SearchPath, R)
+                                      end
+                              end, SearchPaths),
+
+            case lists:search(fun (Src) ->
+                                      lists:member(Src, ExpectedPaths)
+                              end, Srcs) of
+                {value, IncludeSrc} ->
+                    {ok, IncludeSrc};
                 _ ->
-                    ExpectedPath = join_resolving_relative(OriginalSrc, Include),
-                    %% io:format(standard_error, "ExpectedPath: ~p~n", [ExpectedPath]),
-                    case lists:search(fun (Src) -> Src == ExpectedPath end, Srcs) of
-                        {value, IncludeSrc} ->
-                            {ok, IncludeSrc};
-                        _ ->
-                            M = io_lib:format("Could not locate source for ~p relative to ~p",
-                                              [Include, OriginalSrc]),
-                            io:format(standard_error, "~s~n", [M]),
-                            {warning, M}
-                    end
+                    io:format(standard_error,
+                              "Could not locate source for ~p relative to ~p~n"
+                              "  expected at ~p~n",
+                              [Include, OriginalSrc, ExpectedPaths]),
+                    {warning, {include_not_found, OriginalSrc, Include}}
             end;
         _ ->
             %% it's unclear to me, if an app loads an otp header, should
@@ -363,10 +373,10 @@ resolve_include(OriginalSrc, Include, AppName, Targets) ->
             ok
     end.
 
--spec deps(file:name(), thoas:json_term(),
+-spec deps(file:name(), thoas:json_term(), [string()],
            string(), #{string() := target()},
            module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
-deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, _CC) ->
+deps(OriginalSrc, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
       <<"include">> := Includes,
@@ -393,7 +403,7 @@ deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, _CC) ->
                    E;
                (IncludeBinary, {ok, Deps, Warnings}) ->
                    Include = binary_to_list(IncludeBinary),
-                   case resolve_include(OriginalSrc, Include, AppName, Targets) of
+                   case resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, IncludeSrc} ->
