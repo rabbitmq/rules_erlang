@@ -339,7 +339,7 @@ resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
             %% probably fine
             #{AppName := Target} = Targets,
             #{path := Path, srcs := Srcs} = Target,
-            SearchPaths = [Path |
+            SearchPaths = [Path, OriginalSrc |
                            lists:map(fun (IncludePath) ->
                                              join_resolving_relative(Path, IncludePath)
                                      end, IncludePaths)],
