@@ -15,6 +15,7 @@ def _impl(repository_ctx):
 
     BUILD_FILE_CONTENT = """\
 load("@rules_erlang//:compile_many.bzl", "compile_many")
+load("@rules_erlang//:extract_app.bzl", "extract_app")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -43,8 +44,6 @@ compile_many(
 
     for app in repository_ctx.attr.apps:
         BUILD_FILE_CONTENT += """\
-load("@rules_erlang//:extract_app.bzl", "extract_app")
-
 extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
@@ -61,8 +60,6 @@ extract_app(
 
     for test_app in repository_ctx.attr.test_apps:
         BUILD_FILE_CONTENT += """\
-load("@rules_erlang//:extract_app.bzl", "extract_app")
-
 extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
