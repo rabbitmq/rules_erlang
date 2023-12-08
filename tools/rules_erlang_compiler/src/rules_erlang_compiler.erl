@@ -8,6 +8,13 @@
 
 -spec main([string()]) -> no_return().
 main(["--persistent_worker"]) ->
+    case os:getenv("ERLANG_HOME") of
+        false ->
+            io:format(standard_error, "ERROR: ERLANG_HOME env var must be set~n", []),
+            exit(1);
+        _ ->
+            ok
+    end,
     io:format(standard_error, "Worker started.~n", []),
     CAS = cas:new(),
     worker_loop(CAS),
@@ -44,7 +51,7 @@ worker_loop(CAS) ->
             io:format(standard_error,
                       "Request received with ~p inputs.~n",
                       [length(Inputs)]),
-            % io:format(standard_error, "Request: ~p~n", [Request]),
+            %% io:format(standard_error, "Request: ~p~n", [Request]),
             Response = executor:execute(Request, CAS),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),

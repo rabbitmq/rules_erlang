@@ -19,6 +19,10 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
               code_paths := CodePaths,
               targets := Targets} = Config,
 
+            io:format(standard_error,
+                      "Compiling applications: ~p~n",
+                      [maps:keys(Targets)]),
+
             %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
 
             %% io:format(standard_error, "Targets: ~p~n", [Targets]),
@@ -202,11 +206,11 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                 end,
                   Contents = case cas:has_inputs(CC) of
                                  true ->
-                                     Key = beam_file_contents_key(Src,
-                                                                  CompileOpts0,
-                                                                  AppName,
-                                                                  Targets,
-                                                                  ModuleIndex,
+                                     #{AppName := Target} = Targets,
+                                     {OriginalSrc, ErlAttrs} = get_analysis(Src, Target, CC),
+                                     Deps = deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, CC),
+                                     Key = beam_file_contents_key(CompileOpts0,
+                                                                  Deps,
                                                                   CC),
                                      cas:get_beam_file_contents(Key, ContentsFun, CAS);
                                  false ->
@@ -227,11 +231,9 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
     ok = file:set_cwd(OldCwd),
     R.
 
--spec beam_file_contents_key(file:name(), proplists:proplist(), string(),
-                             #{string() := target()},
-                             module_index(), cas:cas_context()) -> binary().
-beam_file_contents_key(Src, ErlcOpts, AppName, Targets, ModuleIndex, CC) ->
-    #{AppName := #{analysis := Analysis, analysis_id := Suffix, srcs := Srcs}} = Targets,
+-spec get_analysis(file:name(), target(), cas:cas_context()) -> {file:name(), thoas:json_term()}.
+get_analysis(Src, Target, CC) ->
+    #{analysis := Analysis, analysis_id := Suffix, srcs := Srcs} = Target,
     SrcBasename = filename:basename(Src),
     {value, OriginalSrc} = lists:search(
                              fun (S) ->
@@ -244,10 +246,16 @@ beam_file_contents_key(Src, ErlcOpts, AppName, Targets, ModuleIndex, CC) ->
                              filename:basename(AF, ".json"),
                              "." ++ Suffix) == SrcModuleName
                    end, Analysis),
+    {OriginalSrc, cas:get_analysis_file_contents(A, CC)}.
+
+-spec deps(file:name(), thoas:json_term(),
+           string(), #{string() := target()},
+           module_index(), cas:cas_context()) -> [file:name()].
+deps(OriginalSrc, ErlAttrs, _AppName, Targets, ModuleIndex, _CC) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
       <<"include">> := _Include,
-      <<"include_lib">> := _IncludeLib} = cas:get_analysis_file_contents(A, CC),
+      <<"include_lib">> := _IncludeLib} = ErlAttrs,
     Deps0 = [OriginalSrc],
     Deps = lists:foldl(
              fun (ModuleNameBinary, Acc) ->
@@ -265,14 +273,39 @@ beam_file_contents_key(Src, ErlcOpts, AppName, Targets, ModuleIndex, CC) ->
                          _ ->
                              %% we also need to track the erlang version through all of this?
                              %% maybe not because this escript depends on it too...
+                             %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
 
                              %% we also need to look for this module in erl_libs...
-                             Acc
+                             case code:which(list_to_atom(ModuleName)) of
+                                 non_existing ->
+                                     io:format(standard_error,
+                                               "Ignoring dependency on module ~s in ~p~n",
+                                               [ModuleName, OriginalSrc]),
+                                     Acc;
+                                 Path ->
+                                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
+                                         nomatch ->
+                                             io:format(standard_error, "code:which ~p~n", [Path]),                                             %% check for in ERL_LIBS
+                                             Acc;
+                                         _ ->
+                                             %% we could stick the atom in the deps,
+                                             %% and then write out an extra_apps file?
+                                             %% for now since this is an erlang dep
+                                             %% we can ignore it, the dependency
+                                             %% is covered through the erlang version
+                                             %% this whole escript depends on
+                                             Acc
+                                     end
+                             end
                      end
              end, Deps0, Behaviours ++ Transforms),
-    %% io:format(standard_error, "~p appears to depend on ~p~n", [OriginalSrc, Deps]),
+    lists:reverse(Deps).
+
+-spec beam_file_contents_key(proplists:proplist(), [string()],
+                             cas:cas_context()) -> binary().
+beam_file_contents_key(ErlcOpts, Deps, CC) ->
     ErlcOptsBin = term_to_binary(ErlcOpts),
-    FilesDigests = cas:digests_in_context(CC, lists:reverse(Deps)),
+    FilesDigests = cas:digests_in_context(CC, Deps),
     crypto:hash(sha, [ErlcOptsBin | FilesDigests]).
 
 -spec app_graph(#{string() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
