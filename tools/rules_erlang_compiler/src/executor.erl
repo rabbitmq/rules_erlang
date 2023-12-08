@@ -217,13 +217,21 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                      #{AppName := Target} = Targets,
                                      {OriginalSrc, ErlAttrs} = get_analysis(Src, Target, CC),
                                      case deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, CC) of
-                                         {ok, Deps} ->
-                                                      Key = beam_file_contents_key(CompileOpts0,
-                                                                                   Deps,
-                                                                                   CC),
-                                                      cas:get_beam_file_contents(Key, ContentsFun, CAS);
-                                         {error, Reason} ->
-                                             {error, [{list_to_atom(AppName), Reason}], []}
+                                         {ok, Deps, []} ->
+                                             Key = beam_file_contents_key(CompileOpts0,
+                                                                          Deps,
+                                                                          CC),
+                                             cas:get_beam_file_contents(Key, ContentsFun, CAS);
+                                         {ok, Deps, DepsWarnings} ->
+                                             Key = beam_file_contents_key(CompileOpts0,
+                                                                          Deps,
+                                                                          CC),
+                                             case cas:get_beam_file_contents(Key, ContentsFun, CAS) of
+                                                 {ok, M, MB, CW} ->
+                                                     {ok, M, MB, [{Src, DepsWarnings} | CW]};
+                                                 {error, E, CW} ->
+                                                     {error, E, [{Src, DepsWarnings} | CW]}
+                                             end
                                      end;
                                  false ->
                                      ContentsFun()
@@ -260,7 +268,7 @@ get_analysis(Src, Target, CC) ->
                    end, Analysis),
     {OriginalSrc, cas:get_analysis_file_contents(A, CC)}.
 
--spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {error, term()}.
+-spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
 resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
     case ModuleIndex of
         #{ModuleName := OwnerApp} ->
@@ -279,11 +287,12 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
             %% we also need to look for this module in erl_libs...
             case code:which(list_to_atom(ModuleName)) of
                 non_existing ->
-                    {error, io_lib:format("Could not locate source for module ~p.~n", [ModuleName])};
+                    {warning, io_lib:format("Could not locate source for module ~p.~n", [ModuleName])};
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
-                            io:format(standard_error, "code:which ~p~n", [Path]),                                             %% check for in ERL_LIBS
+                            io:format(standard_error, "code:which ~p~n", [Path]),
+                            %% check for in ERL_LIBS
                             ok;
                         _ ->
                             %% we could stick the atom in the deps,
@@ -299,33 +308,31 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
 
 -spec deps(file:name(), thoas:json_term(),
            string(), #{string() := target()},
-           module_index(), cas:cas_context()) -> {ok, [file:name()]} | {error, term()}.
+           module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
 deps(OriginalSrc, ErlAttrs, _AppName, Targets, ModuleIndex, _CC) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
       <<"include">> := _Include,
       <<"include_lib">> := _IncludeLib} = ErlAttrs,
-    R0 = {ok, [OriginalSrc]},
+    R0 = {ok, [OriginalSrc], []},
     R = lists:foldl(
           fun
               (_, {error, _} = E) ->
-                  E;
-              (ModuleNameBinary, {ok, Deps}) ->
-                  ModuleName = binary_to_list(ModuleNameBinary),
-                  case resolve_module(ModuleName, Targets, ModuleIndex) of
-                      ok ->
-                          {ok, Deps};
-                      {ok, ModuleSrc} ->
-                          {ok, [ModuleSrc | Deps]};
-                      E ->
-                          E
-                  end
-          end, R0, Behaviours ++ Transforms),
+                           E;
+              (ModuleNameBinary, {ok, Deps, Warnings}) ->
+                           ModuleName = binary_to_list(ModuleNameBinary),
+                           case resolve_module(ModuleName, Targets, ModuleIndex) of
+                               ok ->
+                                   {ok, Deps, Warnings};
+                               {ok, ModuleSrc} ->
+                                   {ok, [ModuleSrc | Deps], Warnings};
+                               {warning, W} ->
+                                   {ok, Deps, [W | Warnings]}
+                           end
+                   end, R0, Behaviours ++ Transforms),
     case R of
-        {ok, Deps} ->
-            {ok, lists:reverse(Deps)};
-        E ->
-            E
+        {ok, Deps, Warnings} ->
+            {ok, lists:reverse(Deps), lists:reverse(Warnings)}
     end.
 
 -spec beam_file_contents_key(proplists:proplist(), [string()],
