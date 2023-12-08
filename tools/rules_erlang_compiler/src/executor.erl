@@ -97,6 +97,14 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
             AFCR = 100 * AH / (AH + AM),
             #{hits := BH, misses := BM} = cas:beam_file_stats(CAS),
             BFCR = 100 * BH / (BH + BM),
+
+            io:format(standard_error,
+                      "Compiled ~p modules.~n"
+                      "Analysis File Cache Hit Rate: ~.1f%~n"
+                      "Beam File Cache Hit Rate: ~.1f%~n"
+                      "~n",
+                      [length(Modules), AFCR, BFCR]),
+
             case R of
                 {_, {error, Errors, _}} ->
                     #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
@@ -248,6 +256,43 @@ get_analysis(Src, Target, CC) ->
                    end, Analysis),
     {OriginalSrc, cas:get_analysis_file_contents(A, CC)}.
 
+-spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {error, term()}.
+resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
+    case ModuleIndex of
+        #{ModuleName := OwnerApp} ->
+            #{OwnerApp := OwnerTarget} = Targets,
+            #{srcs := OwnerSrcs} = OwnerTarget,
+            {value, ModuleSrc} = lists:search(
+                                   fun (OwnerSrc) ->
+                                           filename:basename(OwnerSrc, ".erl") == ModuleName
+                                   end, OwnerSrcs),
+            {ok, ModuleSrc};
+        _ ->
+            %% we also need to track the erlang version through all of this?
+            %% maybe not because this escript depends on it too...
+            %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
+
+            %% we also need to look for this module in erl_libs...
+            case code:which(list_to_atom(ModuleName)) of
+                non_existing ->
+                    {error, non_existing};
+                Path ->
+                    case string:prefix(Path, os:getenv("ERLANG_HOME")) of
+                        nomatch ->
+                            io:format(standard_error, "code:which ~p~n", [Path]),                                             %% check for in ERL_LIBS
+                            ok;
+                        _ ->
+                            %% we could stick the atom in the deps,
+                            %% and then write out an extra_apps file?
+                            %% for now since this is an erlang dep
+                            %% we can ignore it, the dependency
+                            %% is covered through the erlang version
+                            %% this whole escript depends on
+                            ok
+                    end
+            end
+    end.
+
 -spec deps(file:name(), thoas:json_term(),
            string(), #{string() := target()},
            module_index(), cas:cas_context()) -> [file:name()].
@@ -260,43 +305,16 @@ deps(OriginalSrc, ErlAttrs, _AppName, Targets, ModuleIndex, _CC) ->
     Deps = lists:foldl(
              fun (ModuleNameBinary, Acc) ->
                      ModuleName = binary_to_list(ModuleNameBinary),
-                     %% need to find the file declaring this behaviour, and add it to the deps
-                     case ModuleIndex of
-                         #{ModuleName := OwnerApp} ->
-                             #{OwnerApp := OwnerTarget} = Targets,
-                             #{srcs := OwnerSrcs} = OwnerTarget,
-                             {value, ModuleSrc} = lists:search(
-                                                    fun (OwnerSrc) ->
-                                                            filename:basename(OwnerSrc, ".erl") == ModuleName
-                                                    end, OwnerSrcs),
+                     case resolve_module(ModuleName, Targets, ModuleIndex) of
+                         ok ->
+                             Acc;
+                         {ok, ModuleSrc} ->
                              [ModuleSrc | Acc];
-                         _ ->
-                             %% we also need to track the erlang version through all of this?
-                             %% maybe not because this escript depends on it too...
-                             %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
-
-                             %% we also need to look for this module in erl_libs...
-                             case code:which(list_to_atom(ModuleName)) of
-                                 non_existing ->
-                                     io:format(standard_error,
-                                               "Ignoring dependency on module ~s in ~p~n",
-                                               [ModuleName, OriginalSrc]),
-                                     Acc;
-                                 Path ->
-                                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
-                                         nomatch ->
-                                             io:format(standard_error, "code:which ~p~n", [Path]),                                             %% check for in ERL_LIBS
-                                             Acc;
-                                         _ ->
-                                             %% we could stick the atom in the deps,
-                                             %% and then write out an extra_apps file?
-                                             %% for now since this is an erlang dep
-                                             %% we can ignore it, the dependency
-                                             %% is covered through the erlang version
-                                             %% this whole escript depends on
-                                             Acc
-                                     end
-                             end
+                         {error, non_existing} ->
+                             io:format(standard_error,
+                                       "Ignoring dependency on module ~s in ~p~n",
+                                       [ModuleName, OriginalSrc]),
+                             Acc
                      end
              end, Deps0, Behaviours ++ Transforms),
     lists:reverse(Deps).
