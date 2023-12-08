@@ -67,3 +67,7 @@ fi""".format(
             release_tar = release_dir_tar.short_path if short_path else release_dir_tar.path,
             erlang_home = info.erlang_home,
         )
+
+def version_file(ctx):
+    info = _build_info(ctx)
+    return info.version_file
