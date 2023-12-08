@@ -269,7 +269,7 @@ get_analysis(Src, Target, CC) ->
     {OriginalSrc, cas:get_analysis_file_contents(A, CC)}.
 
 -spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
-resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
+resolve_module(ModuleName, Targets, ModuleIndex) ->
     case ModuleIndex of
         #{ModuleName := OwnerApp} ->
             #{OwnerApp := OwnerTarget} = Targets,
@@ -287,7 +287,9 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
             %% we also need to look for this module in erl_libs...
             case code:which(list_to_atom(ModuleName)) of
                 non_existing ->
-                    {warning, io_lib:format("Could not locate source for module ~p.~n", [ModuleName])};
+                    M = io_lib:format("Could not locate source for module ~p.~n", [ModuleName]),
+                    io:format(standard_error, "~s~n", [M]),
+                    {warning, M};
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
@@ -297,6 +299,7 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
                         _ ->
                             %% we could stick the atom in the deps,
                             %% and then write out an extra_apps file?
+                            %% we could also do so in app_graph function...
                             %% for now since this is an erlang dep
                             %% we can ignore it, the dependency
                             %% is covered through the erlang version
@@ -306,30 +309,108 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
             end
     end.
 
+join_resolving_relative(Name1, Name2) ->
+    case string:prefix(Name2, "../") of
+        nomatch ->
+            filename:join(Name1, Name2);
+        R ->
+            join_resolving_relative(filename:dirname(Name1), R)
+    end.
+
+-spec resolve_include(file:name(), string(), string(), #{string() := target()}) -> ok | {ok, file:name()} | {warning, term()}.
+resolve_include(OriginalSrc, Include, AppName, Targets) ->
+    case string:prefix(Include, os:getenv("ERLANG_HOME")) of
+        nomatch ->
+            %% Note: since we are working with OriginalSrc, arguably
+            %% we should find the copied src, resolve against that,
+            %% then go find that original. However, the analysis was
+            %% was actually done againts the OriginalSrc, so it's
+            %% probably fine
+            #{AppName := Target} = Targets,
+            #{srcs := Srcs} = Target,
+            case string:prefix(Include, "../") of
+                nomatch ->
+                    % unfortunately, we have to check relative to the file, the working
+                    % directory, and then the include paths
+
+                    ExpectedPath = filename:join(filename:dirname(OriginalSrc), Include),
+                    case lists:search(fun (Src) -> Src == ExpectedPath end, Srcs) of
+                        {value, IncludeSrc} ->
+                            {ok, IncludeSrc};
+                        _ ->
+                            M = io_lib:format("Could not locate source for ~p relative to ~p",
+                                              [Include, OriginalSrc]),
+                            io:format(standard_error, "~s~n", [M]),
+                            {warning, M}
+                    end;
+                _ ->
+                    ExpectedPath = join_resolving_relative(OriginalSrc, Include),
+                    %% io:format(standard_error, "ExpectedPath: ~p~n", [ExpectedPath]),
+                    case lists:search(fun (Src) -> Src == ExpectedPath end, Srcs) of
+                        {value, IncludeSrc} ->
+                            {ok, IncludeSrc};
+                        _ ->
+                            M = io_lib:format("Could not locate source for ~p relative to ~p",
+                                              [Include, OriginalSrc]),
+                            io:format(standard_error, "~s~n", [M]),
+                            {warning, M}
+                    end
+            end;
+        _ ->
+            %% it's unclear to me, if an app loads an otp header, should
+            %% the otp app be part of extra_apps? I think not, as that
+            %% would appear to be more of a runtime thing
+            ok
+    end.
+
 -spec deps(file:name(), thoas:json_term(),
            string(), #{string() := target()},
            module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
-deps(OriginalSrc, ErlAttrs, _AppName, Targets, ModuleIndex, _CC) ->
+deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, _CC) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
-      <<"include">> := _Include,
-      <<"include_lib">> := _IncludeLib} = ErlAttrs,
+      <<"include">> := Includes,
+      <<"include_lib">> := IncludeLibs} = ErlAttrs,
     R0 = {ok, [OriginalSrc], []},
+    R1 = lists:foldl(
+           fun
+               (_, {error, _} = E) ->
+                   E;
+               (ModuleNameBinary, {ok, Deps, Warnings}) ->
+                   ModuleName = binary_to_list(ModuleNameBinary),
+                   case resolve_module(ModuleName, Targets, ModuleIndex) of
+                       ok ->
+                           {ok, Deps, Warnings};
+                       {ok, ModuleSrc} ->
+                           {ok, [ModuleSrc | Deps], Warnings};
+                       {warning, W} ->
+                           {ok, Deps, [W | Warnings]}
+                   end
+           end, R0, Behaviours ++ Transforms),
+    R2 = lists:foldl(
+           fun
+               (_, {error, _} = E) ->
+                   E;
+               (IncludeBinary, {ok, Deps, Warnings}) ->
+                   Include = binary_to_list(IncludeBinary),
+                   case resolve_include(OriginalSrc, Include, AppName, Targets) of
+                       ok ->
+                           {ok, Deps, Warnings};
+                       {ok, IncludeSrc} ->
+                           {ok, [IncludeSrc | Deps], Warnings};
+                       {warning, W} ->
+                           {ok, Deps, [W | Warnings]}
+                   end
+           end, R1, Includes),
     R = lists:foldl(
           fun
               (_, {error, _} = E) ->
-                           E;
-              (ModuleNameBinary, {ok, Deps, Warnings}) ->
-                           ModuleName = binary_to_list(ModuleNameBinary),
-                           case resolve_module(ModuleName, Targets, ModuleIndex) of
-                               ok ->
-                                   {ok, Deps, Warnings};
-                               {ok, ModuleSrc} ->
-                                   {ok, [ModuleSrc | Deps], Warnings};
-                               {warning, W} ->
-                                   {ok, Deps, [W | Warnings]}
-                           end
-                   end, R0, Behaviours ++ Transforms),
+                  E;
+              (IncludeLib, {ok, _Deps, _Warnings} = Acc) ->
+                  io:format(standard_error,
+                            "IncludeLib: ~p~n", [IncludeLib]),
+                  Acc
+          end, R2, IncludeLibs),
     case R of
         {ok, Deps, Warnings} ->
             {ok, lists:reverse(Deps), lists:reverse(Warnings)}
@@ -415,8 +496,6 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, CC) ->
                       %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
                       digraph:add_edge(G, MS, Src);
                   _ ->
-                      % if this is to a built-in app, we can handle extra_app automatically?
-                      %% io:format(standard_error, "src_graph: ignoring ~p <- ~p~n", [ModuleString, AppName]),
                       ok
               end
       end, Behaviours ++ Transforms),
