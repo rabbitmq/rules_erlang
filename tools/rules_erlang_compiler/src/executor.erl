@@ -363,8 +363,7 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, CC) ->
     ErlAttrs = cas:get_analysis_file_contents(AnalysisFile, CC),
 
     #{<<"behaviour">> := Behaviours,
-      <<"parse_transform">> := Transforms,
-      <<"include_lib">> := IncludeLibs} = ErlAttrs,
+      <<"parse_transform">> := Transforms} = ErlAttrs,
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
@@ -376,20 +375,6 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, CC) ->
                       ok
               end
       end, Behaviours ++ Transforms),
-    lists:foreach(
-      fun (IncludeLibBin) ->
-              IncludeLib = binary_to_list(IncludeLibBin),
-              case string:split(IncludeLib, "/") of
-                  [OtherApp, _] when OtherApp =/= AppName ->
-                      case lists:member(OtherApp, maps:values(ModuleIndex)) of
-                          true ->
-                              io:format(standard_error, "app_graph: adding hdr edge ~p <- ~p~n", [OtherApp, AppName]),
-                              digraph:add_edge(G, OtherApp, AppName);
-                          false ->
-                              ok
-                      end
-              end
-      end, IncludeLibs),
     app_deps(AppName, Rest, ModuleIndex, G, CC).
 
 -spec src_graph(string(), string(), [string()], [string()], #{string() := string()}, cas:cas_context()) -> digraph:graph().
@@ -412,9 +397,6 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, CC) ->
     ErlAttrs = cas:get_analysis_file_contents(A, CC),
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms} = ErlAttrs,
-    %% we can safely ignore include_lib here, as we compile applications
-    %% as units for now, and will always recompile the app when any of
-    %% its files change
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
