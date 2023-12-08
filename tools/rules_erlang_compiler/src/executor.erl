@@ -216,11 +216,15 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                  true ->
                                      #{AppName := Target} = Targets,
                                      {OriginalSrc, ErlAttrs} = get_analysis(Src, Target, CC),
-                                     Deps = deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, CC),
-                                     Key = beam_file_contents_key(CompileOpts0,
-                                                                  Deps,
-                                                                  CC),
-                                     cas:get_beam_file_contents(Key, ContentsFun, CAS);
+                                     case deps(OriginalSrc, ErlAttrs, AppName, Targets, ModuleIndex, CC) of
+                                         {ok, Deps} ->
+                                                      Key = beam_file_contents_key(CompileOpts0,
+                                                                                   Deps,
+                                                                                   CC),
+                                                      cas:get_beam_file_contents(Key, ContentsFun, CAS);
+                                         {error, Reason} ->
+                                             {error, [{list_to_atom(AppName), Reason}], []}
+                                     end;
                                  false ->
                                      ContentsFun()
                              end,
@@ -275,7 +279,7 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
             %% we also need to look for this module in erl_libs...
             case code:which(list_to_atom(ModuleName)) of
                 non_existing ->
-                    {error, non_existing};
+                    {error, io_lib:format("Could not locate source for module ~p.~n", [ModuleName])};
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
@@ -295,29 +299,34 @@ resolve_module(ModuleName, Targets, ModuleIndex) when is_list(ModuleName) ->
 
 -spec deps(file:name(), thoas:json_term(),
            string(), #{string() := target()},
-           module_index(), cas:cas_context()) -> [file:name()].
+           module_index(), cas:cas_context()) -> {ok, [file:name()]} | {error, term()}.
 deps(OriginalSrc, ErlAttrs, _AppName, Targets, ModuleIndex, _CC) ->
     #{<<"behaviour">> := Behaviours,
       <<"parse_transform">> := Transforms,
       <<"include">> := _Include,
       <<"include_lib">> := _IncludeLib} = ErlAttrs,
-    Deps0 = [OriginalSrc],
-    Deps = lists:foldl(
-             fun (ModuleNameBinary, Acc) ->
-                     ModuleName = binary_to_list(ModuleNameBinary),
-                     case resolve_module(ModuleName, Targets, ModuleIndex) of
-                         ok ->
-                             Acc;
-                         {ok, ModuleSrc} ->
-                             [ModuleSrc | Acc];
-                         {error, non_existing} ->
-                             io:format(standard_error,
-                                       "Ignoring dependency on module ~s in ~p~n",
-                                       [ModuleName, OriginalSrc]),
-                             Acc
-                     end
-             end, Deps0, Behaviours ++ Transforms),
-    lists:reverse(Deps).
+    R0 = {ok, [OriginalSrc]},
+    R = lists:foldl(
+          fun
+              (_, {error, _} = E) ->
+                  E;
+              (ModuleNameBinary, {ok, Deps}) ->
+                  ModuleName = binary_to_list(ModuleNameBinary),
+                  case resolve_module(ModuleName, Targets, ModuleIndex) of
+                      ok ->
+                          {ok, Deps};
+                      {ok, ModuleSrc} ->
+                          {ok, [ModuleSrc | Deps]};
+                      E ->
+                          E
+                  end
+          end, R0, Behaviours ++ Transforms),
+    case R of
+        {ok, Deps} ->
+            {ok, lists:reverse(Deps)};
+        E ->
+            E
+    end.
 
 -spec beam_file_contents_key(proplists:proplist(), [string()],
                              cas:cas_context()) -> binary().
