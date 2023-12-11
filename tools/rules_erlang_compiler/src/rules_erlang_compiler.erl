@@ -50,7 +50,7 @@ worker_loop(CAS) ->
             #{inputs := Inputs} = Request,
             io:format(standard_error,
                       "Request received with ~p inputs.~n",
-                      [length(Inputs)]),
+                      [maps:size(Inputs)]),
             %% io:format(standard_error, "Request: ~p~n", [Request]),
             Response = executor:execute(Request, CAS),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
@@ -66,11 +66,10 @@ conform_request(#{<<"arguments">> := [ConfigJsonPath],
   when is_binary(ConfigJsonPath) ->
     Args = #{targets_file => binary_to_list(ConfigJsonPath)},
 
-    Inputs = lists:map(fun(#{<<"path">> := Path,
-                             <<"digest">> := Digest}) ->
-                               #{path => binary_to_list(Path),
-                                 digest => binary_to_list(Digest)}
-                       end, RawInputs),
+    Inputs = lists:foldl(
+               fun(#{<<"path">> := Path, <<"digest">> := Digest}, Acc) ->
+                       Acc#{binary_to_list(Path) => base64:decode(Digest)}
+               end, #{}, RawInputs),
 
     case Request of
         #{<<"request_id">> := Id} ->

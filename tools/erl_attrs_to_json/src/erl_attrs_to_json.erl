@@ -169,7 +169,7 @@ deps(E) ->
        },
       E).
 
--spec parse(file:name(), [macro()], [include()]) -> {ok, map()} | {error, term()}.
+-spec parse(file:name(), [macro()], [include()]) -> {ok, src_analysis()} | {error, term()}.
 parse(File, Macros, Includes) ->
     Opts0 = [],
     Opts1 = case Macros of

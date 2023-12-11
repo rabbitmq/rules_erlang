@@ -1,5 +1,7 @@
 -module(cas).
 
+-include_lib("erl_attrs_to_json/include/erl_attrs_to_json.hrl").
+
 -include("types.hrl").
 
 -export([
@@ -8,14 +10,15 @@
          context/2,
          uncontext/1,
          has_inputs/1,
-         get_analysis_file_contents/2,
-         analysis_file_stats/1,
+         get_analysis/3,
+         src_analysis_stats/1,
          get_beam_file_contents/3,
          beam_file_stats/1,
+         digest_in_context/2,
          digests_in_context/2
         ]).
 
--record(?MODULE, {analysis_file_contents :: ets:table(),
+-record(?MODULE, {src_analysis :: ets:table(),
                   beam_file_contents :: ets:table()}).
 
 -opaque cas() :: #?MODULE{}.
@@ -29,23 +32,19 @@
 
 -spec new() -> cas().
 new() ->
-    #cas{analysis_file_contents = ets:new(analysis_file_contents, [set]),
+    #cas{src_analysis = ets:new(src_analysis, [set]),
          beam_file_contents = ets:new(beam_file_file_contents, [set])}.
 
 -spec destroy(cas()) -> ok.
-destroy(#cas{analysis_file_contents = AFC,
+destroy(#cas{src_analysis = AC,
              beam_file_contents = BFC}) ->
-    ets:delete(AFC),
+    ets:delete(AC),
     ets:delete(BFC),
     ok.
 
--spec context(cas(), [input()]) -> cas_context().
+-spec context(cas(), #{file:name() := binary()}) -> cas_context().
 context(CAS, Inputs) ->
-    InputPathToDigest = lists:foldl(
-                          fun (#{path := Path, digest := Digest}, Acc) ->
-                                  Acc#{Path => Digest}
-                          end, #{}, Inputs),
-    {CAS, InputPathToDigest}.
+    {CAS, Inputs}.
 
 -spec uncontext(cas_context()) -> cas().
 uncontext({CAS, _}) ->
@@ -55,33 +54,26 @@ uncontext({CAS, _}) ->
 has_inputs({_, Inputs}) ->
     maps:size(Inputs) > 0.
 
--spec get_analysis_file_contents(file:name(), cas_context()) -> thoas:json_term().
-get_analysis_file_contents(F,
-                           {#?MODULE{analysis_file_contents = Table}, Inputs}) ->
-    case maps:size(Inputs) of
-        0 ->
-            {ok, Contents} = file:read_file(F),
-            {ok, ErlAttrs} = thoas:decode(Contents),
-            ErlAttrs;
-        _ ->
-            case Inputs of
-                #{F := Digest} ->
-                    case ets:lookup(Table, Digest) of
-                        [{Digest, _, ErlAttrs}] ->
-                            ets:update_counter(Table, Digest, 1),
-                            ErlAttrs;
-                        [] ->
-                            {ok, Contents} = file:read_file(F),
-                            {ok, ErlAttrs} = thoas:decode(Contents),
-                            true = ets:insert_new(Table, {Digest, 0, ErlAttrs}),
-                            ErlAttrs
-                    end
+-spec get_analysis(binary(), fun(() -> analysis_result()), cas()) -> analysis_result().
+get_analysis(Key, ContentsFun, #?MODULE{src_analysis = Table}) ->
+    case ets:lookup(Table, Key) of
+        [{Key, _, ErlAttrs}] ->
+            ets:update_counter(Table, Key, 1),
+            %% io:format(standard_error, "beam file contents cache hit ~p~n", [Key]),
+            {ok, ErlAttrs};
+        [] ->
+            case ContentsFun() of
+                {ok, ErlAttrs} ->
+                    true = ets:insert_new(Table, {Key, 0, ErlAttrs}),
+                    {ok, ErlAttrs};
+                E ->
+                    E
             end
     end.
 
--spec analysis_file_stats(cas()) -> #{hits := non_neg_integer(),
-                                      misses := non_neg_integer()}.
-analysis_file_stats(#?MODULE{analysis_file_contents = Table}) ->
+-spec src_analysis_stats(cas()) -> #{hits := non_neg_integer(),
+                                     misses := non_neg_integer()}.
+src_analysis_stats(#?MODULE{src_analysis = Table}) ->
     ets:foldl(
       fun ({_, C, _}, #{hits := Hits, misses := Misses} = Acc) ->
               Acc#{hits := Hits + C, misses := Misses + 1}
@@ -112,9 +104,14 @@ beam_file_stats(#?MODULE{beam_file_contents = Table}) ->
               Acc#{hits := Hits + C, misses := Misses + 1}
       end, #{hits => 0, misses => 0}, Table).
 
--spec digests_in_context(cas_context(), [string()]) -> iolist().
-digests_in_context({_, Inputs}, Files) ->
+-spec digest_in_context(cas_context(), file:name()) -> binary().
+digest_in_context({_, Inputs}, File) ->
+    #{File := Digest} = Inputs,
+    base64:decode(Digest).
+
+-spec digests_in_context(cas_context(), [file:name()]) -> iolist().
+digests_in_context(CC, Files) ->
     lists:map(
       fun (File) ->
-              base64:decode(maps:get(File, Inputs))
+              digest_in_context(CC, File)
       end, Files).

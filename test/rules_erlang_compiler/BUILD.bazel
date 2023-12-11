@@ -30,6 +30,7 @@ plt(
     name = "base_plt",
     apps = DEFAULT_PLT_APPS + ["compiler", "crypto"],
     deps = [
+        "@rules_erlang//tools/erl_attrs_to_json:erlang_app",
         "@thoas//:erlang_app",
     ],
 )
@@ -39,17 +40,17 @@ dialyze(
 )
 
 ct_suite(
+    name = "compile_opts_SUITE",
+    size = "small",
+)
+
+ct_suite(
     name = "digraph_tools_SUITE",
     size = "small",
 )
 
 ct_suite(
     name = "dot_app_file_SUITE",
-    size = "small",
-)
-
-ct_suite(
-    name = "executor_SUITE",
     size = "small",
 )
 

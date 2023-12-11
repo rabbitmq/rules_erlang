@@ -1,18 +1,13 @@
 -module(executor).
 
+-include_lib("erl_attrs_to_json/include/erl_attrs_to_json.hrl").
+
 -include("types.hrl").
 
 -export([execute/2]).
 
--ifdef(TEST).
--export([
-         transform_erlc_opts/1
-        ]).
--endif.
-
 -spec execute(request(), cas:cas()) -> response().
 execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS) ->
-    CC = cas:context(CAS, Inputs),
     case config_file:read(ConfigJsonPath) of
         {ok, Config} ->
             #{module_index := ModuleIndex,
@@ -32,7 +27,9 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
             %% TreeOut = os:cmd("/usr/local/bin/tree"),
             %% io:format(standard_error, "~s~n", [TreeOut]),
 
-            DestDir = clone_sources(Targets),
+            {DestDir, MappedInputs} = clone_sources(Targets, Inputs),
+
+            CC = cas:context(CAS, MappedInputs),
 
             %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
 
@@ -44,9 +41,11 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
             code:add_paths(CodePaths),
             %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
-            G = app_graph(Targets, ModuleIndex, CC),
+            TargetsWithCompileOpts = add_compile_opts_to_targets(Targets),
 
-            TargetsWithDeps = add_deps_to_targets(Targets, G),
+            G = app_graph(TargetsWithCompileOpts, ModuleIndex, CC),
+
+            TargetsWithDeps = add_deps_to_targets(TargetsWithCompileOpts, G),
             % lets update the targets with the deps, before we consume the graph, so that
             % the .app can be generated correctly
             % we might also have to write this to a file so that dialyze rules can use it?
@@ -93,17 +92,17 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
               end, Modules),
             code:del_paths(CodePaths),
 
-            #{hits := AH, misses := AM} = cas:analysis_file_stats(CAS),
-            AFCR = 100 * AH / (AH + AM),
+            #{hits := AH, misses := AM} = cas:src_analysis_stats(CAS),
+            ACR = 100 * AH / (AH + AM),
             #{hits := BH, misses := BM} = cas:beam_file_stats(CAS),
             BFCR = 100 * BH / (BH + BM),
 
             io:format(standard_error,
                       "Compiled ~p modules.~n"
-                      "Analysis File Cache Hit Rate: ~.1f%~n"
+                      "Analysis Cache Hit Rate: ~.1f%~n"
                       "Beam File Cache Hit Rate: ~.1f%~n"
                       "~n",
-                      [length(Modules), AFCR, BFCR]),
+                      [length(Modules), ACR, BFCR]),
 
             case R of
                 {_, {error, Errors, _}} ->
@@ -112,35 +111,37 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                                                               [Errors])};
                 {Modules, {ok, []}} ->
                     #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                              "Analysis File Cache Hit Rate: ~.1f%~n"
+                                                              "Analysis Cache Hit Rate: ~.1f%~n"
                                                               "Beam File Cache Hit Rate: ~.1f%~n",
-                                                              [length(Modules), AFCR, BFCR])};
+                                                              [length(Modules), ACR, BFCR])};
                 {Modules, {ok, Warnings}} ->
                     #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                              "Analysis File Cache Hit Rate: ~.1f%~n"
+                                                              "Analysis Cache Hit Rate: ~.1f%~n"
                                                               "Beam File Cache Hit Rate: ~.1f%~n"
                                                               "Warnings: ~p~n",
-                                                              [length(Modules), AFCR, BFCR, Warnings])}
+                                                              [length(Modules), ACR, BFCR, Warnings])}
             end;
         {error, Reason} ->
             #{exit_code => 1,
               output => io_lib:format("Could not read ~s: ~p~n", [ConfigJsonPath, Reason])}
     end.
 
-clone_app(#{srcs := Srcs, outs := Outs}) ->
-    lists:foreach(
-      fun (Src) ->
-              Module = filename:basename(Src, ".erl"),
-              {value, Dest} = lists:search(
-                                fun(Out) ->
-                                        case filename:basename(Out, ".erl") of
-                                            Module -> true;
-                                            _ -> false
-                                        end
-                                end, Outs),
-              %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
-              {ok, _} = file:copy(Src, Dest)
-      end, Srcs),
+clone_app(#{srcs := Srcs, outs := Outs}, Inputs, MappedInputs0) ->
+    MappedInputs = lists:foldl(
+                     fun (Src, MI) ->
+                             #{Src := Digest} = Inputs,
+                             Module = filename:basename(Src, ".erl"),
+                             {value, Dest} = lists:search(
+                                               fun(Out) ->
+                                                       case filename:basename(Out, ".erl") of
+                                                           Module -> true;
+                                                           _ -> false
+                                                       end
+                                               end, Outs),
+                             %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
+                             {ok, _} = file:copy(Src, Dest),
+                             MI#{Dest => Digest}
+                     end, MappedInputs0, Srcs),
     {value, Beam} = lists:search(
                       fun (Out) ->
                               case filename:extension(Out) of
@@ -148,37 +149,31 @@ clone_app(#{srcs := Srcs, outs := Outs}) ->
                                   _ -> false
                               end
                       end, Outs),
-    filename:dirname(filename:dirname(Beam)).
+    {filename:dirname(filename:dirname(Beam)), MappedInputs}.
 
--spec clone_sources(#{string() := target()}) -> string().
-clone_sources(Targets) ->
+-spec clone_sources(#{string() := target()}, #{file:name() := binary()}) -> {string(), #{file:name() := binary()}}.
+clone_sources(Targets, Inputs) ->
     maps:fold(
       fun
-          (_, Props, unknown) ->
-              filename:dirname(clone_app(Props));
-          (_, Props, DestDir) ->
-              DestDir = filename:dirname(clone_app(Props))
-      end, unknown, Targets).
+          (_, Props, {unknown, MappedInputs0}) ->
+                  {AppDest, MappedInputs} = clone_app(Props, Inputs, MappedInputs0),
+                  {filename:dirname(AppDest), MappedInputs};
+          (_, Props, {DestDir, MappedInputs0}) ->
+                  {AppDest, MappedInputs} = clone_app(Props, Inputs, MappedInputs0),
+                  DestDir = filename:dirname(AppDest),
+                  {DestDir, MappedInputs}
+      end, {unknown, #{}}, Targets).
 
 -spec compile(string(), #{string() := target()}, string(), module_index(), cas:cas_context()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Errors :: errors_list(), Warnings :: warnings_list()}.
 compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
-    #{AppName := #{erlc_opts_file := ErlcOptsFile,
-                   analysis := Analysis,
-                   analysis_id := Suffix,
+    #{AppName := #{compile_opts := CompileOpts0,
                    outs := Outs}} = Targets,
 
     CAS = cas:uncontext(CC),
 
-    ErlcOpts = flags_file:read(ErlcOptsFile),
-    CompileOpts0 = transform_erlc_opts(ErlcOpts),
-    %% OutDir = filename:join([DestDir, AppName, "ebin"]),
-    %% CompileOpts = [{outdir, OutDir} | CompileOpts0],
     CompileOpts = [{outdir, "ebin"},
-                   {i, "include"},
-                   {i, "src"},
-                   {i, "../"},
                    binary,
                    return | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
@@ -195,7 +190,7 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                    fun is_erlang_source/1,
                    Outs),
 
-    G = src_graph(AppName, Suffix, Analysis, CopiedSrcs, ModuleIndex, CC),
+    G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, CC),
     %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
 
     OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
@@ -223,9 +218,8 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                                 end,
                   Contents = case cas:has_inputs(CC) of
                                  true ->
-                                     #{AppName := Target} = Targets,
-                                     {OriginalSrc, ErlAttrs} = get_analysis(Src, Target, CC),
-                                     case deps(OriginalSrc, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, CC) of
+                                     ErlAttrs = get_analysis(Src, CompileOpts0, CC),
+                                     case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, CC) of
                                          {ok, Deps, []} ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           Deps,
@@ -260,22 +254,38 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
     ok = file:set_cwd(OldCwd),
     R.
 
--spec get_analysis(file:name(), target(), cas:cas_context()) -> {file:name(), thoas:json_term()}.
-get_analysis(Src, Target, CC) ->
-    #{analysis := Analysis, analysis_id := Suffix, srcs := Srcs} = Target,
-    SrcBasename = filename:basename(Src),
-    {value, OriginalSrc} = lists:search(
-                             fun (S) ->
-                                     filename:basename(S) == SrcBasename
-                             end, Srcs),
-    SrcModuleName = filename:basename(OriginalSrc, ".erl"),
-    {value, A} = lists:search(
-                   fun (AF) ->
-                           filename:basename(
-                             filename:basename(AF, ".json"),
-                             "." ++ Suffix) == SrcModuleName
-                   end, Analysis),
-    {OriginalSrc, cas:get_analysis_file_contents(A, CC)}.
+-spec get_analysis(file:name(), [compile:option()], cas:cas_context()) -> src_analysis().
+get_analysis(Src, CompileOpts, CC) ->
+    ContentsFun = fun() ->
+                          Macros = lists:filtermap(
+                                     fun
+                                         ({d, D}) ->
+                                             {true, D};
+                                         ({d, D, V}) ->
+                                             {true, {D, V}};
+                                         (_) ->
+                                             false
+                                     end, CompileOpts),
+                          Includes = lists:filtermap(
+                                       fun
+                                           ({i, I}) ->
+                                               {true, I};
+                                           (_) ->
+                                               false
+                                       end, CompileOpts),
+                          erl_attrs_to_json:parse(Src, Macros, Includes)
+                  end,
+    {ok, ErlAttrs} = case cas:has_inputs(CC) of
+                         true ->
+                             ErlcOptsBin = term_to_binary(CompileOpts),
+                             Digest = cas:digest_in_context(CC, Src),
+                             Key = crypto:hash(sha, [ErlcOptsBin, Digest]),
+                             CAS = cas:uncontext(CC),
+                             cas:get_analysis(Key, ContentsFun, CAS);
+                         false ->
+                             ContentsFun()
+                     end,
+    ErlAttrs.
 
 -spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
 resolve_module(ModuleName, Targets, ModuleIndex) ->
@@ -373,15 +383,15 @@ resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
             ok
     end.
 
--spec deps(file:name(), thoas:json_term(), [string()],
+-spec deps(file:name(), src_analysis(), [string()],
            string(), #{string() := target()},
            module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
-deps(OriginalSrc, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
-    #{<<"behaviour">> := Behaviours,
-      <<"parse_transform">> := Transforms,
-      <<"include">> := Includes,
-      <<"include_lib">> := IncludeLibs} = ErlAttrs,
-    R0 = {ok, [OriginalSrc], []},
+deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
+    #{behaviour := Behaviours,
+      parse_transform := Transforms,
+      include := Includes,
+      include_lib := IncludeLibs} = ErlAttrs,
+    R0 = {ok, [Src], []},
     R1 = lists:foldl(
            fun
                (_, {error, _} = E) ->
@@ -403,7 +413,7 @@ deps(OriginalSrc, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
                    E;
                (IncludeBinary, {ok, Deps, Warnings}) ->
                    Include = binary_to_list(IncludeBinary),
-                   case resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) of
+                   case resolve_include(Src, Include, IncludePaths, AppName, Targets) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, IncludeSrc} ->
@@ -444,17 +454,19 @@ app_graph(Targets, ModuleIndex, CC) ->
 app_graph([], _, _, G, _) ->
     G;
 app_graph([App | Rest], Targets, ModuleIndex, G, CC) ->
-    #{App := #{analysis := AnalysisFiles}} = Targets,
-    app_deps(App, AnalysisFiles, ModuleIndex, G, CC),
+    #{App := #{compile_opts := CompileOpts, outs := Outs}} = Targets,
+    CopiedSrcs = lists:filter(fun is_erlang_source/1, Outs),
+    app_deps(App, CopiedSrcs, CompileOpts, ModuleIndex, G, CC),
     app_graph(Rest, Targets, ModuleIndex, G, CC).
 
-app_deps(_, [], _, _, _) ->
+app_deps(_, [], _, _, _, _) ->
     ok;
-app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, CC) ->
-    ErlAttrs = cas:get_analysis_file_contents(AnalysisFile, CC),
+app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
+    ErlAttrs = get_analysis(SrcFile, CompileOpts, CC),
+    %% ErlAttrs = cas:get_analysis_file_contents(AnalysisFile, CC),
 
-    #{<<"behaviour">> := Behaviours,
-      <<"parse_transform">> := Transforms} = ErlAttrs,
+    #{behaviour := Behaviours,
+      parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
@@ -466,28 +478,22 @@ app_deps(AppName, [AnalysisFile | Rest], ModuleIndex, G, CC) ->
                       ok
               end
       end, Behaviours ++ Transforms),
-    app_deps(AppName, Rest, ModuleIndex, G, CC).
+    app_deps(AppName, Rest, CompileOpts, ModuleIndex, G, CC).
 
--spec src_graph(string(), string(), [string()], [string()], #{string() := string()}, cas:cas_context()) -> digraph:graph().
-src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, CC) ->
+-spec src_graph(string(), [string()], [compile:option()], module_index(), cas:cas_context()) -> digraph:graph().
+src_graph(AppName, Srcs, CompileOpts, ModuleIndex, CC) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (Src) ->
                           digraph:add_vertex(G, Src)
                   end, Srcs),
-    src_graph(AppName, Suffix, Analysis, Srcs, ModuleIndex, G, CC).
+    src_graph(AppName, Srcs, Srcs, CompileOpts, ModuleIndex, G, CC).
 
-src_graph(_, _, [], _, _, G, _) ->
+src_graph(_, [], _, _, _, G, _) ->
     G;
-src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, CC) ->
-    ModuleName = filename:basename(filename:basename(A, ".json"), "." ++ Suffix),
-    %% io:format(standard_error, "Checking deps for ~p~n", [ModuleName]),
-    {value, Src} = lists:search(
-                     fun (S) ->
-                             filename:basename(S, ".erl") == ModuleName
-                     end, Srcs),
-    ErlAttrs = cas:get_analysis_file_contents(A, CC),
-    #{<<"behaviour">> := Behaviours,
-      <<"parse_transform">> := Transforms} = ErlAttrs,
+src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
+    ErlAttrs = get_analysis(Src, CompileOpts, CC),
+    #{behaviour := Behaviours,
+      parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
       fun (ModuleBin) ->
               ModuleString = binary_to_list(ModuleBin),
@@ -510,7 +516,7 @@ src_graph(AppName, Suffix, [A | Rest], Srcs, ModuleIndex, G, CC) ->
               end
       end, Behaviours ++ Transforms),
 
-    src_graph(AppName, Suffix, Rest, Srcs, ModuleIndex, G, CC).
+    src_graph(AppName, Rest, Srcs, CompileOpts, ModuleIndex, G, CC).
 
 is_erlang_source(F) ->
     case filename:extension(F) of
@@ -520,30 +526,16 @@ is_erlang_source(F) ->
             false
     end.
 
--spec string_to_term(string()) -> term().
-string_to_term(S) ->
-    {ok, Tokens, _} = erl_scan:string(S ++ "."),
-    {ok, AbsForm} = erl_parse:parse_exprs(Tokens),
-    {value, Value, _} = erl_eval:exprs(AbsForm, erl_eval:new_bindings()),
-    Value.
-
--spec transform_erlc_opts([string()]) -> [compile:option()].
-transform_erlc_opts(ErlcOpts) ->
-    lists:map(
-      fun
-          ("-Werror") ->
-              warnings_as_errors;
-          ("+" ++ Term) ->
-              list_to_atom(Term);
-          ("-D" ++ Macro) ->
-              {d, list_to_atom(Macro)};
-          ("'-D" ++ Macro) ->
-              M = string:strip(Macro, right, $'),
-              case string:split(M, "=") of
-                  [A, V] ->
-                      {d, list_to_atom(A), string_to_term(V)}
-              end
-      end, ErlcOpts).
+add_compile_opts_to_targets(Targets) ->
+    maps:map(
+      fun (_, #{erlc_opts_file := ErlcOptsFile} = Props) ->
+              ErlcOpts = flags_file:read(ErlcOptsFile),
+              CompileOpts0 = compile_opts:transform_erlc_opts(ErlcOpts),
+              CompileOpts = [{i, "include"},
+                             {i, "src"},
+                             {i, "../"} | CompileOpts0],
+              Props#{compile_opts => CompileOpts}
+      end, Targets).
 
 add_deps_to_targets(Targets, G) ->
     add_deps_to_targets(Targets, digraph:vertices(G), G).

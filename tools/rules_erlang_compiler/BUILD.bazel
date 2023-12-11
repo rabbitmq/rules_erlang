@@ -10,6 +10,7 @@ EXTRA_APPS = [
 ]
 
 DEPS = [
+    "//tools/erl_attrs_to_json:erlang_app",
     "@thoas_rules_erlang//:erlang_app",
 ]
 
