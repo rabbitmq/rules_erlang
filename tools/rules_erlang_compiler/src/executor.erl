@@ -72,7 +72,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                           E;
                       (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                           #{AppName := Props} = TargetsWithDeps,
-                          R = case compile(AppName, TargetsWithDeps, DestDir, ModuleIndex, CC) of
+                          R = case compile(AppName, TargetsWithDeps, DestDir, CodePaths, ModuleIndex, CC) of
                                   {ok, M, []} ->
                                       {ModulesSoFar ++ M, {ok, Warnings}};
                                   {ok, M, W} ->
@@ -149,7 +149,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
 clone_app(#{srcs := Srcs, outs := Outs}, Inputs, MappedInputs0) ->
     MappedInputs = lists:foldl(
-                     fun (Src, MI) ->
+                     fun (Src, MI0) ->
                              #{Src := Digest} = Inputs,
                              Module = filename:basename(Src, ".erl"),
                              {value, Dest} = lists:search(
@@ -161,6 +161,7 @@ clone_app(#{srcs := Srcs, outs := Outs}, Inputs, MappedInputs0) ->
                                                end, Outs),
                              %% io:format(standard_error, "Copying ~p to ~p~n", [Src, Dest]),
                              {ok, _} = file:copy(Src, Dest),
+                             MI = maps:without(Src, MI0),
                              MI#{Dest => Digest}
                      end, MappedInputs0, Srcs),
     {value, Beam} = lists:search(
@@ -183,12 +184,12 @@ clone_sources(Targets, Inputs) ->
                   {AppDest, MappedInputs} = clone_app(Props, Inputs, MappedInputs0),
                   DestDir = filename:dirname(AppDest),
                   {DestDir, MappedInputs}
-      end, {unknown, #{}}, Targets).
+      end, {unknown, Inputs}, Targets).
 
--spec compile(atom(), #{atom() := target()}, string(), module_index(), cas:cas_context()) ->
+-spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), cas:cas_context()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Errors :: errors_list(), Warnings :: warnings_list()}.
-compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
+compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
     #{AppName := #{compile_opts := CompileOpts0,
                    outs := Outs}} = Targets,
 
@@ -240,7 +241,7 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                   Contents = case cas:has_inputs(CC) of
                                  true ->
                                      ErlAttrs = get_analysis(Src, CompileOpts0, CC),
-                                     case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, CC) of
+                                     case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) of
                                          {ok, Deps, []} ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           Deps,
@@ -311,8 +312,19 @@ get_analysis(Src, CompileOpts, CC) ->
                      end,
     ErlAttrs.
 
--spec resolve_module(module(), #{atom() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
-resolve_module(Module, Targets, ModuleIndex) ->
+find_in_code_paths(_, []) ->
+    error;
+find_in_code_paths(Path, [CP | Rest]) ->
+    case string:find(Path, CP) of
+        nomatch ->
+            find_in_code_paths(Path, Rest);
+        InputPath ->
+            InputPath
+    end.
+
+-spec resolve_module(module(), #{atom() := target()}, [string()], module_index()) ->
+          ok | {ok, file:name()} | {warning, term()}.
+resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
     case ModuleIndex of
         #{Module := OwnerApp} ->
             #{OwnerApp := OwnerTarget} = Targets,
@@ -324,24 +336,9 @@ resolve_module(Module, Targets, ModuleIndex) ->
                                    end, OwnerSrcs),
             {ok, ModuleSrc};
         _ ->
-            %% we also need to track the erlang version through all of this?
-            %% maybe not because this escript depends on it too...
-            %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
-
-            %% we also need to look for this module in erl_libs...
-            EL = code:ensure_loaded(Module),
-            io:format(standard_error,
-                      "code:ensure_loaded(~p) => ~p~n",
-                      [Module, EL]),
-            %% case Module of
-            %%     gen_batch_server ->
-            %%         LA = code:load_abs("bazel-out/darwin_x86_64-fastbuild/bin/external/rules_erlang~override~erlang_package~erlang_packages/deps/gen_batch_server/ebin/gen_batch_server.beam"),
-            %%         io:format(standard_error,
-            %%                   "code:load_abs(...) => ~p~n",
-            %%                   [LA]);
-            %%     _ ->
-            %%         ok
-            %% end,
+            _ = code:ensure_loaded(Module),  %% do we need to note this module and unload later?
+                                             %% maybe not, as if it actually changes, it will get
+                                             %% unloaded and reloaded
             case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
@@ -351,9 +348,13 @@ resolve_module(Module, Targets, ModuleIndex) ->
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
-                            io:format(standard_error, "code:which ~p~n", [Path]),
-                            %% check for in ERL_LIBS
-                            ok;
+                            %% io:format(standard_error, "code:which ~p~n", [Path]),
+                            case find_in_code_paths(Path, CodePaths) of
+                                error ->
+                                    {warning, {module_not_found, Module}};
+                                ModuleSrc ->
+                                    {ok, ModuleSrc}
+                            end;
                         _ ->
                             %% we could stick the atom in the deps,
                             %% and then write out an extra_apps file?
@@ -380,11 +381,6 @@ join_resolving_relative(Name1, Name2) ->
 resolve_include(Src, Include, IncludePaths, AppName, Targets) ->
     case string:prefix(Include, os:getenv("ERLANG_HOME")) of
         nomatch ->
-            %% Note: since we are working with OriginalSrc, arguably
-            %% we should find the copied src, resolve against that,
-            %% then go find that original. However, the analysis was
-            %% was actually done againts the OriginalSrc, so it's
-            %% probably fine
             #{AppName := Target} = Targets,
             #{dest_dir := DestDir, outs := Outs} = Target,
             Hdrs = lists:filter(fun is_erlang_header/1, Outs),
@@ -426,8 +422,8 @@ resolve_include(Src, Include, IncludePaths, AppName, Targets) ->
 
 -spec deps(file:name(), src_analysis(), [string()],
            atom(), #{atom() := target()},
-           module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
-deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
+           [string()], module_index()) -> {ok, [file:name()], [term()]}.
+deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
     #{behaviour := Behaviours,
       parse_transform := Transforms,
       include := Includes,
@@ -438,7 +434,7 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
                (_, {error, _} = E) ->
                    E;
                (Module, {ok, Deps, Warnings}) ->
-                   case resolve_module(Module, Targets, ModuleIndex) of
+                   case resolve_module(Module, Targets, CodePaths, ModuleIndex) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, ModuleSrc} ->
