@@ -23,35 +23,30 @@ read(ConfigJsonPath) ->
             E
     end.
 
-conform_target(#{<<"path">> := Path,
+conform_target(#{<<"src_path">> := SrcPath,
                  <<"erlc_opts_file">> := ErlcOptsFile,
                  <<"app_src">> := AppSrc,
                  <<"srcs">> := Srcs,
-                 <<"analysis">> := Analysis,
-                 <<"analysis_id">> := AnalysisId,
                  <<"outs">> := Outs}) ->
-    #{path => binary_to_list(Path),
+    #{src_path => binary_to_list(SrcPath),
       erlc_opts_file => binary_to_list(ErlcOptsFile),
       app_src => case AppSrc of
                      null -> null;
                      _ -> binary_to_list(AppSrc)
                  end,
       srcs => lists:map(fun binary_to_list/1, Srcs),
-      analysis => lists:map(fun binary_to_list/1, Analysis),
-      analysis_id => binary_to_list(AnalysisId),
       outs => lists:map(fun binary_to_list/1, Outs)}.
 
 conform_targets(Targets) ->
     maps:fold(
       fun (K, V, Acc) ->
-              Acc#{binary_to_list(K) => conform_target(V)}
+              Acc#{binary_to_atom(K) => conform_target(V)}
       end, #{}, Targets).
 
 conform_index(ModuleIndex) ->
     maps:fold(
       fun (K, V, Acc) ->
-              % maybe these should be atoms?
-              Acc#{binary_to_list(K) => binary_to_list(V)}
+              Acc#{binary_to_atom(K) => binary_to_atom(V)}
       end, #{}, ModuleIndex).
 
 conform_code_paths(Dirs) ->

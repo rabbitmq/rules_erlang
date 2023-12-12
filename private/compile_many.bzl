@@ -1,5 +1,5 @@
 load("//:util.bzl", "path_join")
-load(":erlang_app_sources_analysis.bzl", "ErlangAppSourcesInfo")
+load(":erlang_app_sources.bzl", "ErlangAppSourcesInfo")
 load(":util.bzl", "additional_file_dest_relative_path")
 
 CompileManyInfo = provider(
@@ -31,18 +31,15 @@ def _impl(ctx):
                          source_info.private_hdrs +
                          source_info.srcs)
         compiler_flags.targets[source_info.app_name] = {
-            "path": path_join(app.label.workspace_root, app.label.package),
+            "src_path": path_join(app.label.workspace_root, app.label.package),
             "erlc_opts_file": source_info.erlc_opts_file.path,
             "app_src": source_info.app_src.path,
             "srcs": [s.path for s in compiler_srcs],
-            "analysis": [a.path for a in source_info.analysis],
-            "analysis_id": source_info.analysis_id,
         }
 
         apps_inputs.extend(source_info.public_hdrs)
         apps_inputs.extend(source_info.private_hdrs)
         apps_inputs.extend(source_info.srcs)
-        apps_inputs.extend(source_info.analysis)
         apps_inputs.append(source_info.app_src)
         apps_inputs.append(source_info.erlc_opts_file)
 

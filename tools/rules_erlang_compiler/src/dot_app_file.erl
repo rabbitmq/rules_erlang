@@ -4,11 +4,10 @@
 
 -export([render/3]).
 
--spec render(string(), target(), string()) -> ok.
-render(AppNameString,
-                    #{app_src := AppSrc, outs := Outs} = Target,
-                    DestDir) ->
-    AppName = list_to_atom(AppNameString),
+-spec render(atom(), target(), file:name()) -> ok.
+render(AppName,
+       #{app_src := AppSrc, outs := Outs} = Target,
+       DestDir) ->
     Contents = case AppSrc of
                    null ->
                        {application, AppName, []};
@@ -38,7 +37,7 @@ render(AppNameString,
                     lists:keystore(applications, 1, Props1,
                                    {applications, Apps})
             end,
-    Dest = filename:join([DestDir, AppName, "ebin", AppNameString ++ ".app"]),
+    Dest = filename:join([DestDir, AppName, "ebin", atom_to_list(AppName) ++ ".app"]),
     ok = file:write_file(Dest,
                          io_lib:format("~tp.~n", [{application,
                                                    AppName,

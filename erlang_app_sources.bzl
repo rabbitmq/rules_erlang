@@ -1,9 +1,9 @@
 load(
-    "//private:erlang_app_sources_analysis.bzl",
-    _analysis = "erlang_app_sources_analysis",
+    "//private:erlang_app_sources.bzl",
+    _erlang_app_sources = "erlang_app_sources",
 )
 
-def erlang_app_sources_analysis(
+def erlang_app_sources(
         app_name = None,
         app_src = None,
         public_hdrs = None,
@@ -42,7 +42,7 @@ def erlang_app_sources_analysis(
             "LICENSE*",
         ])
 
-    _analysis(
+    _erlang_app_sources(
         app_name = app_name,
         app_src = app_src,
         public_hdrs = public_hdrs,
@@ -50,6 +50,5 @@ def erlang_app_sources_analysis(
         srcs = srcs,
         priv = priv,
         license_files = license_files,
-        erl_attrs_to_json_worker = Label("@rules_erlang//tools/erl_attrs_to_json_worker:wrapper"),
         **kwargs
     )

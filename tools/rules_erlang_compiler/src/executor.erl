@@ -41,7 +41,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
             code:add_paths(CodePaths),
             %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
-            TargetsWithCompileOpts = add_compile_opts_to_targets(Targets),
+            TargetsWithCompileOpts = add_compile_opts_and_dest_dir_to_targets(DestDir, Targets),
 
             G = app_graph(TargetsWithCompileOpts, ModuleIndex, CC),
 
@@ -66,7 +66,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                                       {ModulesSoFar ++ M, {ok, Warnings}};
                                   {ok, M, W} ->
                                       {ModulesSoFar ++ M, {ok,
-                                                           Warnings ++ [{list_to_atom(AppName), W}]}};
+                                                           Warnings ++ [{AppName, W}]}};
                                   {error, Errors, []} ->
                                       {ModulesSoFar, {error,
                                                       {AppName, Errors},
@@ -74,7 +74,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                                   {error, Errors, W} ->
                                       {ModulesSoFar, {error,
                                                       {AppName, Errors},
-                                                      Warnings ++ [{list_to_atom(AppName), W}]}}
+                                                      Warnings ++ [{AppName, W}]}}
                               end,
                           dot_app_file:render(AppName, Props, DestDir),
                           R
@@ -151,7 +151,7 @@ clone_app(#{srcs := Srcs, outs := Outs}, Inputs, MappedInputs0) ->
                       end, Outs),
     {filename:dirname(filename:dirname(Beam)), MappedInputs}.
 
--spec clone_sources(#{string() := target()}, #{file:name() := binary()}) -> {string(), #{file:name() := binary()}}.
+-spec clone_sources(#{atom() := target()}, #{file:name() := binary()}) -> {string(), #{file:name() := binary()}}.
 clone_sources(Targets, Inputs) ->
     maps:fold(
       fun
@@ -164,7 +164,7 @@ clone_sources(Targets, Inputs) ->
                   {DestDir, MappedInputs}
       end, {unknown, #{}}, Targets).
 
--spec compile(string(), #{string() := target()}, string(), module_index(), cas:cas_context()) ->
+-spec compile(atom(), #{atom() := target()}, string(), module_index(), cas:cas_context()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Errors :: errors_list(), Warnings :: warnings_list()}.
 compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
@@ -287,15 +287,16 @@ get_analysis(Src, CompileOpts, CC) ->
                      end,
     ErlAttrs.
 
--spec resolve_module(string(), #{string() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
-resolve_module(ModuleName, Targets, ModuleIndex) ->
+-spec resolve_module(module(), #{atom() := target()}, module_index()) -> ok | {ok, file:name()} | {warning, term()}.
+resolve_module(Module, Targets, ModuleIndex) ->
     case ModuleIndex of
-        #{ModuleName := OwnerApp} ->
+        #{Module := OwnerApp} ->
             #{OwnerApp := OwnerTarget} = Targets,
-            #{srcs := OwnerSrcs} = OwnerTarget,
+            #{outs := OwnerOuts} = OwnerTarget,
+            OwnerSrcs = lists:filter(fun is_erlang_source/1, OwnerOuts),
             {value, ModuleSrc} = lists:search(
                                    fun (OwnerSrc) ->
-                                           filename:basename(OwnerSrc, ".erl") == ModuleName
+                                           list_to_atom(filename:basename(OwnerSrc, ".erl")) == Module
                                    end, OwnerSrcs),
             {ok, ModuleSrc};
         _ ->
@@ -304,12 +305,12 @@ resolve_module(ModuleName, Targets, ModuleIndex) ->
             %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
 
             %% we also need to look for this module in erl_libs...
-            case code:which(list_to_atom(ModuleName)) of
+            case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
                               "Could not locate source for module ~p.~n",
-                              [ModuleName]),
-                    {warning, {module_not_found, ModuleName}};
+                              [Module]),
+                    {warning, {module_not_found, Module}};
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
@@ -337,9 +338,9 @@ join_resolving_relative(Name1, Name2) ->
             join_resolving_relative(filename:dirname(Name1), R)
     end.
 
--spec resolve_include(file:name(), string(), string(), [string()], #{string() := target()}) ->
+-spec resolve_include(file:name(), string(), [string()], atom(), #{atom() := target()}) ->
           ok | {ok, file:name()} | {warning, term()}.
-resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
+resolve_include(Src, Include, IncludePaths, AppName, Targets) ->
     case string:prefix(Include, os:getenv("ERLANG_HOME")) of
         nomatch ->
             %% Note: since we are working with OriginalSrc, arguably
@@ -348,10 +349,12 @@ resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
             %% was actually done againts the OriginalSrc, so it's
             %% probably fine
             #{AppName := Target} = Targets,
-            #{path := Path, srcs := Srcs} = Target,
-            SearchPaths = [Path, OriginalSrc |
+            #{dest_dir := DestDir, outs := Outs} = Target,
+            Hdrs = lists:filter(fun is_erlang_header/1, Outs),
+            SearchPaths = [DestDir,
+                           filename:dirname(Src) |
                            lists:map(fun (IncludePath) ->
-                                             join_resolving_relative(Path, IncludePath)
+                                             join_resolving_relative(DestDir, IncludePath)
                                      end, IncludePaths)],
 
             ExpectedPaths = lists:map(
@@ -364,17 +367,18 @@ resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
                                       end
                               end, SearchPaths),
 
-            case lists:search(fun (Src) ->
-                                      lists:member(Src, ExpectedPaths)
-                              end, Srcs) of
+            case lists:search(fun (Hdr) ->
+                                      lists:member(Hdr, ExpectedPaths)
+                              end, Hdrs) of
                 {value, IncludeSrc} ->
                     {ok, IncludeSrc};
                 _ ->
                     io:format(standard_error,
                               "Could not locate source for ~p relative to ~p~n"
-                              "  expected at ~p~n",
-                              [Include, OriginalSrc, ExpectedPaths]),
-                    {warning, {include_not_found, OriginalSrc, Include}}
+                              "    expected at ~p~n"
+                              "    in ~p~n",
+                              [Include, Src, ExpectedPaths, Hdrs]),
+                    {warning, {include_not_found, Src, Include}}
             end;
         _ ->
             %% it's unclear to me, if an app loads an otp header, should
@@ -384,7 +388,7 @@ resolve_include(OriginalSrc, Include, IncludePaths, AppName, Targets) ->
     end.
 
 -spec deps(file:name(), src_analysis(), [string()],
-           string(), #{string() := target()},
+           atom(), #{atom() := target()},
            module_index(), cas:cas_context()) -> {ok, [file:name()], [term()]}.
 deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
     #{behaviour := Behaviours,
@@ -396,9 +400,8 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
            fun
                (_, {error, _} = E) ->
                    E;
-               (ModuleNameBinary, {ok, Deps, Warnings}) ->
-                   ModuleName = binary_to_list(ModuleNameBinary),
-                   case resolve_module(ModuleName, Targets, ModuleIndex) of
+               (Module, {ok, Deps, Warnings}) ->
+                   case resolve_module(Module, Targets, ModuleIndex) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, ModuleSrc} ->
@@ -411,8 +414,8 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
            fun
                (_, {error, _} = E) ->
                    E;
-               (IncludeBinary, {ok, Deps, Warnings}) ->
-                   Include = binary_to_list(IncludeBinary),
+               (IncludeBin, {ok, Deps, Warnings}) ->
+                   Include = binary_to_list(IncludeBin),
                    case resolve_include(Src, Include, IncludePaths, AppName, Targets) of
                        ok ->
                            {ok, Deps, Warnings};
@@ -436,14 +439,14 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, ModuleIndex, _CC) ->
             {ok, lists:reverse(Deps), lists:reverse(Warnings)}
     end.
 
--spec beam_file_contents_key(proplists:proplist(), [string()],
+-spec beam_file_contents_key(proplists:proplist(), [file:name()],
                              cas:cas_context()) -> binary().
 beam_file_contents_key(ErlcOpts, Deps, CC) ->
     ErlcOptsBin = term_to_binary(ErlcOpts),
     FilesDigests = cas:digests_in_context(CC, Deps),
     crypto:hash(sha, [ErlcOptsBin | FilesDigests]).
 
--spec app_graph(#{string() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
+-spec app_graph(#{atom() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
 app_graph(Targets, ModuleIndex, CC) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (App) ->
@@ -468,10 +471,9 @@ app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
     #{behaviour := Behaviours,
       parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
-      fun (ModuleBin) ->
-              ModuleString = binary_to_list(ModuleBin),
+      fun (Module) ->
               case ModuleIndex of
-                  #{ModuleString := OtherApp} when OtherApp =/= AppName ->
+                  #{Module := OtherApp} when OtherApp =/= AppName ->
                       io:format(standard_error, "app_graph: adding edge ~p <- ~p~n", [OtherApp, AppName]),
                       digraph:add_edge(G, OtherApp, AppName);
                   _ ->
@@ -480,7 +482,7 @@ app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
       end, Behaviours ++ Transforms),
     app_deps(AppName, Rest, CompileOpts, ModuleIndex, G, CC).
 
--spec src_graph(string(), [string()], [compile:option()], module_index(), cas:cas_context()) -> digraph:graph().
+-spec src_graph(atom(), [file:name()], [compile:option()], module_index(), cas:cas_context()) -> digraph:graph().
 src_graph(AppName, Srcs, CompileOpts, ModuleIndex, CC) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (Src) ->
@@ -495,17 +497,16 @@ src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
     #{behaviour := Behaviours,
       parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
-      fun (ModuleBin) ->
-              ModuleString = binary_to_list(ModuleBin),
+      fun (Module) ->
               %% io:format(standard_error, "BehaviorOrXform: ~p~n", [ModuleString]),
               %% io:format(standard_error, "ModuleIndex: ~p => ~p~n", [ModuleString, maps:find(ModuleString, ModuleIndex)]),
 
               case ModuleIndex of
-                  #{ModuleString := AppName} ->
+                  #{Module := AppName} ->
                       {value, MS} = lists:search(
                                       fun (S) ->
-                                              case filename:basename(S, ".erl") of
-                                                  ModuleString -> true;
+                                              case list_to_atom(filename:basename(S, ".erl")) of
+                                                  Module -> true;
                                                   _ -> false
                                               end
                                       end, Srcs),
@@ -526,15 +527,24 @@ is_erlang_source(F) ->
             false
     end.
 
-add_compile_opts_to_targets(Targets) ->
+is_erlang_header(F) ->
+    case filename:extension(F) of
+        ".hrl" ->
+            true;
+        _ ->
+            false
+    end.
+
+add_compile_opts_and_dest_dir_to_targets(DestDir, Targets) ->
     maps:map(
-      fun (_, #{erlc_opts_file := ErlcOptsFile} = Props) ->
+      fun (AppName, #{erlc_opts_file := ErlcOptsFile} = Props) ->
               ErlcOpts = flags_file:read(ErlcOptsFile),
               CompileOpts0 = compile_opts:transform_erlc_opts(ErlcOpts),
               CompileOpts = [{i, "include"},
                              {i, "src"},
                              {i, "../"} | CompileOpts0],
-              Props#{compile_opts => CompileOpts}
+              Props#{compile_opts => CompileOpts,
+                     dest_dir => filename:join(DestDir, AppName)}
       end, Targets).
 
 add_deps_to_targets(Targets, G) ->

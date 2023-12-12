@@ -106,8 +106,7 @@ beam_file_stats(#?MODULE{beam_file_contents = Table}) ->
 
 -spec digest_in_context(cas_context(), file:name()) -> binary().
 digest_in_context({_, Inputs}, File) ->
-    #{File := Digest} = Inputs,
-    base64:decode(Digest).
+    maps:get(File, Inputs).
 
 -spec digests_in_context(cas_context(), [file:name()]) -> iolist().
 digests_in_context(CC, Files) ->

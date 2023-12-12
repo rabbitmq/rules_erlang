@@ -11,11 +11,11 @@
                     srcs := [string()],
                     outs := [string()]}.
 
--type module_index() :: #{string() := string()}.
+-type module_index() :: #{module() := atom()}.
 
 -type config() :: #{module_index := module_index(),
                     code_paths := [string()],
-                    targets := #{string() := target()}}.
+                    targets := #{atom() := target()}}.
 
 -type warnings_list() :: [{file:name(), [term()]}].
 -type errors_list() :: warnings_list().

@@ -5,7 +5,7 @@ load(
 )
 load("@rules_erlang//compat:rebar.bzl", "erlc_opts_from_rebar_config")
 load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
-load("@rules_erlang//:erlang_app_sources_analysis.bzl", "erlang_app_sources_analysis")
+load("@rules_erlang//:erlang_app_sources.bzl", "erlang_app_sources")
 
 def erlang_autodetect(name = None, testonly = False):
     app_src = None
@@ -44,7 +44,7 @@ def erlang_autodetect(name = None, testonly = False):
             out = "erlc_opts",
         )
 
-    erlang_app_sources_analysis(
+    erlang_app_sources(
         name = "srcs",
         app_name = name,
         app_src = app_src,

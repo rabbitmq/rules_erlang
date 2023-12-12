@@ -34,7 +34,7 @@ injects_modules(Config) ->
     %% bazel normally creates the dest dir for us
     ok = filelib:ensure_dir(Output),
 
-    dot_app_file:render("basic", Target, DestDir),
+    dot_app_file:render(basic, Target, DestDir),
 
     {ok, [{application, basic, Props}]} = file:consult(Output),
 
@@ -67,7 +67,7 @@ injects_applications_if_missing(Config) ->
     %% bazel normally creates the dest dir for us
     ok = filelib:ensure_dir(Output),
 
-    dot_app_file:render("basic2", Target, DestDir),
+    dot_app_file:render(basic2, Target, DestDir),
 
     {ok, [{application, basic2, Props}]} = file:consult(Output),
 
