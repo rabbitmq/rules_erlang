@@ -14,11 +14,17 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
               code_paths := CodePaths,
               targets := Targets} = Config,
 
-            io:format(standard_error,
-                      "Compiling applications: ~p~n",
-                      [maps:keys(Targets)]),
+            CodePathApps = lists:map(
+                             fun (CodePath) ->
+                                     list_to_atom(
+                                       filename:basename(
+                                         filename:dirname(CodePath)))
+                             end, CodePaths),
 
-            %% io:format(standard_error, "ERL_LIBS: ~p~n", [os:getenv("ERL_LIBS")]),
+            io:format(standard_error,
+                      "Available applications on code path: ~p~n"
+                      "Compiling applications: ~p~n",
+                      [CodePathApps, maps:keys(Targets)]),
 
             %% io:format(standard_error, "Targets: ~p~n", [Targets]),
 
@@ -38,7 +44,12 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
             %% io:format(standard_error, "CodePaths: ~p~n", [CodePaths]),
 
-            code:add_paths(CodePaths),
+            AbsCodePaths = lists:map(fun filename:absname/1, CodePaths),
+
+            lists:foreach(
+              fun (CodePath) ->
+                      true = code:add_path(CodePath)
+              end, AbsCodePaths),
             %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
 
             TargetsWithCompileOpts = add_compile_opts_and_dest_dir_to_targets(DestDir, Targets),
@@ -82,15 +93,22 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
             {Modules, _} = R,
             lists:foreach(
-              fun (Module) ->
-                      case code:purge(Module) of
+              fun
+                  (thoas) ->
+                      ok;
+                  (thoas_decode) ->
+                      ok;
+                  (Module) ->
+                      case code:delete(Module) of
                           true ->
-                              code:delete(Module);
+                              ok;
                           _ ->
-                              ok
+                              io:format(standard_error,
+                                        "Could not delete module ~p.~n",
+                                        [Module])
                       end
               end, Modules),
-            code:del_paths(CodePaths),
+            code:del_paths(AbsCodePaths),
 
             #{hits := AH, misses := AM} = cas:src_analysis_stats(CAS),
             ACR = 100 * AH / (AH + AM),
@@ -243,7 +261,10 @@ compile(AppName, Targets, DestDir, ModuleIndex, CC) ->
                       {ok, Module, ModuleBin, W} ->
                           ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
                           ok = file:write_file(ModulePath, ModuleBin),
-                          {module, Module} = code:load_binary(Module, ModulePath, ModuleBin),
+                          {ok, Cwd} = file:get_cwd(),
+                          {module, Module} = code:load_binary(Module,
+                                                              filename:join(Cwd, ModulePath),
+                                                              ModuleBin),
                           {ok, Modules ++ [Module], Warnings ++ W};
                       {error, Errors, W} ->
                           {error, Errors, Warnings ++ W}
@@ -305,6 +326,19 @@ resolve_module(Module, Targets, ModuleIndex) ->
             %% but it's here bazel-out/darwin-fastbuild/bin/external/rules_erlang~override~erlang_config~erlang_config/external/otp-external_version
 
             %% we also need to look for this module in erl_libs...
+            EL = code:ensure_loaded(Module),
+            io:format(standard_error,
+                      "code:ensure_loaded(~p) => ~p~n",
+                      [Module, EL]),
+            %% case Module of
+            %%     gen_batch_server ->
+            %%         LA = code:load_abs("bazel-out/darwin_x86_64-fastbuild/bin/external/rules_erlang~override~erlang_package~erlang_packages/deps/gen_batch_server/ebin/gen_batch_server.beam"),
+            %%         io:format(standard_error,
+            %%                   "code:load_abs(...) => ~p~n",
+            %%                   [LA]);
+            %%     _ ->
+            %%         ok
+            %% end,
             case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
