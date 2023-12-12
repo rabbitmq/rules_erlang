@@ -68,7 +68,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
             R = lists:foldl(
                   fun
-                      (_, {_, {error, _, _} = E}) ->
+                      (_, {_, {error, _, _}} = E) ->
                           E;
                       (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                           #{AppName := Props} = TargetsWithDeps,
@@ -113,7 +113,10 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
             #{hits := AH, misses := AM} = cas:src_analysis_stats(CAS),
             ACR = 100 * AH / (AH + AM),
             #{hits := BH, misses := BM} = cas:beam_file_stats(CAS),
-            BFCR = 100 * BH / (BH + BM),
+            BFCR = case BH + BM of
+                       0 -> 0.0;
+                       _ -> 100 * BH / (BH + BM)
+                   end,
 
             io:format(standard_error,
                       "Compiled ~p modules.~n"
