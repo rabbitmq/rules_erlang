@@ -98,13 +98,22 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                       ok;
                   (thoas_decode) ->
                       ok;
+                  (thoas_encode) ->
+                      ok;
                   (Module) ->
-                      case code:delete(Module) of
+                      case code:purge(Module) of
                           true ->
-                              ok;
+                              case code:delete(Module) of
+                                  true ->
+                                      ok;
+                                  _ ->
+                                      io:format(standard_error,
+                                                "Could not delete module ~p.~n",
+                                                [Module])
+                              end;
                           _ ->
                               io:format(standard_error,
-                                        "Could not delete module ~p.~n",
+                                        "Could not purge module ~p.~n",
                                         [Module])
                       end
               end, Modules),
