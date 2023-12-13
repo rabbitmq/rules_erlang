@@ -368,12 +368,11 @@ join_resolving_relative(Name1, Name2) ->
             join_resolving_relative(filename:dirname(Name1), R)
     end.
 
--spec resolve_include(file:name(), string(), [string()], atom(), #{atom() := target()}) ->
+-spec resolve_include(file:name(), string(), [string()], target()) ->
           ok | {ok, file:name()} | {warning, term()}.
-resolve_include(Src, Include, IncludePaths, AppName, Targets) ->
+resolve_include(Src, Include, IncludePaths, Target) ->
     case string:prefix(Include, os:getenv("ERLANG_HOME")) of
         nomatch ->
-            #{AppName := Target} = Targets,
             #{dest_dir := DestDir, outs := Outs} = Target,
             Hdrs = lists:filter(fun is_erlang_header/1, Outs),
             SearchPaths = [DestDir,
@@ -418,7 +417,8 @@ string_ends_with(String, Suffix) ->
 -spec resolve_include_lib(file:name(), string(), [string()], atom(), #{atom() := target()}, [string()]) ->
           ok | {ok, file:name()} | {warning, term()}.
 resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) ->
-    case resolve_include(Src, IncludeLib, IncludePaths, AppName, Targets) of
+    #{AppName := Target} = Targets,
+    case resolve_include(Src, IncludeLib, IncludePaths, Target) of
         ok ->
             ok;
         {ok, IncludeLibSrc} ->
@@ -428,8 +428,7 @@ resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) 
                 [OtherAppName, Rest] ->
                     OtherApp = list_to_atom(OtherAppName),
                     case Targets of
-                        #{OtherApp := Target} ->
-                            #{outs := Outs} = Target,
+                        #{OtherApp := #{outs := Outs}} ->
                             case lists:search(fun (O) ->
                                                       string_ends_with(O, IncludeLib)
                                               end, Outs) of
@@ -488,7 +487,8 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
                    E;
                (IncludeBin, {ok, Deps, Warnings}) ->
                    Include = binary_to_list(IncludeBin),
-                   case resolve_include(Src, Include, IncludePaths, AppName, Targets) of
+                   #{AppName := Target} = Targets,
+                   case resolve_include(Src, Include, IncludePaths,  Target) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, IncludeSrc} ->
