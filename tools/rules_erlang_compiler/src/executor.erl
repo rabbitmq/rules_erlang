@@ -213,23 +213,17 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
                    Outs),
 
     G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, CC),
-    %% io:format(standard_error, "~p: ~p~n", [AppName, G]),
 
     OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
     %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
     {ok, OldCwd} = file:get_cwd(),
     AppDir = filename:join(DestDir, AppName),
-    %% true = code:add_path(filename:join(AppDir, "ebin")),
     ok = file:set_cwd(AppDir),
-    %% io:format(standard_error, "Changed to ~p~n", [begin {ok, Cwd} = file:get_cwd(), Cwd end]),
     R = lists:foldl(
           fun
               (Src, {ok, Modules, Warnings}) ->
                   SrcRel = string:prefix(Src, AppDir ++ "/"),
-                  %% io:format(standard_error, "\t~s~n", [SrcRel]),
-                  %% TreeOut = os:cmd("/usr/local/bin/tree"),
-                  %% io:format(standard_error, "~s~n", [TreeOut]),
                   ContentsFun = fun () ->
                                         case compile:file(SrcRel, CompileOpts) of
                                             {ok, Module, ModuleBin} ->
@@ -265,9 +259,8 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
                       {ok, Module, ModuleBin, W} ->
                           ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
                           ok = file:write_file(ModulePath, ModuleBin),
-                          {ok, Cwd} = file:get_cwd(),
                           {module, Module} = code:load_binary(Module,
-                                                              filename:join(Cwd, ModulePath),
+                                                              filename:absname(ModulePath),
                                                               ModuleBin),
                           {ok, Modules ++ [Module], Warnings ++ W};
                       {error, Errors, W} ->
@@ -348,7 +341,6 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                 Path ->
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
-                            %% io:format(standard_error, "code:which ~p~n", [Path]),
                             case find_in_code_paths(Path, CodePaths) of
                                 error ->
                                     {warning, {module_not_found, Module}};
@@ -531,9 +523,6 @@ src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
       parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
       fun (Module) ->
-              %% io:format(standard_error, "BehaviorOrXform: ~p~n", [ModuleString]),
-              %% io:format(standard_error, "ModuleIndex: ~p => ~p~n", [ModuleString, maps:find(ModuleString, ModuleIndex)]),
-
               case ModuleIndex of
                   #{Module := AppName} ->
                       {value, MS} = lists:search(
@@ -543,7 +532,7 @@ src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
                                                   _ -> false
                                               end
                                       end, Srcs),
-                      %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
+                      io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
                       digraph:add_edge(G, MS, Src);
                   _ ->
                       ok
@@ -587,7 +576,6 @@ add_deps_to_targets(Targets, [], _ ) ->
     Targets;
 add_deps_to_targets(Targets0, [V | Rest], G) ->
     Edges = digraph:edges(G, V),
-    %% io:format(standard_error, "V: ~p, Edges: ~p~n", [V, Edges]),
     Targets = add_deps_to_targets(Targets0, V, Edges, G),
     add_deps_to_targets(Targets, Rest, G).
 
@@ -596,11 +584,9 @@ add_deps_to_targets(Targets, _, [], _) ->
 add_deps_to_targets(Targets, V, [E | Rest], G) ->
     {E, Dep, Dependent, _ } = digraph:edge(G, E),
     #{Dependent := Target0} = Targets,
-    %% io:format(standard_error, "~p <- ~p~n", [Dep, Dependent]),
     Target = maps:update_with(deps,
                               fun (S) ->
                                       sets:add_element(Dep, S)
                               end,
                               sets:new(), Target0),
-    %% io:format(standard_error, "Target: ~p~n", [Target]),
     add_deps_to_targets(Targets#{Dependent := Target}, V, Rest, G).
