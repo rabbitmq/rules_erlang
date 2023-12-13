@@ -398,18 +398,65 @@ resolve_include(Src, Include, IncludePaths, AppName, Targets) ->
                 {value, IncludeSrc} ->
                     {ok, IncludeSrc};
                 _ ->
-                    io:format(standard_error,
-                              "Could not locate source for ~p relative to ~p~n"
-                              "    expected at ~p~n"
-                              "    in ~p~n",
-                              [Include, Src, ExpectedPaths, Hdrs]),
-                    {warning, {include_not_found, Src, Include}}
+                    {warning, {include_not_found, Src, Include, ExpectedPaths, Hdrs}}
             end;
         _ ->
             %% it's unclear to me, if an app loads an otp header, should
             %% the otp app be part of extra_apps? I think not, as that
             %% would appear to be more of a runtime thing
             ok
+    end.
+
+string_ends_with(String, Suffix) ->
+    case string:split(String, Suffix, trailing) of
+        [_, []] ->
+            true;
+        _ ->
+            false
+    end.
+
+-spec resolve_include_lib(file:name(), string(), [string()], atom(), #{atom() := target()}, [string()]) ->
+          ok | {ok, file:name()} | {warning, term()}.
+resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) ->
+    case resolve_include(Src, IncludeLib, IncludePaths, AppName, Targets) of
+        ok ->
+            ok;
+        {ok, IncludeLibSrc} ->
+            {ok, IncludeLibSrc};
+        {warning, _} ->
+            case string:split(IncludeLib, "/") of
+                [OtherAppName, Rest] ->
+                    OtherApp = list_to_atom(OtherAppName),
+                    case Targets of
+                        #{OtherApp := Target} ->
+                            #{outs := Outs} = Target,
+                            case lists:search(fun (O) ->
+                                                      string_ends_with(O, IncludeLib)
+                                              end, Outs) of
+                                {value, Out} ->
+                                    {ok, Out};
+                                _ ->
+                                    {warning, {include_lib_missing, Src, IncludeLib}}
+                            end;
+                        _ ->
+                            case lists:search(
+                                   fun (CP) ->
+                                           filename:basename(filename:dirname(CP)) == OtherAppName
+                                   end, CodePaths) of
+                                {value, CodePath} ->
+                                    IncludeLibSrc = filename:join(filename:dirname(CodePath), Rest),
+                                    %% Note: we haven't validated this file actually exists, the code
+                                    %%       path is relative, and we are not in the original directory
+                                    %%       anymore
+                                    {ok, IncludeLibSrc};
+                                _ ->
+                                    {warning, {include_lib_application_missing, Src, IncludeLib, OtherAppName}}
+                            end
+                    end;
+                R ->
+                    io:format(standard_error, "R: ~p~n", [R]),
+                    {warning, {include_lib_does_not_begin_with_application, Src, IncludeLib}}
+            end
     end.
 
 -spec deps(file:name(), src_analysis(), [string()],
@@ -446,7 +493,12 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
                            {ok, Deps, Warnings};
                        {ok, IncludeSrc} ->
                            {ok, [IncludeSrc | Deps], Warnings};
-                       {warning, W} ->
+                       {warning, {include_not_found, Src, Include, ExpectedPaths, Hdrs} = W} ->
+                           io:format(standard_error,
+                                     "Could not locate source for -include(~p) relative to ~p~n"
+                                     "    expected at ~p~n"
+                                     "    in ~p~n",
+                                     [Include, Src, ExpectedPaths, Hdrs]),
                            {ok, Deps, [W | Warnings]}
                    end
            end, R1, Includes),
@@ -454,10 +506,19 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
           fun
               (_, {error, _} = E) ->
                   E;
-              (IncludeLib, {ok, _Deps, _Warnings} = Acc) ->
-                  io:format(standard_error,
-                            "IncludeLib: ~p~n", [IncludeLib]),
-                  Acc
+              (IncludeLibBin, {ok, Deps, Warnings}) ->
+                  IncludeLib = binary_to_list(IncludeLibBin),
+                  case resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) of
+                      ok ->
+                          {ok, Deps, Warnings};
+                      {ok, IncludeSrc} ->
+                          {ok, [IncludeSrc | Deps], Warnings};
+                      {warning, W} ->
+                          io:format(standard_error,
+                                    "Could not locate source for -include_lib(~p) relative to ~p~n",
+                                    [IncludeLib, Src]),
+                          {ok, Deps, [W | Warnings]}
+                  end
           end, R2, IncludeLibs),
     case R of
         {ok, Deps, Warnings} ->
@@ -532,7 +593,7 @@ src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
                                                   _ -> false
                                               end
                                       end, Srcs),
-                      io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
+                      %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
                       digraph:add_edge(G, MS, Src);
                   _ ->
                       ok
