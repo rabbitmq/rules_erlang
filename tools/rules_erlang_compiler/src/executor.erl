@@ -552,7 +552,6 @@ app_deps(_, [], _, _, _, _) ->
     ok;
 app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
     ErlAttrs = get_analysis(SrcFile, CompileOpts, CC),
-    %% ErlAttrs = cas:get_analysis_file_contents(AnalysisFile, CC),
 
     #{behaviour := Behaviours,
       parse_transform := Transforms} = ErlAttrs,
