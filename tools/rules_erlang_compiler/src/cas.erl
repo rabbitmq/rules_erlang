@@ -110,7 +110,15 @@ digest_in_context({_, Inputs}, File) ->
 
 -spec digests_in_context(cas_context(), [file:name()]) -> iolist().
 digests_in_context(CC, Files) ->
-    lists:map(
+    lists:filtermap(
       fun (File) ->
-              digest_in_context(CC, File)
+              case digest_in_context(CC, File) of
+                  {badkey, _} ->
+                      io:format(standard_error,
+                                "Warning: File ~p is not among the action's inputs.~n",
+                                [File]),
+                      false;
+                  Digest ->
+                      {true, Digest}
+              end
       end, Files).
