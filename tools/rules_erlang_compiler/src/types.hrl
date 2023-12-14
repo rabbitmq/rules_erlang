@@ -1,6 +1,7 @@
 -type request_args() :: #{targets_file := string()}.
+-type inputs() :: #{file:name() := binary()}.
 -type request() :: #{arguments := request_args(),
-                     inputs := #{file:name() := binary()},
+                     inputs := inputs(),
                      request_id => integer()}.
 
 -type response() :: #{exit_code := integer(), output := string()}.

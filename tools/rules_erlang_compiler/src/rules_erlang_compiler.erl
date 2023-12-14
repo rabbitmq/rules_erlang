@@ -16,18 +16,16 @@ main(["--persistent_worker"]) ->
             ok
     end,
     io:format(standard_error, "Worker started.~n", []),
-    CAS = cas:new(),
-    worker_loop(CAS),
-    cas:destroy(CAS);
+    {ok, _} = cas:start_link(),
+    worker_loop();
 main(["@" ++ FlagsFilePath]) ->
-    CAS = cas:new(),
+    {ok, _} = cas:start_link(),
     RawRequest = #{<<"arguments">> => flags_file:read(FlagsFilePath),
                    <<"inputs">> => []},
     Request = conform_request(RawRequest),
     %% io:format(standard_error, "One Shot Request: ~p~n", [Request]),
     #{exit_code := ExitCode,
-      output := Output} = executor:execute(Request, CAS),
-    cas:destroy(CAS),
+      output := Output} = executor:execute(Request),
     case ExitCode of
         0 ->
             io:format(standard_error, "~s", [Output]),
@@ -39,7 +37,7 @@ main(["@" ++ FlagsFilePath]) ->
 main([]) ->
     exit(1).
 
-worker_loop(CAS) ->
+worker_loop() ->
     case io:get_line("") of
         eof ->
             ok;
@@ -52,12 +50,12 @@ worker_loop(CAS) ->
                       "Request received with ~p inputs.~n",
                       [maps:size(Inputs)]),
             %% io:format(standard_error, "Request: ~p~n", [Request]),
-            Response = executor:execute(Request, CAS),
+            Response = executor:execute(Request),
             %% io:format(standard_error, "Map: ~p~n", [Map]),
             Json = thoas:encode(conform_response(Response)),
             io:format("~ts~n", [Json]),
             %% we should have the cas evict old stuff now
-            worker_loop(CAS)
+            worker_loop()
     end.
 
 -spec conform_request(thoas:json_term()) -> request().

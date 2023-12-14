@@ -4,10 +4,10 @@
 
 -include("types.hrl").
 
--export([execute/2]).
+-export([execute/1]).
 
--spec execute(request(), cas:cas()) -> response().
-execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS) ->
+-spec execute(request()) -> response().
+execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
     case config_file:read(ConfigJsonPath) of
         {ok, Config} ->
             #{module_index := ModuleIndex,
@@ -35,7 +35,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
             {DestDir, MappedInputs} = clone_sources(Targets, Inputs),
 
-            CC = cas:context(CAS, MappedInputs),
+            %% CC = cas:context(CAS, MappedInputs),
 
             %% io:format(standard_error, "DestDir: ~p~n", [DestDir]),
 
@@ -54,7 +54,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
 
             TargetsWithCompileOpts = add_compile_opts_and_dest_dir_to_targets(DestDir, Targets),
 
-            G = app_graph(TargetsWithCompileOpts, ModuleIndex, CC),
+            G = app_graph(TargetsWithCompileOpts, ModuleIndex, MappedInputs),
 
             TargetsWithDeps = add_deps_to_targets(TargetsWithCompileOpts, G),
             % lets update the targets with the deps, before we consume the graph, so that
@@ -72,7 +72,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
                           E;
                       (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                           #{AppName := Props} = TargetsWithDeps,
-                          R = case compile(AppName, TargetsWithDeps, DestDir, CodePaths, ModuleIndex, CC) of
+                          R = case compile(AppName, TargetsWithDeps, DestDir, CodePaths, ModuleIndex, MappedInputs) of
                                   {ok, M, []} ->
                                       {ModulesSoFar ++ M, {ok, Warnings}};
                                   {ok, M, W} ->
@@ -119,9 +119,9 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}, CAS
               end, Modules),
             code:del_paths(AbsCodePaths),
 
-            #{hits := AH, misses := AM} = cas:src_analysis_stats(CAS),
+            #{hits := AH, misses := AM} = cas:src_analysis_stats(),
             ACR = 100 * AH / (AH + AM),
-            #{hits := BH, misses := BM} = cas:beam_file_stats(CAS),
+            #{hits := BH, misses := BM} = cas:beam_file_stats(),
             BFCR = case BH + BM of
                        0 -> 0.0;
                        _ -> 100 * BH / (BH + BM)
@@ -182,7 +182,7 @@ clone_app(#{srcs := Srcs, outs := Outs}, Inputs, MappedInputs0) ->
                       end, Outs),
     {filename:dirname(filename:dirname(Beam)), MappedInputs}.
 
--spec clone_sources(#{atom() := target()}, #{file:name() := binary()}) -> {string(), #{file:name() := binary()}}.
+-spec clone_sources(#{atom() := target()}, inputs()) -> {string(), inputs()}.
 clone_sources(Targets, Inputs) ->
     maps:fold(
       fun
@@ -195,14 +195,11 @@ clone_sources(Targets, Inputs) ->
                   {DestDir, MappedInputs}
       end, {unknown, Inputs}, Targets).
 
--spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), cas:cas_context()) ->
+-spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), inputs()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Errors :: errors_list(), Warnings :: warnings_list()}.
-compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
-    #{AppName := #{compile_opts := CompileOpts0,
-                   outs := Outs}} = Targets,
-
-    CAS = cas:uncontext(CC),
+compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
+    #{AppName := #{compile_opts := CompileOpts0, outs := Outs}} = Targets,
 
     CompileOpts = [{outdir, "ebin"},
                    binary,
@@ -217,11 +214,9 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
                              false
                      end, CompileOpts),
 
-    CopiedSrcs = lists:filter(
-                   fun is_erlang_source/1,
-                   Outs),
+    CopiedSrcs = lists:filter(fun is_erlang_source/1, Outs),
 
-    G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, CC),
+    G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, MappedInputs),
 
     OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
     %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
@@ -241,28 +236,28 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
                                                 R
                                         end
                                 end,
-                  Contents = case cas:has_inputs(CC) of
-                                 true ->
-                                     ErlAttrs = get_analysis(Src, CompileOpts0, CC),
+                  Contents = case maps:size(MappedInputs) of
+                                 0 ->
+                                     ContentsFun();
+                                 _ ->
+                                     ErlAttrs = get_analysis(Src, CompileOpts0, MappedInputs),
                                      case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) of
                                          {ok, Deps, []} ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           Deps,
-                                                                          CC),
-                                             cas:get_beam_file_contents(Key, ContentsFun, CAS);
+                                                                          MappedInputs),
+                                             cas:get_beam_file_contents(Key, ContentsFun);
                                          {ok, Deps, DepsWarnings} ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           Deps,
-                                                                          CC),
-                                             case cas:get_beam_file_contents(Key, ContentsFun, CAS) of
+                                                                          MappedInputs),
+                                             case cas:get_beam_file_contents(Key, ContentsFun) of
                                                  {ok, M, MB, CW} ->
                                                      {ok, M, MB, [{Src, DepsWarnings} | CW]};
                                                  {error, E, CW} ->
                                                      {error, E, [{Src, DepsWarnings} | CW]}
                                              end
-                                     end;
-                                 false ->
-                                     ContentsFun()
+                                     end
                              end,
                   case Contents of
                       {ok, Module, ModuleBin, W} ->
@@ -281,8 +276,8 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, CC) ->
     ok = file:set_cwd(OldCwd),
     R.
 
--spec get_analysis(file:name(), [compile:option()], cas:cas_context()) -> src_analysis().
-get_analysis(Src, CompileOpts, CC) ->
+-spec get_analysis(file:name(), [compile:option()], inputs()) -> src_analysis().
+get_analysis(Src, CompileOpts, MappedInputs) ->
     ContentsFun = fun() ->
                           Macros = lists:filtermap(
                                      fun
@@ -302,15 +297,14 @@ get_analysis(Src, CompileOpts, CC) ->
                                        end, CompileOpts),
                           erl_attrs_to_json:parse(Src, Macros, Includes)
                   end,
-    {ok, ErlAttrs} = case cas:has_inputs(CC) of
-                         true ->
+    {ok, ErlAttrs} = case maps:size(MappedInputs) of
+                         0 ->
+                             ContentsFun();
+                         _ ->
                              ErlcOptsBin = term_to_binary(CompileOpts),
-                             Digest = cas:digest_in_context(CC, Src),
+                             Digest = maps:get(Src, MappedInputs),
                              Key = crypto:hash(sha, [ErlcOptsBin, Digest]),
-                             CAS = cas:uncontext(CC),
-                             cas:get_analysis(Key, ContentsFun, CAS);
-                         false ->
-                             ContentsFun()
+                             cas:get_analysis(Key, ContentsFun)
                      end,
     ErlAttrs.
 
@@ -535,32 +529,43 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
     end.
 
 -spec beam_file_contents_key(proplists:proplist(), [file:name()],
-                             cas:cas_context()) -> binary().
-beam_file_contents_key(ErlcOpts, Deps, CC) ->
+                             inputs()) -> binary().
+beam_file_contents_key(ErlcOpts, Deps, MappedInputs) ->
     ErlcOptsBin = term_to_binary(ErlcOpts),
-    FilesDigests = cas:digests_in_context(CC, Deps),
+    FilesDigests = lists:filtermap(
+                     fun (File) ->
+                             case MappedInputs of
+                                 #{File := Digest} ->
+                                     {true, Digest};
+                                 _ ->
+                                     io:format(standard_error,
+                                               "Warning: File ~p is not among the action's inputs.~n",
+                                               [File]),
+                                     false
+                             end
+                     end, Deps),
     crypto:hash(sha, [ErlcOptsBin | FilesDigests]).
 
--spec app_graph(#{atom() := target()}, module_index(), cas:cas_context()) -> digraph:graph().
-app_graph(Targets, ModuleIndex, CC) ->
+-spec app_graph(#{atom() := target()}, module_index(), inputs()) -> digraph:graph().
+app_graph(Targets, ModuleIndex, MappedInputs) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (App) ->
                       digraph:add_vertex(G, App)
                   end, maps:keys(Targets)),
-    app_graph(maps:keys(Targets), Targets, ModuleIndex, G, CC).
+    app_graph(maps:keys(Targets), Targets, ModuleIndex, G, MappedInputs).
 
 app_graph([], _, _, G, _) ->
     G;
-app_graph([App | Rest], Targets, ModuleIndex, G, CC) ->
+app_graph([App | Rest], Targets, ModuleIndex, G, MappedInputs) ->
     #{App := #{compile_opts := CompileOpts, outs := Outs}} = Targets,
     CopiedSrcs = lists:filter(fun is_erlang_source/1, Outs),
-    app_deps(App, CopiedSrcs, CompileOpts, ModuleIndex, G, CC),
-    app_graph(Rest, Targets, ModuleIndex, G, CC).
+    app_deps(App, CopiedSrcs, CompileOpts, ModuleIndex, G, MappedInputs),
+    app_graph(Rest, Targets, ModuleIndex, G, MappedInputs).
 
 app_deps(_, [], _, _, _, _) ->
     ok;
-app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
-    ErlAttrs = get_analysis(SrcFile, CompileOpts, CC),
+app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, MappedInputs) ->
+    ErlAttrs = get_analysis(SrcFile, CompileOpts, MappedInputs),
 
     #{behaviour := Behaviours,
       parse_transform := Transforms} = ErlAttrs,
@@ -574,20 +579,20 @@ app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, CC) ->
                       ok
               end
       end, Behaviours ++ Transforms),
-    app_deps(AppName, Rest, CompileOpts, ModuleIndex, G, CC).
+    app_deps(AppName, Rest, CompileOpts, ModuleIndex, G, MappedInputs).
 
--spec src_graph(atom(), [file:name()], [compile:option()], module_index(), cas:cas_context()) -> digraph:graph().
-src_graph(AppName, Srcs, CompileOpts, ModuleIndex, CC) ->
+-spec src_graph(atom(), [file:name()], [compile:option()], module_index(), inputs()) -> digraph:graph().
+src_graph(AppName, Srcs, CompileOpts, ModuleIndex, MappedInputs) ->
     G = digraph:new([acyclic]),
     lists:foreach(fun (Src) ->
                           digraph:add_vertex(G, Src)
                   end, Srcs),
-    src_graph(AppName, Srcs, Srcs, CompileOpts, ModuleIndex, G, CC).
+    src_graph(AppName, Srcs, Srcs, CompileOpts, ModuleIndex, G, MappedInputs).
 
 src_graph(_, [], _, _, _, G, _) ->
     G;
-src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
-    ErlAttrs = get_analysis(Src, CompileOpts, CC),
+src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, MappedInputs) ->
+    ErlAttrs = get_analysis(Src, CompileOpts, MappedInputs),
     #{behaviour := Behaviours,
       parse_transform := Transforms} = ErlAttrs,
     lists:foreach(
@@ -608,7 +613,7 @@ src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, CC) ->
               end
       end, Behaviours ++ Transforms),
 
-    src_graph(AppName, Rest, Srcs, CompileOpts, ModuleIndex, G, CC).
+    src_graph(AppName, Rest, Srcs, CompileOpts, ModuleIndex, G, MappedInputs).
 
 is_erlang_source(F) ->
     case filename:extension(F) of
