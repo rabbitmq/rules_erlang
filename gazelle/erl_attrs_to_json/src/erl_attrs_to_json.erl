@@ -236,7 +236,17 @@ parse(File, Macros, Includes) ->
             lists:foreach(fun (Form) -> note_form(E, File, Form) end, Forms),
             deps(E);
         {error, Reason} ->
-            io:format(standard_error, "~s: error opening ~s: ~p~n",
-                      [filename:basename(escript:script_name()), File, Reason]),
+            io:format(standard_error,
+                      "~s: error opening ~s: ~p~n",
+                      [script_name(), File, Reason]),
             null
+    end.
+
+script_name() ->
+    try escript:script_name() of
+        Name ->
+            filename:basename(Name)
+    catch
+        _:_ ->
+            atom_to_list(?MODULE)
     end.

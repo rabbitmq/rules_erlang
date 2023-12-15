@@ -36,7 +36,7 @@ conform_command(_) ->
          includes => ["/some/path"]},
        erl_attrs_to_json:conform_command(Command2Decoded)).
 
-basic(_) ->
+basic(Config) ->
     ?assertEqual(
        #{
          include_lib => [],
@@ -51,7 +51,9 @@ basic(_) ->
                    some_other_lib => [bar, baz, fizz]
                   }
         },
-       erl_attrs_to_json:parse(fixture_path("test/basic.erl"), [], ["test"])),
+       erl_attrs_to_json:parse(
+         filename:join([?config(data_dir, Config), "basic.erl"]),
+         [], ["test"])),
     ?assertEqual(
        #{
          include_lib => [<<"some_lib/include/some_header.hrl">>],
@@ -66,9 +68,11 @@ basic(_) ->
                    some_other_lib => [bar, baz, fizz]
                   }
         },
-       erl_attrs_to_json:parse(fixture_path("test/basic.erl"), ['TEST'], ["test"])).
+       erl_attrs_to_json:parse(
+         filename:join([?config(data_dir, Config), "basic.erl"]),
+         ['TEST'], ["test"])).
 
-test_src(_) ->
+test_src(Config) ->
    ?assertMatch(
       #{
         include_lib := [<<"proper/include/proper.hrl">>],
@@ -77,10 +81,6 @@ test_src(_) ->
          proper := [counterexample]
         }
        },
-      erl_attrs_to_json:parse(fixture_path("test/test.erl"), ['TEST'], ["test"])).
-
-fixture_path(File) ->
-    filename:join([os:getenv("TEST_SRCDIR"),
-                   os:getenv("TEST_WORKSPACE"),
-                   "erl_attrs_to_json",
-                   File]).
+      erl_attrs_to_json:parse(
+        filename:join([?config(data_dir, Config), "test.erl"]),
+        ['TEST'], ["test"])).

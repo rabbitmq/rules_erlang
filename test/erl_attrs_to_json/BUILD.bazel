@@ -39,11 +39,6 @@ dialyze(
 ct_suite(
     name = "erl_attrs_to_json_SUITE",
     size = "small",
-    data = [
-        "test/basic.hrl",
-        "test/basic.erl",
-        "test/test.erl",
-    ],
     deps = [
         "@thoas//:erlang_app",
     ],
