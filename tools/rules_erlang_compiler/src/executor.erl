@@ -78,14 +78,14 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                   {ok, M, W} ->
                                       {ModulesSoFar ++ M, {ok,
                                                            Warnings ++ [{AppName, W}]}};
-                                  {error, Errors, []} ->
-                                      {ModulesSoFar, {error,
-                                                      {AppName, Errors},
-                                                      Warnings}};
-                                  {error, Errors, W} ->
-                                      {ModulesSoFar, {error,
-                                                      {AppName, Errors},
-                                                      Warnings ++ [{AppName, W}]}}
+                                  {error, M, Errors, []} ->
+                                      {ModulesSoFar ++ M, {error,
+                                                           {AppName, Errors},
+                                                           Warnings}};
+                                  {error, M, Errors, W} ->
+                                      {ModulesSoFar ++ M, {error,
+                                                           {AppName, Errors},
+                                                           Warnings ++ [{AppName, W}]}}
                               end,
                           dot_app_file:render(AppName, Props, DestDir),
                           R
@@ -197,7 +197,7 @@ clone_sources(Targets, Inputs) ->
 
 -spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), inputs()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
-          {error, Errors :: errors_list(), Warnings :: warnings_list()}.
+          {error, Modules :: [module()], Errors :: errors_list(), Warnings :: warnings_list()}.
 compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     #{AppName := #{compile_opts := CompileOpts0, outs := Outs}} = Targets,
 
@@ -268,7 +268,7 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
                                                               ModuleBin),
                           {ok, Modules ++ [Module], Warnings ++ W};
                       {error, Errors, W} ->
-                          {error, Errors, Warnings ++ W}
+                          {error, Modules, Errors, Warnings ++ W}
                   end;
               (_, E) ->
                   E
