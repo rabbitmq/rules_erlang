@@ -61,6 +61,8 @@ find_execroot(Dir, Parent) ->
     case {filename:basename(Dir), filename:basename(Parent)} of
         {"_main", "execroot"} ->
             {ok, Dir};
+        {"_main", "bazel-working-directory"} ->
+            {ok, Dir};
         _ ->
             find_execroot(filename:dirname(Dir), filename:dirname(Parent))
     end.
