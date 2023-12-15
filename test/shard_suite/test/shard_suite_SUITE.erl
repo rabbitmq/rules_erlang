@@ -89,5 +89,14 @@ to_ct_run_args(_) ->
                    shard_suite:to_ct_run_args(SuiteModule,
                                               shard_suite:flatten_shard(ShardThree)))).
 
+%% errors for missing groups are build into otp 26.2
+%% but since we test with otp 25.x as well, we can
+%% use 25.x for testing the old behaviour in
+%% rules_erlang
+-if(?OTP_RELEASE >= 25).
+when_all_references_missing_group(_) ->
+    ok.
+-else.
 when_all_references_missing_group(_) ->
     ?assertThrow(missing_group, shard_suite:structure(example_suite_missing_group)).
+-endif.
