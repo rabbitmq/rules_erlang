@@ -13,8 +13,7 @@ main([CoverdataFile, LcovFile]) ->
 
     AppsDirPaths = string:split(os:getenv("COVERDATA_TO_LCOV_APPS_DIRS", "apps"), ":"),
 
-    {ok, Cwd} = file:get_cwd(),
-    {ok, ExecRoot} = find_execroot(Cwd),
+    ExecRoot = os:getenv("ROOT"),
 
     ok = cover:import(CoverdataFile),
     Modules = cover:imported_modules(),
@@ -51,21 +50,6 @@ main([CoverdataFile, LcovFile]) ->
       end, Modules),
     file:close(S),
     io:format(standard_error, "~s: done.~n", [ScriptName]).
-
-find_execroot(Dir) ->
-    find_execroot(Dir, filename:dirname(Dir)).
-
-find_execroot("/", "/") ->
-    not_found;
-find_execroot(Dir, Parent) ->
-    case {filename:basename(Dir), filename:basename(Parent)} of
-        {"_main", "execroot"} ->
-            {ok, Dir};
-        {"_main", "bazel-working-directory"} ->
-            {ok, Dir};
-        _ ->
-            find_execroot(filename:dirname(Dir), filename:dirname(Parent))
-    end.
 
 guess_source_file([], _, _) ->
     not_found;
