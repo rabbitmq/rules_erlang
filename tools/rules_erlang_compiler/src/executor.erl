@@ -5,6 +5,7 @@
 -include("types.hrl").
 
 -export([execute/1]).
+-export([compile_apps/7]).
 
 -spec execute(request()) -> response().
 execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
@@ -66,90 +67,95 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
 
             %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
 
-            R = lists:foldl(
-                  fun
-                      (_, {_, {error, _, _}} = E) ->
-                          E;
-                      (AppName, {ModulesSoFar, {ok, Warnings}}) ->
-                          #{AppName := Props} = TargetsWithDeps,
-                          R = case compile(AppName, TargetsWithDeps, DestDir, CodePaths, ModuleIndex, MappedInputs) of
-                                  {ok, M, []} ->
-                                      {ModulesSoFar ++ M, {ok, Warnings}};
-                                  {ok, M, W} ->
-                                      {ModulesSoFar ++ M, {ok,
-                                                           Warnings ++ [{AppName, W}]}};
-                                  {error, M, Errors, []} ->
-                                      {ModulesSoFar ++ M, {error,
-                                                           {AppName, Errors},
-                                                           Warnings}};
-                                  {error, M, Errors, W} ->
-                                      {ModulesSoFar ++ M, {error,
-                                                           {AppName, Errors},
-                                                           Warnings ++ [{AppName, W}]}}
-                              end,
-                          dot_app_file:render(AppName, Props, DestDir),
-                          R
-                  end, {[], {ok, []}}, AppCompileOrder),
+            process_flag(trap_exit, true),
+            CompilerPid = spawn_link(node(),
+                                     ?MODULE, compile_apps, [self(),
+                                                             AppCompileOrder,
+                                                             TargetsWithDeps,
+                                                             DestDir,
+                                                             CodePaths,
+                                                             ModuleIndex,
+                                                             MappedInputs]),
+            %% ExecutorPid = self(),
+            %% CompilerPid = spawn_link(
+            %%                 fun () ->
+            %%                         compile_apps(ExecutorPid,
+            %%                                      AppCompileOrder,
+            %%                                      TargetsWithDeps,
+            %%                                      DestDir,
+            %%                                      CodePaths,
+            %%                                      ModuleIndex,
+            %%                                      MappedInputs)
+            %%                 end),
+            receive
+                {Modules, _} = R ->
+                    receive
+                        {'EXIT', CompilerPid, normal} ->
+                            io:format(standard_error,
+                                      "Compiler process finished.~n", [])
+                    end,
+                    lists:foreach(
+                      fun
+                          (thoas) ->
+                                         ok;
+                          (thoas_decode) ->
+                                         ok;
+                          (thoas_encode) ->
+                                         ok;
+                          (Module) ->
+                                         case code:purge(Module) of
+                                             true ->
+                                                 case code:delete(Module) of
+                                                     true ->
+                                                         ok;
+                                                     _ ->
+                                                         io:format(standard_error,
+                                                                   "Could not delete module ~p.~n",
+                                                                   [Module])
+                                                 end;
+                                             _ ->
+                                                 io:format(standard_error,
+                                                           "Could not purge module ~p.~n",
+                                                           [Module])
+                                         end
+                                 end, Modules),
+                    code:del_paths(AbsCodePaths),
 
-            {Modules, _} = R,
-            lists:foreach(
-              fun
-                  (thoas) ->
-                      ok;
-                  (thoas_decode) ->
-                      ok;
-                  (thoas_encode) ->
-                      ok;
-                  (Module) ->
-                      case code:purge(Module) of
-                          true ->
-                              case code:delete(Module) of
-                                  true ->
-                                      ok;
-                                  _ ->
-                                      io:format(standard_error,
-                                                "Could not delete module ~p.~n",
-                                                [Module])
-                              end;
-                          _ ->
-                              io:format(standard_error,
-                                        "Could not purge module ~p.~n",
-                                        [Module])
-                      end
-              end, Modules),
-            code:del_paths(AbsCodePaths),
+                    #{hits := AH, misses := AM} = cas:src_analysis_stats(),
+                    ACR = 100 * AH / (AH + AM),
+                    #{hits := BH, misses := BM} = cas:beam_file_stats(),
+                    BFCR = case BH + BM of
+                               0 -> 0.0;
+                               _ -> 100 * BH / (BH + BM)
+                           end,
 
-            #{hits := AH, misses := AM} = cas:src_analysis_stats(),
-            ACR = 100 * AH / (AH + AM),
-            #{hits := BH, misses := BM} = cas:beam_file_stats(),
-            BFCR = case BH + BM of
-                       0 -> 0.0;
-                       _ -> 100 * BH / (BH + BM)
-                   end,
+                    io:format(standard_error,
+                              "Compiled ~p modules.~n"
+                              "Analysis Cache Hit Rate: ~.1f%~n"
+                              "Beam File Cache Hit Rate: ~.1f%~n"
+                              "~n",
+                              [length(Modules), ACR, BFCR]),
 
-            io:format(standard_error,
-                      "Compiled ~p modules.~n"
-                      "Analysis Cache Hit Rate: ~.1f%~n"
-                      "Beam File Cache Hit Rate: ~.1f%~n"
-                      "~n",
-                      [length(Modules), ACR, BFCR]),
-
-            case R of
-                {_, {error, Errors, _}} ->
-                    #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
-                                                              "Errors: ~p~n",
-                                                              [Errors])};
-                {Modules, {ok, []}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                              "Analysis Cache Hit Rate: ~.1f%~n"
-                                                              "Beam File Cache Hit Rate: ~.1f%~n",
-                                                              [length(Modules), ACR, BFCR])};
-                {Modules, {ok, Warnings}} ->
-                    #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                              "Analysis Cache Hit Rate: ~.1f%~n"
-                                                              "Beam File Cache Hit Rate: ~.1f%~n"
-                                                              "Warnings: ~p~n",
-                                                              [length(Modules), ACR, BFCR, Warnings])}
+                    case R of
+                        {_, {error, Errors, _}} ->
+                            #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
+                                                                      "Errors: ~p~n",
+                                                                      [Errors])};
+                        {Modules, {ok, []}} ->
+                            #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
+                                                                      "Analysis Cache Hit Rate: ~.1f%~n"
+                                                                      "Beam File Cache Hit Rate: ~.1f%~n",
+                                                                      [length(Modules), ACR, BFCR])};
+                        {Modules, {ok, Warnings}} ->
+                            #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
+                                                                      "Analysis Cache Hit Rate: ~.1f%~n"
+                                                                      "Beam File Cache Hit Rate: ~.1f%~n"
+                                                                      "Warnings: ~p~n",
+                                                                      [length(Modules), ACR, BFCR, Warnings])}
+                    end
+            after 600_000 ->
+                    #{exit_code => 1,
+                      output => "Compilation timed out.~n"}
             end;
         {error, Reason} ->
             #{exit_code => 1,
@@ -194,6 +200,35 @@ clone_sources(Targets, Inputs) ->
                   DestDir = filename:dirname(AppDest),
                   {DestDir, MappedInputs}
       end, {unknown, Inputs}, Targets).
+
+-spec compile_apps(pid(), [module()], #{atom() := target()}, string(), [string()], module_index(), inputs()) -> ok.
+compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
+    R = lists:foldl(
+          fun
+              (_, {_, {error, _, _}} = E) ->
+                           E;
+              (AppName, {ModulesSoFar, {ok, Warnings}}) ->
+                           #{AppName := Props} = Targets,
+                           R = case compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) of
+                                   {ok, M, []} ->
+                                       {ModulesSoFar ++ M, {ok, Warnings}};
+                                   {ok, M, W} ->
+                                       {ModulesSoFar ++ M, {ok,
+                                                            Warnings ++ [{AppName, W}]}};
+                                   {error, M, Errors, []} ->
+                                       {ModulesSoFar ++ M, {error,
+                                                            {AppName, Errors},
+                                                            Warnings}};
+                                   {error, M, Errors, W} ->
+                                       {ModulesSoFar ++ M, {error,
+                                                            {AppName, Errors},
+                                                            Warnings ++ [{AppName, W}]}}
+                               end,
+                           dot_app_file:render(AppName, Props, DestDir),
+                           R
+                   end, {[], {ok, []}}, OrderedApplications),
+    NotifyPid ! R,
+    ok.
 
 -spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), inputs()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
