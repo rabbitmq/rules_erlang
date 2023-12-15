@@ -70,7 +70,7 @@ def erl_libs_contents(
                 ctx.actions.run_shell(
                     inputs = [src],
                     outputs = [dest],
-                    command = "cp -R \"{}\"/* \"{}\"".format(src.path, dest.path),
+                    command = "cp -RL \"{}\"/* \"{}\"".format(src.path, dest.path),
                     mnemonic = "RulesErlangCopyErlLibsContentsSubdir",
                 )
             else:
