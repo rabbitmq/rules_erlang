@@ -25,15 +25,6 @@
 -record(?MODULE, {src_analysis :: ets:table(),
                   beam_file_contents :: ets:table()}).
 
-%% -type state() :: #?MODULE{}.
-
-%% -opaque cas_context() :: {cas(), #{string() := string()}}.
-
-%% -export_type([
-%%               cas/0,
-%%               cas_context/0
-%%              ]).
-
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -47,30 +38,6 @@ terminate(shutdown, #?MODULE{src_analysis = AC,
     ets:delete(AC),
     ets:delete(BFC),
     ok.
-
-%% -spec new() -> cas().
-%% new() ->
-%%     #cas{src_analysis = ets:new(src_analysis, [set]),
-%%          beam_file_contents = ets:new(beam_file_file_contents, [set])}.
-
-%% -spec destroy(cas()) -> ok.
-%% destroy(#cas{src_analysis = AC,
-%%              beam_file_contents = BFC}) ->
-%%     ets:delete(AC),
-%%     ets:delete(BFC),
-%%     ok.
-
-%% -spec context(cas(), #{file:name() := binary()}) -> cas_context().
-%% context(CAS, Inputs) ->
-%%     {CAS, Inputs}.
-
-%% -spec uncontext(cas_context()) -> cas().
-%% uncontext({CAS, _}) ->
-%%     CAS.
-
-%% -spec has_inputs(cas_context()) -> boolean().
-%% has_inputs({_, Inputs}) ->
-%%     maps:size(Inputs) > 0.
 
 -spec get_analysis(binary(), fun(() -> analysis_result())) -> analysis_result().
 get_analysis(Key, ContentsFun) ->
@@ -89,25 +56,6 @@ get_beam_file_contents(Key, ContentsFun) ->
                              misses := non_neg_integer()}.
 beam_file_stats() ->
     gen_server:call(?MODULE, beam_stats).
-
-%% -spec digest_in_context(cas_context(), file:name()) -> binary().
-%% digest_in_context({_, Inputs}, File) ->
-%%     maps:get(File, Inputs).
-
-%% -spec digests_in_context(cas_context(), [file:name()]) -> iolist().
-%% digests_in_context(CC, Files) ->
-%%     lists:filtermap(
-%%       fun (File) ->
-%%               case digest_in_context(CC, File) of
-%%                   {badkey, _} ->
-%%                       io:format(standard_error,
-%%                                 "Warning: File ~p is not among the action's inputs.~n",
-%%                                 [File]),
-%%                       false;
-%%                   Digest ->
-%%                       {true, Digest}
-%%               end
-%%       end, Files).
 
 handle_call({get_analysis, Key, ContentsFun}, _, #?MODULE{src_analysis = Table} = S) ->
     R = case ets:lookup(Table, Key) of
