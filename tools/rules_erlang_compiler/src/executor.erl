@@ -90,8 +90,6 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                                    _ -> true
                                                end
                                        end, code:get_path()),
-                    %% io:format(standard_error,
-                    %%           "TheseCodePaths: ~p~n", [TheseCodePaths]),
                     code:del_paths(TheseCodePaths),
                     lists:foreach(
                       fun
@@ -116,40 +114,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                                         [Module])
                                       end
                               end
-
-                              %% io:format(standard_error,
-                              %%           "module_status(~p): ~p~n"
-                              %%           "check_process_code: ~p~n",
-                              %%           [Module,
-                              %%            code:module_status(Module),
-                              %%            check_process_code(self(), Module, [])]),
-                              %% case code:purge(Module) of
-                              %%     true ->
-                              %%         ok;
-                              %%     _ ->
-                              %%         io:format(standard_error,
-                              %%                   "Could not purge module ~p.~n",
-                              %%                   [Module])
-                              %% end,
-                              %% case code:delete(Module) of
-                              %%     true ->
-                              %%         ok;
-                              %%     _ ->
-                              %%         io:format(standard_error,
-                              %%                   "Could not delete module ~p.~n",
-                              %%                   [Module])
-                              %% end
                       end, Modules),
-                    %% TheseCodePaths = lists:filter(
-                    %%                    fun (CP) ->
-                    %%                            case string:prefix(CP, filename:absname(DestDir)) of
-                    %%                                nomatch -> false;
-                    %%                                _ -> true
-                    %%                            end
-                    %%                    end, code:get_path()),
-                    %% io:format(standard_error,
-                    %%           "TheseCodePaths: ~p~n", [TheseCodePaths]),
-                    %% code:del_paths(TheseCodePaths),
                     code:del_paths(AbsCodePaths),
 
                     #{hits := AH, misses := AM} = cas:src_analysis_stats(),
@@ -258,21 +223,6 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
                            dot_app_file:render(AppName, Props, DestDir),
                            R
                    end, {[], {ok, []}}, OrderedApplications),
-    %% {Modules, _} = R,
-    %% lists:foreach(
-    %%   fun (Module) ->
-    %%           io:format(standard_error,
-    %%                     "compiler check_process_code: ~p~n",
-    %%                     [check_process_code(self(), Module, [])]),
-    %%           case code:purge(Module) of
-    %%               true ->
-    %%                   ok;
-    %%               _ ->
-    %%                   io:format(standard_error,
-    %%                             "Compiler: could not purge module ~p.~n",
-    %%                             [Module])
-    %%           end
-    %%   end, Modules),
     NotifyPid ! R,
     ok.
 
