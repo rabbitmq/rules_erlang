@@ -41,6 +41,11 @@ worker_loop() ->
     case io:get_line("") of
         eof ->
             ok;
+        {error, Reason} ->
+            io:format(standard_error,
+                      "Error reading stdin: ~p~n",
+                      [Reason]),
+            exit(1);
         Line ->
             {ok, RawRequest} = thoas:decode(Line),
             %% io:format(standard_error, "RawRequest: ~p~n", [RawRequest]),
