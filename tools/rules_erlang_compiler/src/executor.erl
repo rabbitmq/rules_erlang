@@ -133,10 +133,11 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                               [length(Modules), ACR, BFCR]),
 
                     case R of
-                        {_, {error, Errors, _}} ->
+                        {_, {error, Errors, Warnings}} ->
                             #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
-                                                                      "Errors: ~p~n",
-                                                                      [Errors])};
+                                                                      "  Errors: ~p~n"
+                                                                      "  Warnings: ~p~n",
+                                                                      [Errors, Warnings])};
                         {Modules, {ok, []}} ->
                             #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
                                                                       "Analysis Cache Hit Rate: ~.1f%~n"
@@ -148,7 +149,13 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                                                       "Beam File Cache Hit Rate: ~.1f%~n"
                                                                       "Warnings: ~p~n",
                                                                       [length(Modules), ACR, BFCR, Warnings])}
-                    end
+                    end;
+                Other ->
+                    io:format(standard_error,
+                              "Received unexpected message from compiler process: ~p~n",
+                              [Other]),
+                    #{exit_code => 1,
+                      output => "Unexpected message from compiler process.~n"}
             after 600_000 ->
                     #{exit_code => 1,
                       output => "Compilation timed out.~n"}
@@ -312,6 +319,11 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
                           %%                                     ModuleBin),
                           {ok, Modules ++ [Module], Warnings ++ W};
                       {error, Errors, W} ->
+                          io:format(standard_error,
+                                    "Compilation error in ~p ~p~n"
+                                    "  Errors: ~p~n"
+                                    "  Warnings: ~p~n",
+                                    [AppName, Src, Errors, Warnings ++ W]),
                           {error, Modules, Errors, Warnings ++ W}
                   end;
               (_, E) ->
@@ -375,9 +387,7 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                                    end, OwnerSrcs),
             {ok, ModuleSrc};
         _ ->
-            _ = code:ensure_loaded(Module),  %% do we need to note this module and unload later?
-                                             %% maybe not, as if it actually changes, it will get
-                                             %% unloaded and reloaded
+            _ = code:ensure_loaded(Module),
             case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
