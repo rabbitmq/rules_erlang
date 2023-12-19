@@ -272,22 +272,34 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
                                  0 ->
                                      ContentsFun();
                                  _ ->
-                                     ErlAttrs = get_analysis(Src, CompileOpts0, MappedInputs),
-                                     case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) of
-                                         {ok, Deps, []} ->
+                                     case get_analysis(Src, CompileOpts0, MappedInputs) of
+                                         {ok, ErlAttrs} ->
+                                             case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) of
+                                                 {ok, Deps, []} ->
+                                                     Key = beam_file_contents_key(CompileOpts0,
+                                                                                  Deps,
+                                                                                  MappedInputs),
+                                                     cas:get_beam_file_contents(Key, ContentsFun);
+                                                 {ok, Deps, DepsWarnings} ->
+                                                     Key = beam_file_contents_key(CompileOpts0,
+                                                                                  Deps,
+                                                                                  MappedInputs),
+                                                     case cas:get_beam_file_contents(Key, ContentsFun) of
+                                                         {ok, M, MB, CW} ->
+                                                             {ok, M, MB, [{Src, DepsWarnings} | CW]};
+                                                         {error, E, CW} ->
+                                                             {error, E, [{Src, DepsWarnings} | CW]}
+                                                     end
+                                             end;
+                                         {error, Reason} ->
                                              Key = beam_file_contents_key(CompileOpts0,
-                                                                          Deps,
-                                                                          MappedInputs),
-                                             cas:get_beam_file_contents(Key, ContentsFun);
-                                         {ok, Deps, DepsWarnings} ->
-                                             Key = beam_file_contents_key(CompileOpts0,
-                                                                          Deps,
+                                                                          [Src],
                                                                           MappedInputs),
                                              case cas:get_beam_file_contents(Key, ContentsFun) of
                                                  {ok, M, MB, CW} ->
-                                                     {ok, M, MB, [{Src, DepsWarnings} | CW]};
+                                                     {ok, M, MB, [{Src, Reason} | CW]};
                                                  {error, E, CW} ->
-                                                     {error, E, [{Src, DepsWarnings} | CW]}
+                                                     {error, E, [{Src, Reason} | CW]}
                                              end
                                      end
                              end,
@@ -308,7 +320,7 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     ok = file:set_cwd(OldCwd),
     R.
 
--spec get_analysis(file:name(), [compile:option()], inputs()) -> src_analysis().
+-spec get_analysis(file:name(), [compile:option()], inputs()) -> analysis_result().
 get_analysis(Src, CompileOpts, MappedInputs) ->
     ContentsFun = fun() ->
                           Macros = lists:filtermap(
@@ -329,16 +341,15 @@ get_analysis(Src, CompileOpts, MappedInputs) ->
                                        end, CompileOpts),
                           erl_attrs_to_json:parse(Src, Macros, Includes)
                   end,
-    {ok, ErlAttrs} = case maps:size(MappedInputs) of
-                         0 ->
-                             ContentsFun();
-                         _ ->
-                             ErlcOptsBin = term_to_binary(CompileOpts),
-                             Digest = maps:get(Src, MappedInputs),
-                             Key = crypto:hash(sha, [ErlcOptsBin, Digest]),
-                             cas:get_analysis(Key, ContentsFun)
-                     end,
-    ErlAttrs.
+    case maps:size(MappedInputs) of
+        0 ->
+            ContentsFun();
+        _ ->
+            ErlcOptsBin = term_to_binary(CompileOpts),
+            Digest = maps:get(Src, MappedInputs),
+            Key = crypto:hash(sha, [ErlcOptsBin, Digest]),
+            cas:get_analysis(Key, ContentsFun)
+    end.
 
 find_in_code_paths(_, []) ->
     error;
@@ -597,20 +608,28 @@ app_graph([App | Rest], Targets, ModuleIndex, G, MappedInputs) ->
 app_deps(_, [], _, _, _, _) ->
     ok;
 app_deps(AppName, [SrcFile | Rest], CompileOpts, ModuleIndex, G, MappedInputs) ->
-    ErlAttrs = get_analysis(SrcFile, CompileOpts, MappedInputs),
-
-    #{behaviour := Behaviours,
-      parse_transform := Transforms} = ErlAttrs,
-    lists:foreach(
-      fun (Module) ->
-              case ModuleIndex of
-                  #{Module := OtherApp} when OtherApp =/= AppName ->
-                      io:format(standard_error, "app_graph: adding edge ~p <- ~p~n", [OtherApp, AppName]),
-                      digraph:add_edge(G, OtherApp, AppName);
-                  _ ->
-                      ok
-              end
-      end, Behaviours ++ Transforms),
+    case get_analysis(SrcFile, CompileOpts, MappedInputs) of
+        {ok, ErlAttrs} ->
+            #{behaviour := Behaviours,
+              parse_transform := Transforms} = ErlAttrs,
+            lists:foreach(
+              fun (Module) ->
+                      case ModuleIndex of
+                          #{Module := OtherApp} when OtherApp =/= AppName ->
+                              io:format(standard_error,
+                                        "app_graph: adding edge ~p <- ~p~n",
+                                        [OtherApp, AppName]),
+                              digraph:add_edge(G, OtherApp, AppName);
+                          _ ->
+                              ok
+                      end
+              end, Behaviours ++ Transforms);
+        {error, Reason} ->
+            io:format(standard_error,
+                      "app_graph: skipped ~p: ~p~n",
+                      [SrcFile, Reason]),
+            ok
+    end,
     app_deps(AppName, Rest, CompileOpts, ModuleIndex, G, MappedInputs).
 
 -spec src_graph(atom(), [file:name()], [compile:option()], module_index(), inputs()) -> digraph:graph().
@@ -624,27 +643,30 @@ src_graph(AppName, Srcs, CompileOpts, ModuleIndex, MappedInputs) ->
 src_graph(_, [], _, _, _, G, _) ->
     G;
 src_graph(AppName, [Src | Rest], Srcs, CompileOpts, ModuleIndex, G, MappedInputs) ->
-    ErlAttrs = get_analysis(Src, CompileOpts, MappedInputs),
-    #{behaviour := Behaviours,
-      parse_transform := Transforms} = ErlAttrs,
-    lists:foreach(
-      fun (Module) ->
-              case ModuleIndex of
-                  #{Module := AppName} ->
-                      {value, MS} = lists:search(
-                                      fun (S) ->
-                                              case list_to_atom(filename:basename(S, ".erl")) of
-                                                  Module -> true;
-                                                  _ -> false
-                                              end
-                                      end, Srcs),
-                      %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
-                      digraph:add_edge(G, MS, Src);
-                  _ ->
-                      ok
-              end
-      end, Behaviours ++ Transforms),
-
+    case get_analysis(Src, CompileOpts, MappedInputs) of
+        {ok, ErlAttrs} ->
+            #{behaviour := Behaviours,
+              parse_transform := Transforms} = ErlAttrs,
+            lists:foreach(
+              fun (Module) ->
+                      case ModuleIndex of
+                          #{Module := AppName} ->
+                              {value, MS} = lists:search(
+                                              fun (S) ->
+                                                      case list_to_atom(filename:basename(S, ".erl")) of
+                                                          Module -> true;
+                                                          _ -> false
+                                                      end
+                                              end, Srcs),
+                              %% io:format(standard_error, "src_graph: adding edge ~p <- ~p~n", [MS, Src]),
+                              digraph:add_edge(G, MS, Src);
+                          _ ->
+                              ok
+                      end
+              end, Behaviours ++ Transforms);
+        {error, _} ->
+            ok
+    end,
     src_graph(AppName, Rest, Srcs, CompileOpts, ModuleIndex, G, MappedInputs).
 
 is_erlang_source(F) ->
