@@ -424,11 +424,11 @@ join_resolving_relative(Name1, Name2) ->
             join_resolving_relative(filename:dirname(Name1), R)
     end.
 
--spec resolve_include(file:name(), string(), [string()], target()) ->
+-spec resolve_include(file:name(), string(), [string()], target(), [string()]) ->
           ok | {ok, file:name()} | {warning, term()}.
-resolve_include(Src, Include, IncludePaths, Target) ->
-    case string:prefix(Include, os:getenv("ERLANG_HOME")) of
-        nomatch ->
+resolve_include(Src, Include, IncludePaths, Target, CodePaths) ->
+    case filename:pathtype(Include) of
+        relative ->
             #{dest_dir := DestDir, outs := Outs} = Target,
             Hdrs = lists:filter(fun is_erlang_header/1, Outs),
             SearchPaths = [DestDir,
@@ -436,7 +436,6 @@ resolve_include(Src, Include, IncludePaths, Target) ->
                            lists:map(fun (IncludePath) ->
                                              join_resolving_relative(DestDir, IncludePath)
                                      end, IncludePaths)],
-
             ExpectedPaths = lists:map(
                               fun (SearchPath) ->
                                       case string:prefix(Include, "../") of
@@ -453,13 +452,39 @@ resolve_include(Src, Include, IncludePaths, Target) ->
                 {value, IncludeSrc} ->
                     {ok, IncludeSrc};
                 _ ->
-                    {warning, {include_not_found, Src, Include, ExpectedPaths, Hdrs}}
+                    {warning, {include_not_found, Include, ExpectedPaths, Hdrs}}
             end;
         _ ->
-            %% it's unclear to me, if an app loads an otp header, should
-            %% the otp app be part of extra_apps? I think not, as that
-            %% would appear to be more of a runtime thing
-            ok
+            case string:prefix(Include, os:getenv("ERLANG_HOME")) of
+                nomatch ->
+                    %% fall back to checking the code path here
+                    %% it seems epp sometimes converts -include_lib to -include
+                    %% code paths are relative, so if a codepath is part of this
+                    %% file, assume it's the IncludeSrc, (and the prefix must
+                    %% be stripped from the IncludeSrc
+                    CodePathParents = lists:map(
+                                        fun (P) ->
+                                                filename:dirname(P) ++ "/"
+                                        end, CodePaths),
+                    case lists:search(fun (CP) ->
+                                              case string:split(Include, CP) of
+                                                  [_] -> false;
+                                                  [_, _] -> true
+                                              end
+                                      end, CodePathParents) of
+                        {value, CP} ->
+                            [_, RP] = string:split(Include, CP),
+                            IncludeSrc = filename:join(CP, RP),
+                            {ok, IncludeSrc};
+                        _ ->
+                            {warning, {include_not_found, Include, CodePaths}}
+                    end;
+                _ ->
+                    %% it's unclear to me, if an app loads an otp header, should
+                    %% the otp app be part of extra_apps? I think not, as that
+                    %% would appear to be more of a runtime thing
+                    ok
+            end
     end.
 
 string_ends_with(String, Suffix) ->
@@ -474,7 +499,7 @@ string_ends_with(String, Suffix) ->
           ok | {ok, file:name()} | {warning, term()}.
 resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) ->
     #{AppName := Target} = Targets,
-    case resolve_include(Src, IncludeLib, IncludePaths, Target) of
+    case resolve_include(Src, IncludeLib, IncludePaths, Target, CodePaths) of
         ok ->
             ok;
         {ok, IncludeLibSrc} ->
@@ -505,12 +530,12 @@ resolve_include_lib(Src, IncludeLib, IncludePaths, AppName, Targets, CodePaths) 
                                     %%       anymore
                                     {ok, IncludeLibSrc};
                                 _ ->
-                                    {warning, {include_lib_application_missing, Src, IncludeLib, OtherAppName}}
+                                    {warning, {include_lib_application_missing, IncludeLib, OtherAppName}}
                             end
                     end;
                 R ->
                     io:format(standard_error, "R: ~p~n", [R]),
-                    {warning, {include_lib_does_not_begin_with_application, Src, IncludeLib}}
+                    {warning, {include_lib_does_not_begin_with_application, IncludeLib}}
             end
     end.
 
@@ -544,17 +569,23 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
                (IncludeBin, {ok, Deps, Warnings}) ->
                    Include = binary_to_list(IncludeBin),
                    #{AppName := Target} = Targets,
-                   case resolve_include(Src, Include, IncludePaths,  Target) of
+                   case resolve_include(Src, Include, IncludePaths,  Target, CodePaths) of
                        ok ->
                            {ok, Deps, Warnings};
                        {ok, IncludeSrc} ->
                            {ok, [IncludeSrc | Deps], Warnings};
-                       {warning, {include_not_found, Src, Include, ExpectedPaths, Hdrs} = W} ->
+                       {warning, {include_not_found, Include, ExpectedPaths, Hdrs} = W} ->
                            io:format(standard_error,
                                      "Could not locate source for -include(~p) relative to ~p~n"
                                      "    expected at ~p~n"
                                      "    in ~p~n",
                                      [Include, Src, ExpectedPaths, Hdrs]),
+                           {ok, Deps, [W | Warnings]};
+                       {warning, {include_not_found, Include, CP} = W} ->
+                           io:format(standard_error,
+                                     "Could not locate source for -include(~p) relative to ~p~n"
+                                     "    in ~p~n",
+                                     [Include, Src, CP]),
                            {ok, Deps, [W | Warnings]}
                    end
            end, R1, Includes),
