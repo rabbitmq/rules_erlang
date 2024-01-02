@@ -103,22 +103,50 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                  ok;
                   (thoas_encode) ->
                                  ok;
+                  (gen_server2 = Module) ->
+                      MS = code:module_status(Module),
+                      W = code:which(Module),
+                      io:format(standard_error,
+                                "code:module_status(~p) -> ~p~n"
+                                "code:which(~p) -> ~p~n",
+                                [Module, MS, Module, W]),
+                      case MS of
+                          not_loaded ->
+                              ok;
+                          _ ->
+                              PR = code:purge(Module),
+                              io:format(standard_error,
+                                        "code:purge(~p) -> ~p~n",
+                                        [Module, PR]),
+                              case code:delete(Module) of
+                                  true ->
+                                      ok;
+                                  _ ->
+                                      io:format(standard_error,
+                                                "Could not delete module ~p.~n",
+                                                [Module])
+                              end,
+                              W2 = code:which(Module),
+                              io:format(standard_error,
+                                        "code:which(~p) -> ~p~n",
+                                        [Module, W2])
+                      end;
                   (Module) ->
-                                 case code:module_status(Module) of
-                                     not_loaded ->
-                                         ok;
-                                     _ ->
-                                         code:purge(Module),
-                                         case code:delete(Module) of
-                                             true ->
-                                                 ok;
-                                             _ ->
-                                                 io:format(standard_error,
-                                                           "Could not delete module ~p.~n",
-                                                           [Module])
-                                         end
-                                 end
-                         end, Modules),
+                      case code:module_status(Module) of
+                          not_loaded ->
+                              ok;
+                          _ ->
+                              code:purge(Module),
+                              case code:delete(Module) of
+                                  true ->
+                                      ok;
+                                  _ ->
+                                      io:format(standard_error,
+                                                "Could not delete module ~p.~n",
+                                                [Module])
+                              end
+                      end
+              end, Modules),
             code:del_paths(AbsCodePaths),
 
             #{hits := AH, misses := AM} = cas:src_analysis_stats(),
@@ -409,9 +437,14 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
             {ok, ModuleSrc};
         _ ->
             ELR = code:ensure_loaded(Module),
-            io:format(standard_error,
-                      "code:ensure_loaded(~p) -> ~p~n",
-                      [Module, ELR]),
+            case Module of
+                gen_server2 ->
+                    io:format(standard_error,
+                              "code:ensure_loaded(~p) -> ~p~n",
+                              [Module, ELR]);
+                _ ->
+                    ok
+            end,
             case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
@@ -419,9 +452,14 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                               [Module]),
                     {warning, {module_not_found, Module}};
                 Path ->
-                    io:format(standard_error,
-                              "~p -> ~p~n",
-                              [Module, Path]),
+                    case Module of
+                        gen_server2 ->
+                            io:format(standard_error,
+                                      "~p -> ~p~n",
+                                      [Module, Path]);
+                        _ ->
+                            ok
+                    end,
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
                             case find_in_code_paths(Path, CodePaths) of
