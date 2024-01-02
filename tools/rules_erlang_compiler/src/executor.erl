@@ -80,89 +80,86 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                                              CodePaths,
                                                              ModuleIndex,
                                                              MappedInputs]),
+            R = compile_loop(),
             receive
-                {Modules, _} = R ->
-                    receive
-                        {'EXIT', CompilerPid, normal} ->
-                            io:format(standard_error,
-                                      "Compiler process finished.~n", [])
-                    end,
-                    TheseCodePaths = lists:filter(
-                                       fun (CP) ->
-                                               case string:prefix(CP, filename:absname(DestDir)) of
-                                                   nomatch -> false;
-                                                   _ -> true
-                                               end
-                                       end, code:get_path()),
-                    code:del_paths(TheseCodePaths),
-                    lists:foreach(
-                      fun
-                          (thoas) ->
-                                         ok;
-                          (thoas_decode) ->
-                                         ok;
-                          (thoas_encode) ->
-                                         ok;
-                          (Module) ->
-                              case code:module_status(Module) of
-                                  not_loaded ->
-                                      ok;
-                                  _ ->
-                                      code:purge(Module),
-                                      case code:delete(Module) of
-                                          true ->
-                                              ok;
-                                          _ ->
-                                              io:format(standard_error,
-                                                        "Could not delete module ~p.~n",
-                                                        [Module])
-                                      end
-                              end
-                      end, Modules),
-                    code:del_paths(AbsCodePaths),
-
-                    #{hits := AH, misses := AM} = cas:src_analysis_stats(),
-                    ACR = 100 * AH / (AH + AM),
-                    #{hits := BH, misses := BM} = cas:beam_file_stats(),
-                    BFCR = case BH + BM of
-                               0 -> 0.0;
-                               _ -> 100 * BH / (BH + BM)
-                           end,
-
+                {'EXIT', CompilerPid, normal} ->
                     io:format(standard_error,
-                              "Compiled ~p modules.~n"
-                              "Analysis Cache Hit Rate: ~.1f%~n"
-                              "Beam File Cache Hit Rate: ~.1f%~n"
-                              "~n",
-                              [length(Modules), ACR, BFCR]),
+                              "Compiler process finished.~n", [])
+            end,
+            {Modules, _} = R,
+            TheseCodePaths = lists:filter(
+                               fun (CP) ->
+                                       case string:prefix(CP, filename:absname(DestDir)) of
+                                           nomatch -> false;
+                                           _ -> true
+                                       end
+                               end, code:get_path()),
+            code:del_paths(TheseCodePaths),
+            lists:foreach(
+              fun
+                  (thoas) ->
+                                 ok;
+                  (thoas_decode) ->
+                                 ok;
+                  (thoas_encode) ->
+                                 ok;
+                  (Module) ->
+                                 case code:module_status(Module) of
+                                     not_loaded ->
+                                         ok;
+                                     _ ->
+                                         code:purge(Module),
+                                         case code:delete(Module) of
+                                             true ->
+                                                 ok;
+                                             _ ->
+                                                 io:format(standard_error,
+                                                           "Could not delete module ~p.~n",
+                                                           [Module])
+                                         end
+                                 end
+                         end, Modules),
+            code:del_paths(AbsCodePaths),
 
-                    case R of
-                        {_, {error, Errors, Warnings}} ->
-                            #{exit_code => 1, output => io_lib:format("Failed to compile.~n"
-                                                                      "  Errors: ~p~n"
-                                                                      "  Warnings: ~p~n",
-                                                                      [Errors, Warnings])};
-                        {Modules, {ok, []}} ->
-                            #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                                      "Analysis Cache Hit Rate: ~.1f%~n"
-                                                                      "Beam File Cache Hit Rate: ~.1f%~n",
-                                                                      [length(Modules), ACR, BFCR])};
-                        {Modules, {ok, Warnings}} ->
-                            #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
-                                                                      "Analysis Cache Hit Rate: ~.1f%~n"
-                                                                      "Beam File Cache Hit Rate: ~.1f%~n"
-                                                                      "Warnings: ~p~n",
-                                                                      [length(Modules), ACR, BFCR, Warnings])}
-                    end;
-                Other ->
-                    io:format(standard_error,
-                              "Received unexpected message from compiler process: ~p~n",
-                              [Other]),
+            #{hits := AH, misses := AM} = cas:src_analysis_stats(),
+            ACR = 100 * AH / (AH + AM),
+            #{hits := BH, misses := BM} = cas:beam_file_stats(),
+            BFCR = case BH + BM of
+                       0 -> 0.0;
+                       _ -> 100 * BH / (BH + BM)
+                   end,
+
+            io:format(standard_error,
+                      "Compiled ~p modules.~n"
+                      "Analysis Cache Hit Rate: ~.1f%~n"
+                      "Beam File Cache Hit Rate: ~.1f%~n"
+                      "~n",
+                      [length(Modules), ACR, BFCR]),
+
+            case R of
+                {_, {error, Reason}} ->
                     #{exit_code => 1,
-                      output => "Unexpected message from compiler process.~n"}
-            after 600_000 ->
+                      output => io_lib:format("Failed to compile: ~p~n",
+                                              [Reason])};
+                {_, {error, Errors, Warnings}} ->
                     #{exit_code => 1,
-                      output => "Compilation timed out.~n"}
+                      output => io_lib:format("Failed to compile.~n"
+                                              "  Errors: ~p~n"
+                                              "  Warnings: ~p~n",
+                                              [Errors, Warnings])};
+                {Modules, {ok, []}} ->
+                    #{exit_code => 0,
+                      output => io_lib:format("Compiled ~p modules.~n"
+                                              "Analysis Cache Hit Rate: ~.1f%~n"
+                                              "Beam File Cache Hit Rate: ~.1f%~n",
+                                              [length(Modules), ACR, BFCR])};
+                {Modules, {ok, Warnings}} ->
+                    #{exit_code => 0,
+                      output => io_lib:format("Compiled ~p modules.~n"
+                                              "Analysis Cache Hit Rate: ~.1f%~n"
+                                              "Beam File Cache Hit Rate: ~.1f%~n"
+                                              "Warnings: ~p~n",
+                                              [length(Modules), ACR, BFCR, Warnings])}
             end;
         {error, Reason} ->
             #{exit_code => 1,
@@ -208,6 +205,23 @@ clone_sources(Targets, Inputs) ->
                   {DestDir, MappedInputs}
       end, {unknown, Inputs}, Targets).
 
+-spec compile_loop() -> {[atom()], {ok, warnings_list()} | {error, term()} | {error, errors_list(), warnings_list()}}.
+compile_loop() ->
+    receive
+        {compile, SrcRel, CompileOpts, ReplyToPid} ->
+            ReplyToPid ! compile:file(SrcRel, CompileOpts),
+            compile_loop();
+        {Modules, _} = R when is_list(Modules) ->
+            R;
+        Other ->
+            io:format(standard_error,
+                      "Received unexpected message from compiler process: ~p~n",
+                      [Other]),
+            {[], {error, unexpected_message}}
+    after 600_000 ->
+            {[], {error, compilation_timed_out}}
+    end.
+
 -spec compile_apps(pid(), [module()], #{atom() := target()}, string(), [string()], module_index(), inputs()) -> ok.
 compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     R = lists:foldl(
@@ -216,7 +230,7 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
                            E;
               (AppName, {ModulesSoFar, {ok, Warnings}}) ->
                            #{AppName := Props} = Targets,
-                           R = case compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) of
+                           R = case compile(NotifyPid, AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) of
                                    {ok, M, []} ->
                                        {ModulesSoFar ++ M, {ok, Warnings}};
                                    {ok, M, W} ->
@@ -237,10 +251,10 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
     NotifyPid ! R,
     ok.
 
--spec compile(atom(), #{atom() := target()}, string(), [string()], module_index(), inputs()) ->
+-spec compile(pid(), atom(), #{atom() := target()}, string(), [string()], module_index(), inputs()) ->
           {ok, Modules :: [module()], Warnings :: warnings_list()} |
           {error, Modules :: [module()], Errors :: errors_list(), Warnings :: warnings_list()}.
-compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
+compile(NotifyPid, AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     #{AppName := #{compile_opts := CompileOpts0, outs := Outs}} = Targets,
 
     CompileOpts = [{outdir, "ebin"},
@@ -272,11 +286,14 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
               (Src, {ok, Modules, Warnings}) ->
                   SrcRel = string:prefix(Src, AppDir ++ "/"),
                   ContentsFun = fun () ->
-                                        case compile:file(SrcRel, CompileOpts) of
+                                        NotifyPid ! {compile, SrcRel, CompileOpts, self()},
+                                        receive
                                             {ok, Module, ModuleBin} ->
                                                 {ok, Module, ModuleBin, []};
                                             R ->
                                                 R
+                                        after 30_000 ->
+                                                {error, compile_timed_out}
                                         end
                                 end,
                   Contents = case maps:size(MappedInputs) of
