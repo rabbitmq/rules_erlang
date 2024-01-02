@@ -14,6 +14,7 @@ def _impl(ctx):
     apps = {}
 
     compiler_flags = struct(
+        label = str(ctx.label),
         module_index = {},
         code_paths = [],
         targets = {},

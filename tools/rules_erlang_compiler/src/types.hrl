@@ -14,7 +14,8 @@
 
 -type module_index() :: #{module() := atom()}.
 
--type config() :: #{module_index := module_index(),
+-type config() :: #{label := string(),
+                    module_index := module_index(),
                     code_paths := [string()],
                     targets := #{atom() := target()}}.
 

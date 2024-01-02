@@ -28,6 +28,16 @@ def _impl(ctx):
             license_files = ctx.files.license_files,
             # precompiled_beam = ctx.files.precompiled_beam,
         ),
+        # DefaultInfo(
+        #     files = depset(
+        #         [ctx.file.app_src] +
+        #         ctx.files.public_hdrs +
+        #         ctx.files.private_hdrs +
+        #         ctx.files.srcs +
+        #         ctx.files.priv +
+        #         ctx.files.license_files
+        #     ),
+        # ),
     ]
 
 erlang_app_sources = rule(

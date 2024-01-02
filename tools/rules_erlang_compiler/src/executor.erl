@@ -11,7 +11,8 @@
 execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
     case config_file:read(ConfigJsonPath) of
         {ok, Config} ->
-            #{module_index := ModuleIndex,
+            #{label := Label,
+              module_index := ModuleIndex,
               code_paths := CodePaths,
               targets := Targets} = Config,
 
@@ -23,9 +24,10 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                              end, CodePaths),
 
             io:format(standard_error,
+                      "Label: ~p~n"
                       "Available applications on code path: ~p~n"
                       "Compiling applications: ~p~n",
-                      [CodePathApps, maps:keys(Targets)]),
+                      [Label, CodePathApps, maps:keys(Targets)]),
 
             %% io:format(standard_error, "Targets: ~p~n", [Targets]),
 
@@ -48,10 +50,12 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
             AbsCodePaths = lists:map(fun filename:absname/1, CodePaths),
 
             lists:foreach(
-              fun (CodePath) ->
-                      true = code:add_path(CodePath)
+              fun (AbsCodePath) ->
+                      true = code:add_path(AbsCodePath)
               end, AbsCodePaths),
-            %% io:format(standard_error, "code:get_path() = ~p~n", [code:get_path()]),
+            io:format(standard_error,
+                      "code:get_path() = ~p~n",
+                      [code:get_path()]),
 
             TargetsWithCompileOpts = add_compile_opts_and_dest_dir_to_targets(DestDir, Targets),
 
@@ -387,7 +391,10 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                                    end, OwnerSrcs),
             {ok, ModuleSrc};
         _ ->
-            _ = code:ensure_loaded(Module),
+            ELR = code:ensure_loaded(Module),
+            io:format(standard_error,
+                      "code:ensure_loaded(~p) -> ~p~n",
+                      [Module, ELR]),
             case code:which(Module) of
                 non_existing ->
                     io:format(standard_error,
@@ -395,6 +402,9 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                               [Module]),
                     {warning, {module_not_found, Module}};
                 Path ->
+                    io:format(standard_error,
+                              "~p -> ~p~n",
+                              [Module, Path]),
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
                             case find_in_code_paths(Path, CodePaths) of
@@ -558,7 +568,10 @@ deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) ->
                            {ok, Deps, Warnings};
                        {ok, ModuleSrc} ->
                            {ok, [ModuleSrc | Deps], Warnings};
-                       {warning, W} ->
+                       {warning, {module_not_found, Module} = W} ->
+                           io:format(standard_error,
+                                     "Could not locate source for module ~p referenced by ~p~n",
+                                     [Module, Src]),
                            {ok, Deps, [W | Warnings]}
                    end
            end, R0, Behaviours ++ Transforms),

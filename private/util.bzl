@@ -25,6 +25,20 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
+def copy(ctx, source, dest):
+    out = ctx.actions.declare_file(dest)
+    args = ctx.actions.args()
+    args.add(source)
+    args.add(out)
+    ctx.actions.run(
+        outputs = [out],
+        inputs = [source],
+        executable = "cp",
+        arguments = [args],
+        mnemonic = "RulesErlangCopyErlLibsContentsFile",
+    )
+    return out
+
 def erl_libs_contents(
         ctx,
         target_info = None,

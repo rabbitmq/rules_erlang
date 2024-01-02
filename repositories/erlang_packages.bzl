@@ -80,8 +80,5 @@ erlang_packages = repository_rule(
     attrs = {
         "apps": attr.string_list(),
         "test_apps": attr.string_list(),
-        "_template": attr.label(
-            default = Label(":BUILD.erlang_packages.tpl"),
-        ),
     },
 )

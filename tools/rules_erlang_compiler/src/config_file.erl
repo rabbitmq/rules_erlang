@@ -53,9 +53,11 @@ conform_code_paths(Dirs) ->
     lists:map(fun binary_to_list/1, Dirs).
 
 -spec conform_config(thoas:json_term()) -> config().
-conform_config(#{<<"module_index">> := MI,
+conform_config(#{<<"label">> := Label,
+                 <<"module_index">> := MI,
                  <<"code_paths">> := CP,
                  <<"targets">> := T}) ->
-    #{module_index => conform_index(MI),
+    #{label => binary_to_list(Label),
+      module_index => conform_index(MI),
       code_paths => conform_code_paths(CP),
       targets => conform_targets(T)}.

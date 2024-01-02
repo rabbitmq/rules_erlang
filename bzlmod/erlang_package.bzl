@@ -194,6 +194,12 @@ def _git_package_repo(git_package):
 DEFAULT_BUILD_FILE_CONTENT = """\
 load("@rules_erlang//:erlang_autodetect.bzl", "erlang_autodetect")
 
+filegroup(
+    name = "all_files",
+    srcs = glob(["**/*"]),
+    visibility = ["//visibility:public"],
+)
+
 erlang_autodetect(
     name = "{app_name}",
     testonly = {testonly},
