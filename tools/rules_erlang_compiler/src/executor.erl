@@ -290,12 +290,12 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
                                                      Key = beam_file_contents_key(CompileOpts0,
                                                                                   Deps,
                                                                                   MappedInputs),
-                                                     cas:get_beam_file_contents(Key, ContentsFun);
+                                                     get_beam_file_contents(Key, ContentsFun);
                                                  {ok, Deps, DepsWarnings} ->
                                                      Key = beam_file_contents_key(CompileOpts0,
                                                                                   Deps,
                                                                                   MappedInputs),
-                                                     case cas:get_beam_file_contents(Key, ContentsFun) of
+                                                     case get_beam_file_contents(Key, ContentsFun) of
                                                          {ok, M, MB, CW} ->
                                                              {ok, M, MB, [{Src, DepsWarnings} | CW]};
                                                          {error, E, CW} ->
@@ -306,7 +306,7 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
                                              Key = beam_file_contents_key(CompileOpts0,
                                                                           [Src],
                                                                           MappedInputs),
-                                             case cas:get_beam_file_contents(Key, ContentsFun) of
+                                             case get_beam_file_contents(Key, ContentsFun) of
                                                  {ok, M, MB, CW} ->
                                                      {ok, M, MB, [{Src, Reason} | CW]};
                                                  {error, E, CW} ->
@@ -365,6 +365,15 @@ get_analysis(Src, CompileOpts, MappedInputs) ->
             Digest = maps:get(Src, MappedInputs),
             Key = crypto:hash(sha, [ErlcOptsBin, Digest]),
             cas:get_analysis(Key, ContentsFun)
+    end.
+
+-spec get_beam_file_contents(binary(), fun(() -> compilation_result())) -> compilation_result().
+get_beam_file_contents(Key, ContentsFun) ->
+    case cas:get_beam_file_contents(Key) of
+        none ->
+            cas:put_beam_file_contents(Key, ContentsFun());
+        Contents ->
+            Contents
     end.
 
 find_in_code_paths(_, []) ->

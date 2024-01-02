@@ -12,7 +12,8 @@
 -export([
          get_analysis/2,
          src_analysis_stats/0,
-         get_beam_file_contents/2,
+         get_beam_file_contents/1,
+         put_beam_file_contents/2,
          beam_file_stats/0
         ]).
 -export([
@@ -48,9 +49,13 @@ get_analysis(Key, ContentsFun) ->
 src_analysis_stats() ->
     gen_server:call(?MODULE, analysis_stats).
 
--spec get_beam_file_contents(binary(), fun(() -> compilation_result())) -> compilation_result().
-get_beam_file_contents(Key, ContentsFun) ->
-    gen_server:call(?MODULE, {get_beam, Key, ContentsFun}, 30_000).
+-spec get_beam_file_contents(binary()) -> compilation_result() | none.
+get_beam_file_contents(Key) ->
+    gen_server:call(?MODULE, {get_beam, Key}).
+
+-spec put_beam_file_contents(binary(), compilation_result()) -> compilation_result().
+put_beam_file_contents(Key, Contents) ->
+    gen_server:call(?MODULE, {put_beam, Key, Contents}).
 
 -spec beam_file_stats() -> #{hits := non_neg_integer(),
                              misses := non_neg_integer()}.
@@ -78,19 +83,22 @@ handle_call(analysis_stats, _, #?MODULE{src_analysis = Table} = S) ->
                   Acc#{hits := Hits + C, misses := Misses + 1}
           end, #{hits => 0, misses => 0}, Table),
     {reply, R, S};
-handle_call({get_beam, Key, ContentsFun}, _, #?MODULE{beam_file_contents = Table} = S) ->
+handle_call({get_beam, Key}, _, #?MODULE{beam_file_contents = Table} = S) ->
     R = case ets:lookup(Table, Key) of
             [{Key, _, Module, ModuleBin, Warnings}] ->
                 ets:update_counter(Table, Key, 1),
                 {ok, Module, ModuleBin, Warnings};
             [] ->
-                case ContentsFun() of
-                    {ok, Module, ModuleBin, Warnings} ->
-                        true = ets:insert_new(Table, {Key, 0, Module, ModuleBin, Warnings}),
-                        {ok, Module, ModuleBin, Warnings};
-                    E ->
-                        E
-                end
+                none
+        end,
+    {reply, R, S};
+handle_call({put_beam, Key, Contents}, _, #?MODULE{beam_file_contents = Table} = S) ->
+    R = case Contents of
+            {ok, Module, ModuleBin, Warnings} ->
+                true = ets:insert_new(Table, {Key, 0, Module, ModuleBin, Warnings}),
+                {ok, Module, ModuleBin, Warnings};
+            E ->
+                E
         end,
     {reply, R, S};
 handle_call(beam_stats, _, #?MODULE{beam_file_contents = Table} = S) ->
