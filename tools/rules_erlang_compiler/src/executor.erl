@@ -397,6 +397,7 @@ get_analysis(Src, CompileOpts, MappedInputs) ->
 
 -spec get_beam_file_contents(binary(), fun(() -> compilation_result())) -> compilation_result().
 get_beam_file_contents(Key, ContentsFun) ->
+    %% Note: this is not currently safe for multiple processes
     case cas:get_beam_file_contents(Key) of
         none ->
             cas:put_beam_file_contents(Key, ContentsFun());
@@ -428,30 +429,21 @@ resolve_module(Module, Targets, CodePaths, ModuleIndex) ->
                                    end, OwnerSrcs),
             {ok, ModuleSrc};
         _ ->
-            ELR = code:ensure_loaded(Module),
-            case Module of
-                gen_server2 ->
-                    io:format(standard_error,
-                              "code:ensure_loaded(~p) -> ~p~n",
-                              [Module, ELR]);
-                _ ->
-                    ok
-            end,
-            case code:which(Module) of
+            case code:where_is_file(atom_to_list(Module) ++ ".beam") of
                 non_existing ->
                     io:format(standard_error,
                               "Could not locate source for module ~p.~n",
                               [Module]),
                     {warning, {module_not_found, Module}};
                 Path ->
-                    case Module of
-                        gen_server2 ->
-                            io:format(standard_error,
-                                      "~p -> ~p~n",
-                                      [Module, Path]);
-                        _ ->
-                            ok
-                    end,
+                    %% case Module of
+                    %%     gen_server2 ->
+                    %%         io:format(standard_error,
+                    %%                   "~p -> ~p~n",
+                    %%                   [Module, Path]);
+                    %%     _ ->
+                    %%         ok
+                    %% end,
                     case string:prefix(Path, os:getenv("ERLANG_HOME")) of
                         nomatch ->
                             case find_in_code_paths(Path, CodePaths) of
