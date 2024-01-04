@@ -48,7 +48,7 @@ extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
     erl_libs = "//:deps",
-    include_headers = True,
+    copy_headers = True,
     verify = False,
     visibility = ["//visibility:public"],
 )
@@ -66,7 +66,7 @@ extract_app(
     name = "{app_name}",
     app_name = "{app_name}",
     erl_libs = "//:test_deps",
-    include_headers = True,
+    copy_headers = True,
     testonly = True,
     verify = False,
     visibility = ["//visibility:public"],

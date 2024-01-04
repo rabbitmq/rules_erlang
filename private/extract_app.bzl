@@ -12,11 +12,13 @@ def _impl(ctx):
 
     beam = []
     public_hdrs = []
-    if not ctx.attr.include_headers:
+    private_hdrs = []
+    if not ctx.attr.copy_headers:
         public_hdrs = app_info.source_info.public_hdrs
+        private_hdrs = app_info.source_info.private_hdrs
 
     out_base = None
-    if ctx.attr.include_headers:
+    if ctx.attr.copy_headers:
         for out in app_info.outs:
             if out.basename.endswith(".beam") or out.basename.endswith(".app"):
                 (base, sep, _) = out.dirname.rpartition("/")
@@ -34,27 +36,27 @@ def _impl(ctx):
                 target_file = out,
             )
             beam.append(dest)
-        elif ctx.attr.include_headers and out.basename.endswith(".hrl"):
+        elif ctx.attr.copy_headers and out.basename.endswith(".hrl"):
             rp = out.path.removeprefix(out_base)
+            dest = ctx.actions.declare_file(rp)
+            ctx.actions.symlink(
+                output = dest,
+                target_file = out,
+            )
             if rp.startswith("include/"):
-                dest = ctx.actions.declare_file(rp)
-                ctx.actions.symlink(
-                    output = dest,
-                    target_file = out,
-                )
                 public_hdrs.append(dest)
             else:
-                print("Skipped private header", rp)
+                private_hdrs.append(dest)
 
     outs = beam + app_info.source_info.priv
-    if ctx.attr.include_headers:
-        outs += public_hdrs
+    if ctx.attr.copy_headers:
+        outs += public_hdrs + private_hdrs
 
     return [
         ErlangAppInfo(
             app_name = ctx.attr.app_name,
             extra_apps = ctx.attr.extra_apps,
-            include = public_hdrs,
+            include = public_hdrs + private_hdrs,
             beam = beam,
             priv = app_info.source_info.priv,
             license_files = app_info.source_info.license_files,
@@ -87,7 +89,7 @@ extract_app = rule(
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
         ),
-        "include_headers": attr.bool(
+        "copy_headers": attr.bool(
             default = False,
         ),
     },
