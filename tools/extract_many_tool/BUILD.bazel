@@ -1,0 +1,37 @@
+load(
+    "//:erlang_bytecode2.bzl",
+    "erlang_bytecode",
+    "erlc_opts",
+)
+load(
+    "//:erlang_app.bzl",
+    "DEFAULT_ERLC_OPTS",
+)
+load("//:escript.bzl", "escript_flat", "escript_wrapper")
+
+APP_NAME = "extract_many_tool"
+
+erlc_opts(
+    name = "erlc_opts",
+    values = DEFAULT_ERLC_OPTS,
+)
+
+erlang_bytecode(
+    name = "beam_files",
+    srcs = glob(["src/*.erl"]),
+    dest = "ebin",
+    erlc_opts = ":erlc_opts",
+)
+
+escript_flat(
+    name = APP_NAME,
+    beam = ":beam_files",
+    visibility = ["//visibility:public"],
+)
+
+escript_wrapper(
+    name = "wrapper",
+    escript = ":%s" % APP_NAME,
+    out = "wrapper.bash",
+    visibility = ["//visibility:public"],
+)
