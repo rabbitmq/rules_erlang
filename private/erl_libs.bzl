@@ -35,7 +35,7 @@ def _impl(ctx):
                     ctx.label.name,
                     app_info.app_name,
                     "ebin",
-                    b.basename
+                    b.basename,
                 ))
                 module_index[_module_name(b)] = app_info.app_name
             app_outs.append(dest)
@@ -71,13 +71,14 @@ def _impl(ctx):
                 license_files.append(src)
             elif src.path.find("priv/") >= 0:
                 priv.append(src)
+
             # else:
             #     print("Dropping unrecognized file", src)
 
         reconstructed_source_info = ErlangAppSourcesInfo(
             app_name = app_info.app_name,
             erlc_opts_file = None,
-            app_src = app_src, # single file
+            app_src = app_src,  # single file
             public_hdrs = public_hdrs,
             private_hdrs = private_hdrs,
             srcs = srcs,
@@ -90,7 +91,6 @@ def _impl(ctx):
             outs = app_outs,
         )
         outputs.extend(app_outs)
-
 
     return [
         CompileManyInfo(
@@ -108,7 +108,7 @@ erl_libs = rule(
         "apps": attr.label_list(
             mandatory = True,
             providers = [ErlangAppInfo],
-        )
+        ),
     },
     provides = [CompileManyInfo],
 )
