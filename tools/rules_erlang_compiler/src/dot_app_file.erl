@@ -25,7 +25,7 @@ render(AppName,
                                 false
                         end
                 end, Outs),
-    {application, _, Props0} = Contents,
+    {application, AppName, Props0} = Contents,
     Props1 = lists:keystore(modules, 1, Props0, {modules, Modules}),
     Props = case lists:keymember(applications, 1, Props1) of
                 true ->
