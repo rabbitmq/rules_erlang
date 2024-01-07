@@ -23,6 +23,10 @@ main([_OutputTar | AppsStrings]) ->
     %% 4. copy each of those deps into the tempdir
     %% 5. tar up tempdir into OutputTar
 
+    %% TO = os:cmd("/usr/local/bin/tree -L 3 bazel-out/darwin-fastbuild/bin/external"),
+    %% io:format(standard_error,
+    %%           "~s~n", [TO]),
+
     Apps = lists:map(fun list_to_atom/1, AppsStrings),
 
     io:format("Apps: ~p~n", [Apps]),
@@ -83,10 +87,7 @@ app_deps(App) ->
       Apps).
 
 dot_app_file(App) ->
-    ok = application:load(App),
-
-    AppString = atom_to_list(App),
-    AppFile = filename:join([AppString, "ebin", AppString ++ ".app"]),
+    AppFile = atom_to_list(App) ++ ".app",
     case code:where_is_file(AppFile) of
         non_existing ->
             error({non_existing, AppFile});

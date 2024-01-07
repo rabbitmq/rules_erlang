@@ -2,19 +2,28 @@ load(":compile_many.bzl", "CompileManyInfo")
 load("//:util.bzl", "path_join")
 
 def _impl(ctx):
-    erl_libs = []
-    for eld in ctx.attr.erl_libs:
-        erl_libs.extend([
-            path_join(
-                ctx.bin_dir.path,
-                eld.label.workspace_root,
-                eld.label.package,
-                eld.label.name,
-                app,
-                "ebin",
-            )
-            for app in eld[CompileManyInfo].apps.keys()
-        ])
+    # erl_libs = []
+    # for eld in ctx.attr.erl_libs:
+    #     erl_libs.extend([
+    #         path_join(
+    #             ctx.bin_dir.path,
+    #             eld.label.workspace_root,
+    #             eld.label.package,
+    #             eld.label.name,
+    #             app,
+    #             "ebin",
+    #         )
+    #         for app in eld[CompileManyInfo].apps.keys()
+    #     ])
+    erl_libs = [
+        path_join(
+            ctx.bin_dir.path,
+            eld.label.workspace_root,
+            eld.label.package,
+            eld.label.name,
+        )
+        for eld in ctx.attr.erl_libs
+    ]
 
     tmpdir = ctx.actions.declare_directory(ctx.label.name)
 
