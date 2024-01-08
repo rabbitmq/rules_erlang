@@ -25,8 +25,6 @@ def _impl(ctx):
         for eld in ctx.attr.erl_libs
     ]
 
-    tmpdir = ctx.actions.declare_directory(ctx.label.name)
-
     args = ctx.actions.args()
     args.add(ctx.outputs.out)
     args.add_all(ctx.attr.apps)
@@ -36,12 +34,11 @@ def _impl(ctx):
     ctx.actions.run(
         inputs = (extract_many_tool_runfiles.files.to_list() +
                   ctx.files.erl_libs),
-        outputs = [tmpdir, ctx.outputs.out],
+        outputs = [ctx.outputs.out],
         executable = ctx.executable.extract_many_tool,
         mnemonic = "RulesErlangExtractManyTransitive",
         arguments = [args],
         env = {
-            "TMPDIR": tmpdir.path,
             "ERL_LIBS": ctx.configuration.host_path_separator.join(erl_libs),
         },
     )
