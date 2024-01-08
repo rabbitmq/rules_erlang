@@ -1,32 +1,31 @@
-load(
-    "//:erlang_bytecode2.bzl",
-    "erlang_bytecode",
-    "erlc_opts",
-)
-load(
-    "//:erlang_app.bzl",
-    "DEFAULT_ERLC_OPTS",
-)
-load("//:escript.bzl", "escript_flat", "escript_wrapper")
+load("//:erlang_app.bzl", "erlang_app", "test_erlang_app")
+load("//:escript.bzl", "escript_archive", "escript_wrapper")
 
 APP_NAME = "extract_many_tool"
 
-erlc_opts(
-    name = "erlc_opts",
-    values = DEFAULT_ERLC_OPTS,
+APP_VERSION = "1.0.0"
+
+DEPS = [
+    "@thoas_rules_erlang//:erlang_app",
+]
+
+erlang_app(
+    name = "erlang_app",
+    app_name = APP_NAME,
+    app_version = APP_VERSION,
+    deps = DEPS,
 )
 
-erlang_bytecode(
-    name = "beam_files",
-    srcs = glob(["src/*.erl"]),
-    dest = "ebin",
-    erlc_opts = ":erlc_opts",
+test_erlang_app(
+    name = "test_erlang_app",
+    app_name = APP_NAME,
+    app_version = APP_VERSION,
+    deps = DEPS,
 )
 
-escript_flat(
+escript_archive(
     name = APP_NAME,
-    beam = ":beam_files",
-    visibility = ["//visibility:public"],
+    app = ":erlang_app",
 )
 
 escript_wrapper(
