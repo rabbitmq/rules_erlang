@@ -33,9 +33,10 @@ def erlang_app_sources(
         ])
 
     if priv == None:
-        priv = native.glob([
-            "priv/**/*.erl",
-        ])
+        priv = native.glob(
+            ["priv/**/*"],
+            exclude = ["priv/**/.gitignore"],
+        )
 
     if license_files == None:
         license_files = native.glob([
