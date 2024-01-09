@@ -4,14 +4,15 @@
     main/1
    ]).
 
--type app_data() :: #{src_path := string(),
-                      priv := [string()],
+-type app_data() :: #{priv := [string()],
                       outs := [string()]}.
+
+-type apps_data() :: #{atom() := app_data()}.
 
 -spec main([string()]) -> no_return().
 main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
     case os:getenv("ERLANG_HOME") of
-        undefined ->
+        false ->
             io:format(standard_error,
                       "ERLANG_HOME must be set~n",
                       []),
@@ -31,7 +32,7 @@ main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
 
     AppGraph = digraph:new([acyclic]),
 
-    add_deps(AppGraph, lists:usort(Apps)),
+    add_deps(AppGraph, AppsData, lists:usort(Apps)),
     
     AllApps = digraph_utils:preorder(AppGraph),
     
@@ -43,7 +44,8 @@ main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
 
     Entries = lists:flatmap(
                 fun (App) ->
-                        app_entries(App, maps:get(App, AppsData))
+                        %% io:format("~p~n", [App]),
+                        app_entries(App, AppsData)
                 end, AllApps),
 
     %% T1 = os:cmd("/usr/local/bin/tree -L 4 " ++ StagingDir),
@@ -55,18 +57,19 @@ main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
 main([]) ->
     exit(1).
 
-add_deps(_, []) ->
+-spec add_deps(digraph:graph(), apps_data(), [atom()]) -> ok.
+add_deps(_, _, []) ->
     ok;
-add_deps(G, [App | Rest]) ->
-    case is_otp_application(App) of
+add_deps(G, AppsData, [App | Rest]) ->
+    case is_otp_application(App, AppsData) of
         true ->
             io:format("    Skipping ~p as it's an otp application~n",
                       [App]),
-            add_deps(G, Rest);
+            add_deps(G, AppsData, Rest);
         false ->
             digraph:add_vertex(G, App),
             io:format("    Checking deps for ~p~n", [App]),
-            Deps = app_deps(App),
+            Deps = app_deps(App, AppsData),
             lists:foreach(
               fun(D) ->
                       digraph:add_vertex(G, D)
@@ -76,11 +79,12 @@ add_deps(G, [App | Rest]) ->
               fun(Dep) ->
                       digraph:add_edge(G, App, Dep)
               end, Deps),
-            add_deps(G, lists:usort(Rest ++ Deps))
+            add_deps(G, AppsData, lists:usort(Rest ++ Deps))
     end.
 
-is_otp_application(App) ->
-    DotAppFile = dot_app_file(App),
+-spec is_otp_application(atom(), apps_data()) -> boolean().
+is_otp_application(App, AppsData) ->
+    DotAppFile = dot_app_file(App, AppsData),
     case string:prefix(DotAppFile, os:getenv("ERLANG_HOME")) of
         nomatch ->
             false;
@@ -88,26 +92,39 @@ is_otp_application(App) ->
             true
     end.
 
-app_deps(App) ->
-    DotAppFile = dot_app_file(App),
+-spec app_deps(atom(), apps_data()) -> [atom()].
+app_deps(App, AppsData) ->
+    DotAppFile = dot_app_file(App, AppsData),
     {ok, [{application, _, Props}]} = file:consult(DotAppFile),
     {_, Apps} = lists:keyfind(applications, 1, Props),
     lists:filter(
-      fun (D) -> false == is_otp_application(D) end,
+      fun (D) -> false == is_otp_application(D, AppsData) end,
       Apps).
 
-dot_app_file(App) ->
-    AppFile = atom_to_list(App) ++ ".app",
-    case code:where_is_file(AppFile) of
-        non_existing ->
-            error({non_existing, AppFile});
-        DotAppFile ->
-            DotAppFile
+-spec dot_app_file(atom(), apps_data()) -> file:filename().
+dot_app_file(App, AppsData) ->
+    case AppsData of
+        #{App := #{outs := Outs}} ->
+            case lists:search(fun (F) -> filename:extension(F) == ".app" end, Outs) of
+                {value, DotAppFile} ->
+                    DotAppFile;
+                false ->
+                    error({no_dot_app_file, App})
+            end;
+        _ ->
+            AppFile = atom_to_list(App) ++ ".app",
+            case code:where_is_file(AppFile) of
+                non_existing ->
+                    error({non_existing, AppFile});
+                DotAppFile ->
+                    DotAppFile
+            end
     end.
 
--spec app_entries(atom(), app_data()) -> [{string(), filename:name()}].
-app_entries(App, #{src_path := SrcPath, priv := Priv}) ->
-    DotAppFile = dot_app_file(App),
+-spec app_entries(atom(), apps_data()) -> [{string(), file:filename()}].
+app_entries(App, AppsData) ->
+    #{App := #{priv := Priv}} = AppsData,
+    DotAppFile = dot_app_file(App, AppsData),
     %% {ok, [{application, _, Props}]} = file:consult(DotAppFile),
     %% {_, Apps} = lists:keyfind(applications, 1, Props),
     SrcDir = filename:dirname(filename:dirname(DotAppFile)),
@@ -124,13 +141,14 @@ app_entries(App, #{src_path := SrcPath, priv := Priv}) ->
                     end, SrcFiles),
     PrivEntries = lists:map(
                     fun (PrivFile) ->
-                            RelPath = string:prefix(PrivFile, SrcPath ++ "/"),
-                            true = (RelPath /= nomatch),
+                            %% This heuristic for the relative path might not be sufficient
+                            [_, RelPath] = string:split(PrivFile, atom_to_list(App) ++ "/"),
                             DestFile = filename:join(atom_to_list(App), RelPath),
                             {DestFile, PrivFile}
                     end, Priv),
     BeamEntries ++ PrivEntries.
 
+-spec list_recursive(file:filename()) -> [file:filename()].
 list_recursive(Src) ->
     case filelib:is_dir(Src) of
         true ->
@@ -143,16 +161,13 @@ list_recursive(Src) ->
             [Src]
     end.
 
--spec apps_data(filename:name()) -> #{atom() := app_data()}.
+-spec apps_data(file:filename()) -> apps_data().
 apps_data(JsonFile) ->
     {ok, Json} = file:read_file(JsonFile),
     {ok, Decoded} = thoas:decode(Json),
     maps:fold(
-     fun (AppBin, #{<<"src_path">> := SrcPath,
-                    <<"priv">> := Priv,
+     fun (AppBin, #{<<"priv">> := Priv,
                     <<"outs">> := Outs}, Acc) ->
-             SP = case SrcPath of null -> null; _ -> binary_to_list(SrcPath) end,
-             Acc#{binary_to_atom(AppBin) => #{src_path => SP,
-                                              priv => lists:map(fun binary_to_list/1, Priv),
+             Acc#{binary_to_atom(AppBin) => #{priv => lists:map(fun binary_to_list/1, Priv),
                                               outs => lists:map(fun binary_to_list/1, Outs)}}
      end, #{}, Decoded).

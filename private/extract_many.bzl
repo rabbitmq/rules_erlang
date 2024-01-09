@@ -1,21 +1,6 @@
 load(":compile_many.bzl", "CompileManyInfo")
-load("//:util.bzl", "path_join")
 
 def _impl(ctx):
-    # erl_libs = []
-    # for eld in ctx.attr.erl_libs:
-    #     erl_libs.extend([
-    #         path_join(
-    #             ctx.bin_dir.path,
-    #             eld.label.workspace_root,
-    #             eld.label.package,
-    #             eld.label.name,
-    #             app,
-    #             "ebin",
-    #         )
-    #         for app in eld[CompileManyInfo].apps.keys()
-    #     ])
-
     apps = {}
     erl_libs_files = []
     for el in ctx.attr.erl_libs:
@@ -23,11 +8,7 @@ def _impl(ctx):
         for (app, props) in cm_info.apps.items():
             if app in apps:
                 print("Warning: duplicate apps in", ctx.attr.erl_libs)
-            src_path = None
-            if props.source_info.app_src != None:
-                src_path = props.source_info.app_src.dirname.removesuffix("/src")
             apps[app] = {
-                "src_path": src_path,
                 "priv": [f.path for f in props.source_info.priv],
                 "outs": [f.path for f in props.outs],
             }
@@ -38,16 +19,6 @@ def _impl(ctx):
         output = apps_json,
         content = json.encode(apps)
     )
-
-    erl_libs_paths = [
-        path_join(
-            ctx.bin_dir.path,
-            eld.label.workspace_root,
-            eld.label.package,
-            eld.label.name,
-        )
-        for eld in ctx.attr.erl_libs
-    ]
 
     args = ctx.actions.args()
     args.add("--apps_json")
@@ -66,9 +37,6 @@ def _impl(ctx):
         executable = ctx.executable.extract_many_tool,
         mnemonic = "RulesErlangExtractManyTransitive",
         arguments = [args],
-        env = {
-            "ERL_LIBS": ctx.configuration.host_path_separator.join(erl_libs_paths),
-        },
     )
 
     return [DefaultInfo(
