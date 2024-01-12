@@ -63,7 +63,7 @@ if mkdir "{install_path}"; then
     tar --extract \\
         --directory "{install_path}" \\
         --file {release_tar}
-fi
+fi\
 """.format(
             release_tar = release_dir_tar.short_path if short_path else release_dir_tar.path,
             install_path = info.install_path,
