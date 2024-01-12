@@ -6,5 +6,10 @@ load(
 def compile_many(**kwargs):
     _compile_many(
         rules_erlang_compiler = Label("@rules_erlang//tools/rules_erlang_compiler:wrapper"),
+        exec_properties = {
+            "recycle-runner": "true",
+            "preserve-workspace": "true",
+            "persistentWorkerProtocol": "json",
+        },
         **kwargs
     )
