@@ -1,5 +1,5 @@
-load("//:util.bzl", "path_join")
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
+load("//:util.bzl", "path_join")
 load(":compile_many.bzl", "CompileManyInfo")
 
 def _impl(ctx):
@@ -65,6 +65,7 @@ def _impl(ctx):
                     app_info.source_info.srcs +
                     [app_info.source_info.app_src] if app_info.source_info.app_src != None else []),
             deps = flat_deps(ctx.attr.deps),
+            direct_deps = ctx.attr.deps,
         ),
         DefaultInfo(
             files = depset(outs),

@@ -7,10 +7,6 @@ load(
     "windows_path",
 )
 load(
-    ":util.bzl",
-    "to_erlang_atom_list",
-)
-load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
@@ -29,7 +25,7 @@ def _impl(ctx):
 
     expected_apps = ["kernel", "stdlib"] + app_info.extra_apps + [
         dep[ErlangAppInfo].app_name
-        for dep in app_info.deps
+        for dep in app_info.direct_deps
     ]
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
