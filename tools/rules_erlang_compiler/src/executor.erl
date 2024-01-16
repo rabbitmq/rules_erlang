@@ -213,27 +213,36 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
     R = lists:foldl(
           fun
               (_, {_, {error, _, _}} = E) ->
-                           E;
+                  E;
               (AppName, {ModulesSoFar, {ok, Warnings}}) ->
-                           #{AppName := Props} = Targets,
-                           R = case compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) of
-                                   {ok, M, []} ->
-                                       {ModulesSoFar ++ M, {ok, Warnings}};
-                                   {ok, M, W} ->
-                                       {ModulesSoFar ++ M, {ok,
-                                                            Warnings ++ [{AppName, W}]}};
-                                   {error, M, Errors, []} ->
-                                       {ModulesSoFar ++ M, {error,
-                                                            {AppName, Errors},
-                                                            Warnings}};
-                                   {error, M, Errors, W} ->
-                                       {ModulesSoFar ++ M, {error,
-                                                            {AppName, Errors},
-                                                            Warnings ++ [{AppName, W}]}}
-                               end,
-                           dot_app_file:render(AppName, Props, DestDir),
-                           R
-                   end, {[], {ok, []}}, OrderedApplications),
+                  #{AppName := Props} = Targets,
+                  case compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) of
+                      {ok, M, []} ->
+                          case dot_app_file:render(AppName, Props, DestDir) of
+                              {ok, []} ->
+                                  {ModulesSoFar ++ M, {ok, Warnings}};
+                              {ok, W} ->
+                                  {ModulesSoFar ++ M, {ok, Warnings ++ W}}
+                          end;
+                      {ok, M, W} ->
+                          case dot_app_file:render(AppName, Props, DestDir) of
+                              {ok, []} ->
+                                  {ModulesSoFar ++ M, {ok,
+                                                       Warnings ++ [{AppName, W}]}};
+                              {ok, W} ->
+                                  {ModulesSoFar ++ M, {ok,
+                                                       Warnings ++ [{AppName, W}] ++ W}}
+                          end;
+                      {error, M, Errors, []} ->
+                          {ModulesSoFar ++ M, {error,
+                                               {AppName, Errors},
+                                               Warnings}};
+                      {error, M, Errors, W} ->
+                          {ModulesSoFar ++ M, {error,
+                                               {AppName, Errors},
+                                               Warnings ++ [{AppName, W}]}}
+                  end
+          end, {[], {ok, []}}, OrderedApplications),
     NotifyPid ! R,
     ok.
 
