@@ -85,8 +85,8 @@ handle_call(analysis_stats, _, #?MODULE{src_analysis = Table} = S) ->
     {reply, R, S};
 handle_call({get_beam, Key}, _, #?MODULE{beam_file_contents = Table} = S) ->
     R = case ets:lookup(Table, Key) of
-            [{Key, _, Module, ModuleBin, Warnings}] ->
-                ets:update_counter(Table, Key, 1),
+            [{Key, Hits, _, Module, ModuleBin, Warnings}] ->
+                ets:insert(Table, {Key, Hits + 1, erlang:monotonic_time(), Module, ModuleBin, Warnings}),
                 {ok, Module, ModuleBin, Warnings};
             [] ->
                 none
@@ -95,7 +95,7 @@ handle_call({get_beam, Key}, _, #?MODULE{beam_file_contents = Table} = S) ->
 handle_call({put_beam, Key, Contents}, _, #?MODULE{beam_file_contents = Table} = S) ->
     R = case Contents of
             {ok, Module, ModuleBin, Warnings} ->
-                true = ets:insert_new(Table, {Key, 0, Module, ModuleBin, Warnings}),
+                true = ets:insert_new(Table, {Key, 0, erlang:monotonic_time(), Module, ModuleBin, Warnings}),
                 {ok, Module, ModuleBin, Warnings};
             E ->
                 E
@@ -103,7 +103,7 @@ handle_call({put_beam, Key, Contents}, _, #?MODULE{beam_file_contents = Table} =
     {reply, R, S};
 handle_call(beam_stats, _, #?MODULE{beam_file_contents = Table} = S) ->
     R = ets:foldl(
-          fun ({_, C, _, _, _}, #{hits := Hits, misses := Misses} = Acc) ->
+          fun ({_, C, _, _, _, _}, #{hits := Hits, misses := Misses} = Acc) ->
                   Acc#{hits := Hits + C, misses := Misses + 1}
           end, #{hits => 0, misses => 0}, Table),
     {reply, R, S}.
