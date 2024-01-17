@@ -64,13 +64,13 @@ beam_file_stats() ->
 
 handle_call({get_analysis, Key, ContentsFun}, _, #?MODULE{src_analysis = Table} = S) ->
     R = case ets:lookup(Table, Key) of
-            [{Key, _, ErlAttrs}] ->
-                ets:update_counter(Table, Key, 1),
+            [{Key, Hits, _, ErlAttrs}] ->
+                ets:insert(Table, {Key, Hits + 1, erlang:monotonic_time(), ErlAttrs}),
                 {ok, ErlAttrs};
             [] ->
                 case ContentsFun() of
                     {ok, ErlAttrs} ->
-                        true = ets:insert_new(Table, {Key, 0, ErlAttrs}),
+                        true = ets:insert_new(Table, {Key, 0, erlang:monotonic_time(), ErlAttrs}),
                         {ok, ErlAttrs};
                     E ->
                         E
@@ -79,7 +79,7 @@ handle_call({get_analysis, Key, ContentsFun}, _, #?MODULE{src_analysis = Table} 
     {reply, R, S};
 handle_call(analysis_stats, _, #?MODULE{src_analysis = Table} = S) ->
     R = ets:foldl(
-          fun ({_, C, _}, #{hits := Hits, misses := Misses} = Acc) ->
+          fun ({_, C, _, _}, #{hits := Hits, misses := Misses} = Acc) ->
                   Acc#{hits := Hits + C, misses := Misses + 1}
           end, #{hits => 0, misses => 0}, Table),
     {reply, R, S};
