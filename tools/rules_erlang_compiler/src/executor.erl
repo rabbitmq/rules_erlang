@@ -121,20 +121,24 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                       end, Modules),
                     code:del_paths(AbsCodePaths),
 
-                    #{hits := AH, misses := AM} = cas:src_analysis_stats(),
+                    #{hits := AH, misses := AM, size := AS} = cas:src_analysis_stats(),
                     ACR = 100 * AH / (AH + AM),
-                    #{hits := BH, misses := BM} = cas:beam_file_stats(),
+                    #{hits := BH, misses := BM, size := BS} = cas:beam_file_stats(),
                     BFCR = case BH + BM of
                                0 -> 0.0;
                                _ -> 100 * BH / (BH + BM)
                            end,
+                    ASM = AS / (1024 * 1024),
+                    BSM = BS / (1024 * 1024),
 
                     io:format(standard_error,
                               "Compiled ~p modules.~n"
                               "Analysis Cache Hit Rate: ~.1f%~n"
+                              "               Size:     ~.1f% MB~n"
                               "Beam File Cache Hit Rate: ~.1f%~n"
+                              "                Size:     ~.1f% MB~n"
                               "~n",
-                              [length(Modules), ACR, BFCR]),
+                              [length(Modules), ACR, ASM, BFCR, BSM]),
 
                     case R of
                         {_, {error, Errors, Warnings}} ->
@@ -145,14 +149,23 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                         {Modules, {ok, []}} ->
                             #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
                                                                       "Analysis Cache Hit Rate: ~.1f%~n"
-                                                                      "Beam File Cache Hit Rate: ~.1f%~n",
-                                                                      [length(Modules), ACR, BFCR])};
+                                                                      "               Size:     ~.1f% MB~n"
+                                                                      "Beam File Cache Hit Rate: ~.1f%~n"
+                                                                      "                Size:     ~.1f% MB~n",
+                                                                      [length(Modules),
+                                                                       ACR, ASM,
+                                                                       BFCR, BSM])};
                         {Modules, {ok, Warnings}} ->
                             #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
                                                                       "Analysis Cache Hit Rate: ~.1f%~n"
+                                                                      "               Size:     ~.1f% MB~n"
                                                                       "Beam File Cache Hit Rate: ~.1f%~n"
+                                                                      "                Size:     ~.1f% MB~n"
                                                                       "Warnings: ~p~n",
-                                                                      [length(Modules), ACR, BFCR, Warnings])}
+                                                                      [length(Modules),
+                                                                       ACR, ASM,
+                                                                       BFCR, BSM,
+                                                                       Warnings])}
                     end;
                 Other ->
                     io:format(standard_error,

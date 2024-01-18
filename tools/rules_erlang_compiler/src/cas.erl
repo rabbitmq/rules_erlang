@@ -45,7 +45,8 @@ get_analysis(Key, ContentsFun) ->
     gen_server:call(?MODULE, {get_analysis, Key, ContentsFun}).
 
 -spec src_analysis_stats() -> #{hits := non_neg_integer(),
-                                     misses := non_neg_integer()}.
+                                misses := non_neg_integer(),
+                                size := non_neg_integer()}.
 src_analysis_stats() ->
     gen_server:call(?MODULE, analysis_stats).
 
@@ -58,7 +59,8 @@ put_beam_file_contents(Key, Contents) ->
     gen_server:call(?MODULE, {put_beam, Key, Contents}).
 
 -spec beam_file_stats() -> #{hits := non_neg_integer(),
-                             misses := non_neg_integer()}.
+                             misses := non_neg_integer(),
+                             size := non_neg_integer()}.
 beam_file_stats() ->
     gen_server:call(?MODULE, beam_stats).
 
@@ -78,10 +80,11 @@ handle_call({get_analysis, Key, ContentsFun}, _, #?MODULE{src_analysis = Table} 
         end,
     {reply, R, S};
 handle_call(analysis_stats, _, #?MODULE{src_analysis = Table} = S) ->
+    Size = ets:info(Table, memory) * erlang:system_info(wordsize),
     R = ets:foldl(
           fun ({_, C, _, _}, #{hits := Hits, misses := Misses} = Acc) ->
                   Acc#{hits := Hits + C, misses := Misses + 1}
-          end, #{hits => 0, misses => 0}, Table),
+          end, #{hits => 0, misses => 0, size => Size}, Table),
     {reply, R, S};
 handle_call({get_beam, Key}, _, #?MODULE{beam_file_contents = Table} = S) ->
     R = case ets:lookup(Table, Key) of
@@ -102,10 +105,11 @@ handle_call({put_beam, Key, Contents}, _, #?MODULE{beam_file_contents = Table} =
         end,
     {reply, R, S};
 handle_call(beam_stats, _, #?MODULE{beam_file_contents = Table} = S) ->
+    Size = ets:info(Table, memory) * erlang:system_info(wordsize),
     R = ets:foldl(
           fun ({_, C, _, _, _, _}, #{hits := Hits, misses := Misses} = Acc) ->
                   Acc#{hits := Hits + C, misses := Misses + 1}
-          end, #{hits => 0, misses => 0}, Table),
+          end, #{hits => 0, misses => 0, size => Size}, Table),
     {reply, R, S}.
 
 handle_cast(_, S) ->
