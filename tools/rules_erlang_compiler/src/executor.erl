@@ -134,9 +134,9 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                     io:format(standard_error,
                               "Compiled ~p modules.~n"
                               "Analysis Cache Hit Rate: ~.1f%~n"
-                              "               Size:     ~.1f% MB~n"
+                              "               Size:     ~.1f MB~n"
                               "Beam File Cache Hit Rate: ~.1f%~n"
-                              "                Size:     ~.1f% MB~n"
+                              "                Size:     ~.1f MB~n"
                               "~n",
                               [length(Modules), ACR, ASM, BFCR, BSM]),
 
@@ -149,18 +149,18 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                         {Modules, {ok, []}} ->
                             #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
                                                                       "Analysis Cache Hit Rate: ~.1f%~n"
-                                                                      "               Size:     ~.1f% MB~n"
+                                                                      "               Size:     ~.1f MB~n"
                                                                       "Beam File Cache Hit Rate: ~.1f%~n"
-                                                                      "                Size:     ~.1f% MB~n",
+                                                                      "                Size:     ~.1f MB~n",
                                                                       [length(Modules),
                                                                        ACR, ASM,
                                                                        BFCR, BSM])};
                         {Modules, {ok, Warnings}} ->
                             #{exit_code => 0, output => io_lib:format("Compiled ~p modules.~n"
                                                                       "Analysis Cache Hit Rate: ~.1f%~n"
-                                                                      "               Size:     ~.1f% MB~n"
+                                                                      "               Size:     ~.1f MB~n"
                                                                       "Beam File Cache Hit Rate: ~.1f%~n"
-                                                                      "                Size:     ~.1f% MB~n"
+                                                                      "                Size:     ~.1f MB~n"
                                                                       "Warnings: ~p~n",
                                                                       [length(Modules),
                                                                        ACR, ASM,
