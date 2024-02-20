@@ -131,7 +131,9 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 	}
 	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
 	cmd.Args = append(cmd.Args, extractedPackageDir)
+	Log(config, fmt.Sprintf("    running '%v'", cmd))
 	output, err := cmd.CombinedOutput()
+	ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
 	if err != nil {
 		fmt.Println("gazelle failed for", pkg, "in", extractedPackageDir)
 		if err != nil {
@@ -140,10 +142,6 @@ func ruleForHexPackage(config *config.Config, name, pkg, version string) (*rule.
 			fmt.Println(string(colorReset))
 		}
 		return nil, err
-	}
-	err = ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
-	if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
 	}
 
 	err = os.MkdirAll(filepath.Dir(buildFile), 0755)
@@ -298,7 +296,9 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	}
 	cmd.Args = append(cmd.Args, "-repo_root", extractedPackageDir)
 	cmd.Args = append(cmd.Args, extractedPackageDir)
+	Log(config, fmt.Sprintf("    running '%v'", cmd))
 	output, err := cmd.CombinedOutput()
+	ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
 	if err != nil {
 		fmt.Println("gazelle failed for", repo, "in", extractedPackageDir)
 		if err != nil {
@@ -307,10 +307,6 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 			fmt.Println(string(colorReset))
 		}
 		return nil, err
-	}
-	err = ioutil.WriteFile(filepath.Join(downloadDir, "gazelle.log"), output, 0644)
-	if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
 	}
 
 	err = os.MkdirAll(filepath.Dir(buildFile), 0755)
