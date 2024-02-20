@@ -283,6 +283,7 @@ func tryImportGithub(config *config.Config, imp string) (*rule.Rule, error) {
 	ctx := context.Background()
 	cmd := exec.CommandContext(ctx, gazelleRunfile)
 
+	cmd.Args = append(cmd.Args, "fix")
 	cmd.Args = append(cmd.Args, "--verbose")
 	if erlangConfig.Testonly {
 		cmd.Args = append(cmd.Args, "--testonly")
