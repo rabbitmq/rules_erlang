@@ -6,7 +6,7 @@ def _impl(ctx):
     apps = ctx.attr.erl_libs[CompileManyInfo].apps
 
     if ctx.attr.app_name not in apps:
-        fail("requested app not present in erl_libs")
+        fail('requested app "{}" not present in erl_libs'.format(ctx.attr.app_name))
 
     app_info = apps[ctx.attr.app_name]
 

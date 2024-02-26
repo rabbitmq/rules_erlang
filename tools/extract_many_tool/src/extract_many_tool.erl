@@ -10,7 +10,9 @@
 -type apps_data() :: #{atom() := app_data()}.
 
 -spec main([string()]) -> no_return().
-main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
+main(["--apps_json", AppsJsonFile,
+      "--out", OutputTar,
+      "--versioned_dirs", VersionedDirsString | AppsStrings]) ->
     case os:getenv("ERLANG_HOME") of
         false ->
             io:format(standard_error,
@@ -20,6 +22,8 @@ main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
         _ ->
             ok
     end,
+
+    VersionedDirs = parse_bool(VersionedDirsString),
 
     AppsData = apps_data(AppsJsonFile),
     %% io:format("AppsData: ~p~n", [AppsData]),
@@ -45,7 +49,7 @@ main(["--apps_json", AppsJsonFile, "--out", OutputTar | AppsStrings]) ->
     Entries = lists:flatmap(
                 fun (App) ->
                         %% io:format("~p~n", [App]),
-                        app_entries(App, AppsData)
+                        app_entries(App, AppsData, VersionedDirs)
                 end, AllApps),
 
     %% T1 = os:cmd("/usr/local/bin/tree -L 4 " ++ StagingDir),
@@ -121,12 +125,18 @@ dot_app_file(App, AppsData) ->
             end
     end.
 
--spec app_entries(atom(), apps_data()) -> [{string(), file:filename()}].
-app_entries(App, AppsData) ->
+-spec app_entries(atom(), apps_data(), boolean()) -> [{string(), file:filename()}].
+app_entries(App, AppsData, VersionedDirs) ->
     #{App := #{priv := Priv}} = AppsData,
     DotAppFile = dot_app_file(App, AppsData),
-    %% {ok, [{application, _, Props}]} = file:consult(DotAppFile),
-    %% {_, Apps} = lists:keyfind(applications, 1, Props),
+    AppDirname = case VersionedDirs of
+                     true ->
+                         {ok, [{application, _, Props}]} = file:consult(DotAppFile),
+                         {vsn, Vsn} = lists:keyfind(vsn, 1, Props),
+                         atom_to_list(App) ++ "-" ++ Vsn;
+                     false ->
+                         atom_to_list(App)
+                 end,
     SrcDir = filename:dirname(filename:dirname(DotAppFile)),
     SrcFiles = lists:filter(
                  fun (Src) ->
@@ -136,14 +146,14 @@ app_entries(App, AppsData) ->
                     fun(SrcFile) ->
                             RelPath = string:prefix(SrcFile, SrcDir ++ "/"),
                             true = (RelPath /= nomatch),
-                            DestFile = filename:join(atom_to_list(App), RelPath),
+                            DestFile = filename:join(AppDirname, RelPath),
                             {DestFile, SrcFile}
                     end, SrcFiles),
     PrivEntries = lists:map(
                     fun (PrivFile) ->
                             %% This heuristic for the relative path might not be sufficient
                             [_, RelPath] = string:split(PrivFile, atom_to_list(App) ++ "/"),
-                            DestFile = filename:join(atom_to_list(App), RelPath),
+                            DestFile = filename:join(AppDirname, RelPath),
                             {DestFile, PrivFile}
                     end, Priv),
     BeamEntries ++ PrivEntries.
@@ -171,3 +181,8 @@ apps_data(JsonFile) ->
              Acc#{binary_to_atom(AppBin) => #{priv => lists:map(fun binary_to_list/1, Priv),
                                               outs => lists:map(fun binary_to_list/1, Outs)}}
      end, #{}, Decoded).
+
+parse_bool("true") ->
+    true;
+parse_bool("false") ->
+    false.

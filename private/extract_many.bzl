@@ -25,6 +25,8 @@ def _impl(ctx):
     args.add(apps_json)
     args.add("--out")
     args.add(ctx.outputs.out)
+    args.add("--versioned_dirs")
+    args.add(ctx.attr.versioned_dirs)
     args.add_all(ctx.attr.apps)
 
     extract_many_tool_runfiles = ctx.attr.extract_many_tool[DefaultInfo].default_runfiles
@@ -51,6 +53,7 @@ extract_many_transitive = rule(
             providers = [CompileManyInfo],
         ),
         "out": attr.output(),
+        "versioned_dirs": attr.bool(),
         "extract_many_tool": attr.label(
             mandatory = True,
             executable = True,
