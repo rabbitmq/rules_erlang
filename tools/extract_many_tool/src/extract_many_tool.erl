@@ -36,7 +36,7 @@ main(["--apps_json", AppsJsonFile,
 
     AppGraph = digraph:new([acyclic]),
 
-    add_deps(AppGraph, AppsData, lists:usort(Apps)),
+    add_deps(AppGraph, AppsData, lists:usort(Apps), sets:new()),
     
     AllApps = digraph_utils:preorder(AppGraph),
     
@@ -61,29 +61,38 @@ main(["--apps_json", AppsJsonFile,
 main([]) ->
     exit(1).
 
--spec add_deps(digraph:graph(), apps_data(), [atom()]) -> ok.
-add_deps(_, _, []) ->
+-spec add_deps(digraph:graph(), apps_data(), [atom()], sets:set()) -> ok.
+add_deps(_, _, [], _) ->
     ok;
-add_deps(G, AppsData, [App | Rest]) ->
+add_deps(G, AppsData, [App | Rest], Visited) ->
     case is_otp_application(App, AppsData) of
         true ->
             io:format("    Skipping ~p as it's an otp application~n",
                       [App]),
-            add_deps(G, AppsData, Rest);
+            add_deps(G, AppsData, Rest, Visited);
         false ->
-            digraph:add_vertex(G, App),
-            io:format("    Checking deps for ~p~n", [App]),
-            Deps = app_deps(App, AppsData),
-            lists:foreach(
-              fun(D) ->
-                      digraph:add_vertex(G, D)
-              end,
-              Deps),
-            lists:foreach(
-              fun(Dep) ->
-                      digraph:add_edge(G, App, Dep)
-              end, Deps),
-            add_deps(G, AppsData, lists:usort(Rest ++ Deps))
+            case sets:is_element(App, Visited) of
+                false ->
+                    digraph:add_vertex(G, App),
+                    io:format("    Checking deps for ~p~n", [App]),
+                    Deps = app_deps(App, AppsData),
+                    lists:foreach(
+                      fun(D) ->
+                              digraph:add_vertex(G, D)
+                      end,
+                      Deps),
+                    lists:foreach(
+                      fun(Dep) ->
+                              digraph:add_edge(G, App, Dep)
+                      end, Deps),
+                    add_deps(G,
+                             AppsData,
+                             lists:usort(Rest ++ Deps),
+                             sets:add_element(App, Visited));
+                true ->
+                    io:format("    ~p already checked~n", [App]),
+                    add_deps(G, AppsData, Rest, Visited)
+            end
     end.
 
 -spec is_otp_application(atom(), apps_data()) -> boolean().
