@@ -267,7 +267,8 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
 
     CompileOpts = [{outdir, "ebin"},
                    binary,
-                   return | CompileOpts0],
+                   return,
+                   no_spawn_compiler_process | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
 
     IncludePaths = lists:filtermap(
