@@ -269,26 +269,11 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
 compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     #{AppName := #{compile_opts := CompileOpts0, outs := Outs}} = Targets,
 
-    % CompileOpts = [{outdir, "ebin"},
-    %                binary,
-    %                return,
-    %                no_spawn_compiler_process | CompileOpts0],
     io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts0]),
-
-    % IncludePaths = lists:filtermap(
-    %                  fun
-    %                      ({i, P}) ->
-    %                          {true, P};
-    %                      (_) ->
-    %                          false
-    %                  end, CompileOpts),
 
     CopiedSrcs = lists:filter(fun is_erlang_source/1, Outs),
 
     G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, MappedInputs),
-
-    % OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
-    %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
     {ok, OldCwd} = file:get_cwd(),
     AppDir = filename:join(DestDir, AppName),
