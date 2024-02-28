@@ -6,6 +6,10 @@
 
 -export([execute/1]).
 -export([compile_apps/7]).
+-export([get_analysis/3,
+         deps/7,
+         beam_file_contents_key/3,
+         get_beam_file_contents/2]).
 
 -spec execute(request()) -> response().
 execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
@@ -172,10 +176,10 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                               "Received unexpected message from compiler process: ~p~n",
                               [Other]),
                     #{exit_code => 1,
-                      output => "Unexpected message from compiler process.~n"}
+                      output => "Unexpected message from compiler process."}
             after 600_000 ->
                     #{exit_code => 1,
-                      output => "Compilation timed out.~n"}
+                      output => "Compilation timed out."}
             end;
         {error, Reason} ->
             #{exit_code => 1,
@@ -265,97 +269,48 @@ compile_apps(NotifyPid, OrderedApplications, Targets, DestDir, CodePaths, Module
 compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     #{AppName := #{compile_opts := CompileOpts0, outs := Outs}} = Targets,
 
-    CompileOpts = [{outdir, "ebin"},
-                   binary,
-                   return,
-                   no_spawn_compiler_process | CompileOpts0],
-    io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts]),
+    % CompileOpts = [{outdir, "ebin"},
+    %                binary,
+    %                return,
+    %                no_spawn_compiler_process | CompileOpts0],
+    io:format(standard_error, "Compiling ~p with ~p~n", [AppName, CompileOpts0]),
 
-    IncludePaths = lists:filtermap(
-                     fun
-                         ({i, P}) ->
-                             {true, P};
-                         (_) ->
-                             false
-                     end, CompileOpts),
+    % IncludePaths = lists:filtermap(
+    %                  fun
+    %                      ({i, P}) ->
+    %                          {true, P};
+    %                      (_) ->
+    %                          false
+    %                  end, CompileOpts),
 
     CopiedSrcs = lists:filter(fun is_erlang_source/1, Outs),
 
     G = src_graph(AppName, CopiedSrcs, CompileOpts0, ModuleIndex, MappedInputs),
 
-    OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
+    % OrderedCopiedSrcs = digraph_tools:consume_to_list(G),
     %% io:format(standard_error, "~p: ~p~n", [AppName, Srcs]),
 
     {ok, OldCwd} = file:get_cwd(),
     AppDir = filename:join(DestDir, AppName),
     true = code:add_path(filename:absname(filename:join(AppDir, "ebin"))),
     ok = file:set_cwd(AppDir),
-    R = lists:foldl(
-          fun
-              (Src, {ok, Modules, Warnings}) ->
-                  SrcRel = string:prefix(Src, AppDir ++ "/"),
-                  ContentsFun = fun () ->
-                                        case compile:file(SrcRel, CompileOpts) of
-                                            {ok, Module, ModuleBin} ->
-                                                {ok, Module, ModuleBin, []};
-                                            R ->
-                                                R
-                                        end
-                                end,
-                  Contents = case maps:size(MappedInputs) of
-                                 0 ->
-                                     ContentsFun();
-                                 _ ->
-                                     case get_analysis(Src, CompileOpts0, MappedInputs) of
-                                         {ok, ErlAttrs} ->
-                                             case deps(Src, ErlAttrs, IncludePaths, AppName, Targets, CodePaths, ModuleIndex) of
-                                                 {ok, Deps, []} ->
-                                                     Key = beam_file_contents_key(CompileOpts0,
-                                                                                  Deps,
-                                                                                  MappedInputs),
-                                                     get_beam_file_contents(Key, ContentsFun);
-                                                 {ok, Deps, DepsWarnings} ->
-                                                     Key = beam_file_contents_key(CompileOpts0,
-                                                                                  Deps,
-                                                                                  MappedInputs),
-                                                     case get_beam_file_contents(Key, ContentsFun) of
-                                                         {ok, M, MB, CW} ->
-                                                             {ok, M, MB, [{Src, DepsWarnings} | CW]};
-                                                         {error, E, CW} ->
-                                                             {error, E, [{Src, DepsWarnings} | CW]}
-                                                     end
-                                             end;
-                                         {error, Reason} ->
-                                             Key = beam_file_contents_key(CompileOpts0,
-                                                                          [Src],
-                                                                          MappedInputs),
-                                             case get_beam_file_contents(Key, ContentsFun) of
-                                                 {ok, M, MB, CW} ->
-                                                     {ok, M, MB, [{Src, Reason} | CW]};
-                                                 {error, E, CW} ->
-                                                     {error, E, [{Src, Reason} | CW]}
-                                             end
-                                     end
-                             end,
-                  case Contents of
-                      {ok, Module, ModuleBin, W} ->
-                          ModulePath = filename:join("ebin", atom_to_list(Module) ++ ".beam"),
-                          ok = file:write_file(ModulePath, ModuleBin),
-                          %% {module, Module} = code:load_binary(Module,
-                          %%                                     filename:absname(ModulePath),
-                          %%                                     ModuleBin),
-                          {ok, Modules ++ [Module], Warnings ++ W};
-                      {error, Errors, W} ->
-                          io:format(standard_error,
-                                    "Compilation error in ~p ~p~n"
-                                    "  Errors: ~p~n"
-                                    "  Warnings: ~p~n",
-                                    [AppName, Src, Errors, Warnings ++ W]),
-                          {error, Modules, Errors, Warnings ++ W}
-                  end;
-              (_, E) ->
-                  E
-          end, {ok, [], []}, OrderedCopiedSrcs),
+
+    compiler:start_link(AppName, AppDir, Targets, CodePaths, ModuleIndex, MappedInputs),
+    CompilationResults = compiler:compile(G),
+    compiler:stop(),
+    R = maps:fold(
+        fun
+            (_, {ok, Module, W}, {ok, Modules, Warnings}) ->
+                {ok, [Module | Modules], Warnings ++ W};
+            (_, {ok, Module, W}, {error, Modules, Errors, Warnings}) ->
+                {error, [Module | Modules], Errors, Warnings ++ W};
+            (_, {error, E, W}, {ok, Modules, Warnings}) ->
+                {error, Modules, E, Warnings ++ W};
+            (_, {error, E, W}, {error, Modules, Errors, Warnings}) ->
+                {error, Modules, Errors ++ E, Warnings ++ W}
+        end,
+        {ok, [], []},
+        CompilationResults),
     ok = file:set_cwd(OldCwd),
     R.
 
