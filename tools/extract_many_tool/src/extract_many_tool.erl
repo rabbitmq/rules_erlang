@@ -38,7 +38,7 @@ main(["--apps_json", AppsJsonFile,
 
     add_deps(AppGraph, AppsData, lists:usort(Apps), sets:new()),
     
-    AllApps = digraph_utils:preorder(AppGraph),
+    AllApps = lists:sort(digraph:vertices(AppGraph)),
     
     io:format("  Complete Apps list: ~p~n", [AllApps]),
 
