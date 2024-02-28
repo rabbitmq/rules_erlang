@@ -50,11 +50,11 @@ get_analysis(Key, ContentsFun) ->
 src_analysis_stats() ->
     gen_server:call(?MODULE, analysis_stats).
 
--spec get_beam_file_contents(binary()) -> compilation_result() | none.
+-spec get_beam_file_contents(binary()) -> file_compilation_result() | none.
 get_beam_file_contents(Key) ->
     gen_server:call(?MODULE, {get_beam, Key}).
 
--spec put_beam_file_contents(binary(), compilation_result()) -> compilation_result().
+-spec put_beam_file_contents(binary(), file_compilation_result()) -> file_compilation_result().
 put_beam_file_contents(Key, Contents) ->
     gen_server:call(?MODULE, {put_beam, Key, Contents}).
 

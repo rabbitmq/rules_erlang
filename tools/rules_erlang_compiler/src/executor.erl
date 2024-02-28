@@ -6,6 +6,7 @@
 
 -export([execute/1]).
 -export([compile_apps/7]).
+-export([compile/6]).
 
 -spec execute(request()) -> response().
 execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
@@ -67,27 +68,36 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
             % we might also have to write this to a file so that dialyze rules can use it?
             %% io:format(standard_error, "TargetsWithDeps: ~p~n", [TargetsWithDeps]),
 
-            AppCompileOrder = digraph_tools:consume_to_list(G),
-
-            %% io:format(standard_error, "Compilation Order: ~p~n", [AppCompileOrder]),
-
             process_flag(trap_exit, true),
-            CompilerPid = spawn_link(node(),
-                                     ?MODULE, compile_apps, [self(),
-                                                             AppCompileOrder,
-                                                             TargetsWithDeps,
-                                                             DestDir,
-                                                             CodePaths,
-                                                             ModuleIndex,
-                                                             MappedInputs]),
+            % CompilerPid = spawn_link(node(),
+            %                          ?MODULE, compile_apps, [self(),
+            %                                                  AppCompileOrder,
+            %                                                  TargetsWithDeps,
+            %                                                  DestDir,
+            %                                                  CodePaths,
+            %                                                  ModuleIndex,
+            %                                                  MappedInputs]),
+            CompilerPid = parallel_compiler:start_link(TargetsWithDeps,
+                                            DestDir,
+                                            CodePaths,
+                                            ModuleIndex,
+                                            MappedInputs),
+            CompilationResults = parallel_compiler:compile_apps(G),
             receive
-                {Modules, _} = R ->
-                    receive
-                        {'EXIT', CompilerPid, normal} ->
-                            io:format(standard_error,
-                                      "Compiler process finished.~n", [])
-                    end,
-                    TheseCodePaths = lists:filter(
+                {'EXIT', CompilerPid, normal} ->
+                    io:format(standard_error,
+                                "Compiler process finished.~n", [])
+            end,
+            R = maps:fold(fun
+                (_, {ok, NewModules, NewWarnings}, {Mods, {ok, Warnings}}) ->
+                    {Mods ++ NewModules, {ok, Warnings ++ NewWarnings}};
+                (_, {ok, NewModules, _}, {Mods, {error, _, _} = Error}) ->
+                    {error, Mods ++ NewModules, Error};
+                (_, {error, NewModules, _, _} = Error, {Mods, _}) ->
+                    {Mods ++ NewModules, Error}
+            end, {[], {ok, []}}, CompilationResults),
+            {Modules, _} = R,
+                   TheseCodePaths = lists:filter(
                                        fun (CP) ->
                                                case string:prefix(CP, filename:absname(DestDir)) of
                                                    nomatch -> false;
@@ -167,16 +177,6 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                                                                        BFCR, BSM,
                                                                        Warnings])}
                     end;
-                Other ->
-                    io:format(standard_error,
-                              "Received unexpected message from compiler process: ~p~n",
-                              [Other]),
-                    #{exit_code => 1,
-                      output => "Unexpected message from compiler process.~n"}
-            after 600_000 ->
-                    #{exit_code => 1,
-                      output => "Compilation timed out.~n"}
-            end;
         {error, Reason} ->
             #{exit_code => 1,
               output => io_lib:format("Could not read ~s: ~p~n", [ConfigJsonPath, Reason])}
@@ -389,7 +389,7 @@ get_analysis(Src, CompileOpts, MappedInputs) ->
             cas:get_analysis(Key, ContentsFun)
     end.
 
--spec get_beam_file_contents(binary(), fun(() -> compilation_result())) -> compilation_result().
+-spec get_beam_file_contents(binary(), fun(() -> file_compilation_result())) -> file_compilation_result().
 get_beam_file_contents(Key, ContentsFun) ->
     %% Note: this is not currently safe for multiple processes
     case cas:get_beam_file_contents(Key) of

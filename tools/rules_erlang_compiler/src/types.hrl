@@ -22,5 +22,8 @@
 -type warnings_list() :: [{file:name(), [term()]}].
 -type errors_list() :: warnings_list().
 
--type compilation_result() :: {ok, module(), binary(), warnings_list()} |
-                              {error, errors_list(), warnings_list()}.
+-type file_compilation_result() :: {ok, module(), binary(), warnings_list()} |
+                                   {error, errors_list(), warnings_list()}.
+
+-type app_compilation_result() :: {ok, Modules :: [module()], Warnings :: warnings_list()} |
+                                  {error, Modules :: [module()], Errors :: errors_list(), Warnings :: warnings_list()}.
