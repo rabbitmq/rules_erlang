@@ -3,6 +3,7 @@ load("//bzlmod:erlang_package.bzl", "DEFAULT_BUILD_FILE_CONTENT")
 
 def hex_pm_erlang_app(
         name = None,
+        version = None,
         testonly = False,
         app_name = None,
         **kwargs):
