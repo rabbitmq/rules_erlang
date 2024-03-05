@@ -121,7 +121,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                         end,
                         code:get_path()
                     ),
-                    code:del_paths(TheseCodePaths),
+                    del_code_paths(TheseCodePaths),
                     lists:foreach(
                         fun
                             (thoas) ->
@@ -150,7 +150,7 @@ execute(#{arguments := #{targets_file := ConfigJsonPath}, inputs := Inputs}) ->
                         end,
                         Modules
                     ),
-                    code:del_paths(AbsCodePaths),
+                    del_code_paths(AbsCodePaths),
 
                     #{hits := AH, misses := AM, size := AS} = cas:src_analysis_stats(),
                     ACR = 100 * AH / (AH + AM),
@@ -915,3 +915,11 @@ add_deps_to_targets(Targets, V, [E | Rest], G) ->
         Target0
     ),
     add_deps_to_targets(Targets#{Dependent := Target}, V, Rest, G).
+
+-if(?OTP_RELEASE >= 26).
+del_code_paths(Paths) ->
+    code:del_paths(Paths).
+-else.
+del_code_paths(Paths) ->
+    lists:foreach(fun code:del_path/1, Paths).
+-endif.
