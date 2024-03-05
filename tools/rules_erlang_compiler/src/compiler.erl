@@ -41,7 +41,12 @@
 }).
 
 -spec start_link(
-    atom(), file:filename_all(), #{atom() := target_extended()}, [string()], module_index(), inputs()
+    atom(),
+    file:filename_all(),
+    #{atom() := target_extended()},
+    [string()],
+    module_index(),
+    inputs()
 ) -> gen_server:start_ret().
 start_link(AppName, AppDir, Targets, CodePaths, ModuleIndex, MappedInputs) ->
     gen_server:start_link(
