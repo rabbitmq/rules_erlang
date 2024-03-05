@@ -1,0 +1,4 @@
+exports_files([
+    "extract_app_src.mk",
+    "extract_erlc_opts.mk",
+])
