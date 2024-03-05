@@ -6,9 +6,9 @@
 -compile(export_all).
 
 all() -> [
-          conform_command,
           basic,
-          test_src
+          test_src,
+          missing
          ].
 
 conform_command(_) ->

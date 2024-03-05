@@ -1,0 +1,41 @@
+load(
+    "@rules_erlang//:xref2.bzl",
+    "xref",
+)
+load(
+    "@rules_erlang//:dialyze.bzl",
+    "DEFAULT_PLT_APPS",
+    "dialyze",
+    "plt",
+)
+load(
+    "@rules_erlang//:ct.bzl",
+    "assert_suites2",
+    "ct_suite",
+)
+
+alias(
+    name = "erlang_app",
+    actual = "@rules_erlang//tools/extract_many_tool:erlang_app",
+)
+
+alias(
+    name = "test_erlang_app",
+    actual = "@rules_erlang//tools/extract_many_tool:test_erlang_app",
+)
+
+xref()
+
+plt(
+    name = "base_plt",
+    # apps = DEFAULT_PLT_APPS + ["compiler", "crypto"],
+    deps = [
+        "@thoas//:erlang_app",
+    ],
+)
+
+dialyze(
+    plt = ":base_plt",
+)
+
+assert_suites2()

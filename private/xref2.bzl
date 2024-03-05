@@ -20,7 +20,7 @@ load(
     "maybe_install_erlang",
 )
 
-def _replace_all(s, substitutions):
+def replace_all(s, substitutions):
     for (p, r) in substitutions.items():
         s = s.replace(p, r)
     return s
@@ -69,7 +69,7 @@ def _expand_xref_erl(ctx, method = None, arg = None):
 
     extra_dirs = [f.short_path for f in ctx.files.extra_dirs]
 
-    xref_erl = _replace_all(XREF_ERL, {
+    xref_erl = replace_all(XREF_ERL, {
         SCOPE_PATTERN: to_erlang_atom_list(ctx.attr.scopes),
         EXTRA_APP_DIRS_PATTERN: to_erlang_string_list(extra_app_dirs),
         DEPS_DIRS_PATTERN: to_erlang_string_list(deps_dirs),
