@@ -5,9 +5,10 @@
 
 -compile(export_all).
 
-all() -> [
-          consume_to_list
-         ].
+all() ->
+    [
+        consume_to_list
+    ].
 
 consume_to_list(_) ->
     G1 = digraph:new([acyclic]),
@@ -22,5 +23,7 @@ consume_to_list(_) ->
     digraph:add_edge(G1, Middle, Leaf1),
     digraph:add_edge(G1, Middle, Leaf2),
 
-    ?assertEqual([Root, Middle, Leaf1, Leaf2, Loner],
-                 digraph_tools:consume_to_list(G1)).
+    ?assertEqual(
+        [Root, Middle, Leaf1, Leaf2, Loner],
+        digraph_tools:consume_to_list(G1)
+    ).

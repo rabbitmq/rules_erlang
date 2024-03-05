@@ -352,7 +352,7 @@ compile(AppName, Targets, DestDir, CodePaths, ModuleIndex, MappedInputs) ->
     true = code:add_path(filename:absname(filename:join(AppDir, "ebin"))),
     ok = file:set_cwd(AppDir),
 
-    compiler:start_link(AppName, AppDir, Targets, CodePaths, ModuleIndex, MappedInputs),
+    {ok, _} = compiler:start_link(AppName, AppDir, Targets, CodePaths, ModuleIndex, MappedInputs),
     CompilationResults = compiler:compile(G),
     compiler:stop(),
     R = maps:fold(
