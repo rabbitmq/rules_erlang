@@ -216,7 +216,10 @@ def _resolve_hex_pm(ctx, packages):
 
 def _newest(a, b):
     if a.version == b.version:
-        return a
+        if a.module.is_root:
+            return a
+        else:
+            return b
 
     a_version = version_from_string(a.version)
     b_version = version_from_string(b.version)
