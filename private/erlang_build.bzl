@@ -118,26 +118,30 @@ tar --extract \\
 
 echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 
+trap 'catch $?' EXIT
+catch() {{
+    [[ $1 == 0 ]] || tail -n 50 "$ABS_LOG"
+    echo "Archiving build dir to {build_path}"
+    cd "$ABS_BUILD_DIR"
+    tar --create \\
+        --file "$ABS_BUILD_DIR_TAR" \\
+        *
+    echo "Build log: {build_log}"
+}}
+
 cd "$ABS_BUILD_DIR"
 {pre_configure_cmds}
-./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1 \\
-    || (cat "$ABS_LOG" && exit 1)
+./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1
 {post_configure_cmds}
 echo "\tconfigure finished"
-make {extra_make_opts} >> "$ABS_LOG" 2>&1 \\
-    || (cat "$ABS_LOG" && exit 1)
+${{MAKE:=make}} {extra_make_opts} >> "$ABS_LOG" 2>&1
 echo "\tmake finished"
-make DESTDIR="$ABS_DEST_DIR" install >> "$ABS_LOG" 2>&1 \\
-    || (cat "$ABS_LOG" && exit 1)
+${{MAKE}} install DESTDIR="$ABS_DEST_DIR" >> "$ABS_LOG" 2>&1
 echo "\tmake install finished"
-
-tar --create \\
-    --file $ABS_BUILD_DIR_TAR \\
-    *
 
 cd "$ABS_DEST_DIR"
 tar --create \\
-    --file $ABS_RELEASE_DIR_TAR \\
+    --file "$ABS_RELEASE_DIR_TAR" \\
     *
 """.format(
             sha256 = ctx.attr.sha256v,
@@ -215,9 +219,7 @@ erlang_build = rule(
         "pre_configure_cmds": attr.string_list(),
         "extra_configure_opts": attr.string_list(),
         "post_configure_cmds": attr.string_list(),
-        "extra_make_opts": attr.string_list(
-            default = ["-j 8"],
-        ),
+        "extra_make_opts": attr.string_list(),
         "sha256": tools["sha256"],
     },
 )

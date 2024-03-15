@@ -45,6 +45,7 @@ def _impl(repository_ctx):
             pre_configure_cmds = repository_ctx.attr.pre_configure_cmdss.get(name, []),
             extra_configure_opts = repository_ctx.attr.extra_configure_optss.get(name, []),
             post_configure_cmds = repository_ctx.attr.post_configure_cmdss.get(name, []),
+            extra_make_opts = repository_ctx.attr.extra_make_optss.get(name, []),
         )
 
     for (name, props) in erlang_installations.items():
@@ -78,6 +79,7 @@ def _impl(repository_ctx):
                     "%{PRE_CONFIGURE_CMDS}": _to_string_list(props.pre_configure_cmds),
                     "%{EXTRA_CONFIGURE_OPTS}": _to_string_list(props.extra_configure_opts),
                     "%{POST_CONFIGURE_CMDS}": _to_string_list(props.post_configure_cmds),
+                    "%{EXTRA_MAKE_OPTS}": _to_string_list(props.extra_make_opts),
                 },
                 False,
             )
@@ -123,6 +125,7 @@ erlang_config = repository_rule(
         "pre_configure_cmdss": attr.string_list_dict(),
         "extra_configure_optss": attr.string_list_dict(),
         "post_configure_cmdss": attr.string_list_dict(),
+        "extra_make_optss": attr.string_list_dict(),
     },
     environ = [
         ERLANG_HOME_ENV_VAR,

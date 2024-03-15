@@ -43,6 +43,7 @@ def _erlang_config(ctx):
     pre_configure_cmdss = {}
     extra_configure_optss = {}
     post_configure_cmdss = {}
+    extra_make_optss = {}
     owners_by_name = {}
 
     for mod in ctx.modules:
@@ -73,6 +74,7 @@ def _erlang_config(ctx):
             pre_configure_cmdss[erlang.name] = erlang.pre_configure_cmds
             extra_configure_optss[erlang.name] = erlang.extra_configure_opts
             post_configure_cmdss[erlang.name] = erlang.post_configure_cmds
+            extra_make_optss[erlang.name] = erlang.extra_make_opts
             owners_by_name[erlang.name] = mod
 
         for erlang in mod.tags.internal_erlang_from_github_release:
@@ -100,6 +102,7 @@ def _erlang_config(ctx):
             pre_configure_cmdss[erlang.name] = erlang.pre_configure_cmds
             extra_configure_optss[erlang.name] = erlang.extra_configure_opts
             post_configure_cmdss[erlang.name] = erlang.post_configure_cmds
+            extra_make_optss[erlang.name] = erlang.extra_make_opts
             owners_by_name[erlang.name] = mod
 
     _erlang_config_rule(
@@ -114,6 +117,7 @@ def _erlang_config(ctx):
         pre_configure_cmdss = pre_configure_cmdss,
         extra_configure_optss = extra_configure_optss,
         post_configure_cmdss = post_configure_cmdss,
+        extra_make_optss = extra_make_optss,
     )
 
 external_erlang_from_path = tag_class(attrs = {
@@ -131,6 +135,7 @@ internal_erlang_from_http_archive = tag_class(attrs = {
     "pre_configure_cmds": attr.string_list(),
     "extra_configure_opts": attr.string_list(),
     "post_configure_cmds": attr.string_list(),
+    "extra_make_opts": attr.string_list(),
 })
 
 internal_erlang_from_github_release = tag_class(attrs = {
@@ -144,6 +149,7 @@ internal_erlang_from_github_release = tag_class(attrs = {
     "pre_configure_cmds": attr.string_list(),
     "extra_configure_opts": attr.string_list(),
     "post_configure_cmds": attr.string_list(),
+    "extra_make_opts": attr.string_list(),
 })
 
 erlang_config = module_extension(
