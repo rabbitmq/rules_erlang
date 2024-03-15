@@ -121,23 +121,23 @@ echo "Building OTP $(cat $ABS_BUILD_DIR/OTP_VERSION) in $ABS_BUILD_DIR"
 trap 'catch $?' EXIT
 catch() {{
     [[ $1 == 0 ]] || tail -n 50 "$ABS_LOG"
-    echo "Archiving build dir to {build_path}"
+    echo "    archiving build dir to: {build_path}"
     cd "$ABS_BUILD_DIR"
     tar --create \\
         --file "$ABS_BUILD_DIR_TAR" \\
         *
-    echo "Build log: {build_log}"
+    echo "    build log: {build_log}"
 }}
 
 cd "$ABS_BUILD_DIR"
 {pre_configure_cmds}
 ./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1
 {post_configure_cmds}
-echo "\tconfigure finished"
+echo "    configure finished"
 ${{MAKE:=make}} {extra_make_opts} >> "$ABS_LOG" 2>&1
-echo "\tmake finished"
+echo "    make finished"
 ${{MAKE}} install DESTDIR="$ABS_DEST_DIR" >> "$ABS_LOG" 2>&1
-echo "\tmake install finished"
+echo "    make install finished"
 
 cd "$ABS_DEST_DIR"
 tar --create \\
