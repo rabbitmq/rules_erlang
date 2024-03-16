@@ -18,6 +18,7 @@ erlang_build(
     pre_configure_cmds = %{PRE_CONFIGURE_CMDS},
     extra_configure_opts = %{EXTRA_CONFIGURE_OPTS},
     post_configure_cmds = %{POST_CONFIGURE_CMDS},
+    extra_make_opts = %{EXTRA_MAKE_OPTS},
 )
 
 erlang_toolchain(
