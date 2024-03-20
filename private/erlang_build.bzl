@@ -23,6 +23,7 @@ May be a prefix of the exact version found in the version_file.""",
 If this value is not None, it must be symlinked into
 erlang_home and used from there, as erlang installations
 are not relocatable.""",
+        "install_path": """Directory to unpack the release_dir_tar into""",
         "erlang_home": """Absolute path to the erlang
 installation""",
         "version_file": """A file containing the version of this
@@ -139,7 +140,7 @@ echo "    make finished"
 ${{MAKE}} install DESTDIR="$ABS_DEST_DIR" >> "$ABS_LOG" 2>&1
 echo "    make install finished"
 
-cd "$ABS_DEST_DIR"
+cd "$ABS_DEST_DIR"/{install_path}
 tar --create \\
     --file "$ABS_RELEASE_DIR_TAR" \\
     *
@@ -169,8 +170,9 @@ tar --create \\
         outputs = [version_file],
         command = """set -euo pipefail
 
+mkdir -p "{install_path}"
 tar --extract \\
-    --directory / \\
+    --directory "{install_path}" \\
     --file {erlang_release_tar}
 
 {begins_with_fun}
@@ -182,6 +184,7 @@ fi
 
 echo "$V" >> {version_file}
 """.format(
+            install_path = install_path,
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
             erlang_version = ctx.attr.version,
@@ -203,6 +206,7 @@ echo "$V" >> {version_file}
         OtpInfo(
             version = ctx.attr.version,
             release_dir_tar = release_dir_tar,
+            install_path = install_path,
             erlang_home = erlang_home,
             version_file = version_file,
         ),
@@ -266,6 +270,7 @@ echo "$V" >> {version_file}
         OtpInfo(
             version = erlang_version,
             release_dir_tar = None,
+            install_path = None,
             erlang_home = erlang_home,
             version_file = version_file,
         ),
