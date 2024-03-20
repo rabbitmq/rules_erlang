@@ -9,6 +9,7 @@ ErlangAppInfo = provider(
         "license_files": "License files",
         "srcs": "Source files",
         "deps": "Runtime dependencies of the compiled sources",
+        "direct_deps": "Declared direct deps of the app",
     },
 )
 
@@ -48,6 +49,7 @@ def _impl(ctx):
             license_files = ctx.files.license_files,
             srcs = ctx.files.srcs,
             deps = deps,
+            direct_deps = ctx.attr.deps,
         ),
         DefaultInfo(
             files = depset(compiled_files),

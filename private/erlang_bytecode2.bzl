@@ -1,18 +1,12 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
 load(":erlang_bytecode.bzl", "unique_dirnames")
+load(":erlc_opts.bzl", "ErlcOptsInfo")
 load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
-)
-
-ErlcOptsInfo = provider(
-    doc = "Reusable set of erlc options",
-    fields = {
-        "values": "Strings to be passed as additional options to erlc",
-    },
 )
 
 def _impl(ctx):
@@ -141,6 +135,7 @@ erlang_bytecode = rule(
             allow_files = [".ez"],
         ),
         "erlc_opts": attr.label(
+            mandatory = True,
             providers = [ErlcOptsInfo],
         ),
         "outs": attr.output_list(
@@ -148,15 +143,4 @@ erlang_bytecode = rule(
         ),
     },
     toolchains = ["//tools:toolchain_type"],
-)
-
-def _erlc_opts_impl(ctx):
-    return [ErlcOptsInfo(values = ctx.attr.values)]
-
-erlc_opts = rule(
-    implementation = _erlc_opts_impl,
-    attrs = {
-        "values": attr.string_list(),
-    },
-    provides = [ErlcOptsInfo],
 )

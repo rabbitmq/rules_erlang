@@ -1,7 +1,10 @@
 load(
     "//private:erlang_bytecode2.bzl",
-    _ErlcOptsInfo = "ErlcOptsInfo",
     _erlang_bytecode = "erlang_bytecode",
+)
+load(
+    "//private:erlc_opts.bzl",
+    _ErlcOptsInfo = "ErlcOptsInfo",
     _erlc_opts = "erlc_opts",
 )
 

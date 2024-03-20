@@ -27,7 +27,7 @@ halt().
         body = body,
     ))
 
-    (erlang_home, erlang_release_dir, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     inputs = depset(
         direct = ctx.files.src + ctx.files.beam,
