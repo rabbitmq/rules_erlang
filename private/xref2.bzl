@@ -145,7 +145,7 @@ if NOT [{package}] == [] cd {package}
             erl_libs_path = erl_libs_path,
             xref_erl = xref_erl,
             package = ctx.label.package,
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,
@@ -248,7 +248,7 @@ set QUERY=%1%
             erl_libs_path = windows_path(erl_libs_path),
             package = ctx.label.package,
             xref_erl = xref_erl,
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,

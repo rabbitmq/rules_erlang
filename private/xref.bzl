@@ -80,7 +80,7 @@ echo on
             erlang_home = windows_path(erlang_home),
             xrefr = windows_path(xrefr_path),
             config_path = windows_path(config_file.short_path),
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,

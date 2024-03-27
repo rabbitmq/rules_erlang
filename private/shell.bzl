@@ -55,7 +55,7 @@ echo on
             erlang_home = windows_path(erlang_home),
             erl_libs_path = windows_path(erl_libs_path),
             extra_erl_args = " ".join(ctx.attr.extra_erl_args),
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,
