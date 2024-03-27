@@ -89,7 +89,7 @@ EXIT /B 1
             dirs = " ".join(dirs),
             opts = " ".join(ctx.attr.dialyzer_opts),
             check_warnings = "if %ERRORLEVEL% EQU 2 EXIT /B 0" if not ctx.attr.warnings_as_errors else "",
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,

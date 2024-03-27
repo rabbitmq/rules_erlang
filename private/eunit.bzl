@@ -188,7 +188,7 @@ echo on
             eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
             test_env = "\n".join(test_env_commands),
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,

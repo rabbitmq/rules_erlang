@@ -291,7 +291,7 @@ exit /b %CT_RUN_ERRORLEVEL%
             sname = sname(ctx),
             extra_args = " ".join(extra_args),
             test_env = "\n".join(test_env_commands),
-        )
+        ).replace("\n", "\r\n")
 
     ctx.actions.write(
         output = output,
