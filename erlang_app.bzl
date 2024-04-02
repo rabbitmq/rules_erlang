@@ -1,11 +1,11 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load(":app_file.bzl", "app_file")
-load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
     ":erlang_app_info.bzl",
     "erlang_app_info",
     _ErlangAppInfo = "ErlangAppInfo",
 )
+load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
     ":util.bzl",
     "without",
