@@ -59,6 +59,7 @@ def _erlang_app(
         license_files = None,
         test = False):
     if beam_files != None or hdrs != None or srcs != None or priv != None or license_files != None:
+        print("beam_files, hdrs, srcs, priv & license_files params are deprecated")
         if erlc_opts != None:
             fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND erlc_opts")
         if len(extra_hdrs) > 0:
