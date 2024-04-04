@@ -21,8 +21,6 @@ buildbuddy(
     llvm = True,
 )
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
 git_repository(
     name = "rbe",
     commit = "3baa5949e208a92561c3afe4b826e626a4577e03",  # linux-rbe branch
