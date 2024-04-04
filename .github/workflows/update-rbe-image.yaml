@@ -28,7 +28,7 @@ jobs:
       working-directory: rules_erlang/test
       run: |
         sudo npm install --global --silent @bazel/buildozer
-        echo "$(cat WORKSPACE.bazel | npx buildozer 'set commit "${{ steps.find-commit.outputs.SHA }}"' -:rbe)" > WORKSPACE.bazel
+        buildozer 'set commit "${{ steps.find-commit.outputs.SHA }}"' //WORKSPACE:rbe)"
         git diff
     - name: CREATE PULL REQUEST
       uses: peter-evans/create-pull-request@v6.0.2
