@@ -51,7 +51,8 @@ render(
         end,
         Outs
     ),
-    Props = lists:keystore(modules, 1, Props0, {modules, Modules}),
+    Props1 = lists:keystore(modules, 1, Props0, {modules, Modules}),
+    Props = ensure_relx_compliant(Props1),
     Dest = filename:join([DestDir, AppName, "ebin", atom_to_list(AppName) ++ ".app"]),
     ok = file:write_file(
         Dest,
@@ -62,4 +63,28 @@ render(
             {ok, []};
         _ ->
             {ok, [{Dest, Warnings}]}
+    end.
+
+
+ensure_relx_compliant(AppData) ->
+    ensure_registered(ensure_string_vsn(AppData)).
+
+%% https://github.com/erlware/relx/issues/32
+ensure_registered(AppData) ->
+    case lists:keyfind(registered, 1, AppData) of
+        false ->
+            [{registered, []} | AppData];
+        {registered, _} ->
+            AppData
+    end.
+
+%% https://github.com/for-GET/jesse/blob/master/src/jesse.app.src#L4
+ensure_string_vsn(AppData) ->
+    case proplists:get_value(vsn, AppData, undefined) of
+        undefined ->
+            AppData;
+        VSN when is_atom(VSN)->
+            proplists:delete(vsn, AppData) ++ [{vsn, atom_to_list(VSN)}];
+        _ ->
+            AppData
     end.
