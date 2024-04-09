@@ -70,6 +70,10 @@ mapify_dep({Name, Version, {git = Kind, Remote, Ref}, [raw]}) ->
 %% other formats
 mapify_dep({Name, {pkg, _}}) ->
     #{name => Name,
+      kind => hex};
+mapify_dep({Name, Version, {pkg, _}}) ->
+    #{name => Name,
+      version => Version,
       kind => hex}.
 
 conformErlOpt(Opt) when is_atom(Opt)->
