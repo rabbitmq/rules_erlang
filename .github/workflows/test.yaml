@@ -115,18 +115,12 @@ jobs:
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-bzlmod-macos:
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        otp:
-        - "26.2"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v4
     - name: CONFIGURE ERLANG
-      uses: erlef/setup-beam@v1
-      with:
-        otp-version: ${{ matrix.otp }}
+      run: |
+        brew install erlang
     - name: TEST
       working-directory: test
       run: |
@@ -143,7 +137,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: bazel-testlogs-${{matrix.otp}}
+        name: bazel-testlogs-bzlmod-macos
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-bzlmod-windows:
     runs-on: windows-latest
