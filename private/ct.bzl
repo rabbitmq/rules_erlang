@@ -118,7 +118,8 @@ def _impl(ctx):
         log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
 
         output = ctx.actions.declare_file(ctx.label.name)
-        script = """#!/bin/bash
+        script = """\
+#!/usr/bin/env
 
 set -eo pipefail
 
