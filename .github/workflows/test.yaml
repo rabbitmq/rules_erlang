@@ -73,7 +73,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -81,58 +81,6 @@ jobs:
       with:
         name: bazel-testlogs-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
-  test-windows:
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        otp:
-        - "25.3"
-        - "26.2"
-    steps:
-    - name: CHECKOUT
-      uses: actions/checkout@v4
-    - name: CONFIGURE ERLANG
-      uses: erlef/setup-beam@v1
-      with:
-        otp-version: ${{ matrix.otp }}
-    - name: CONFIGURE BAZEL
-      working-directory: test
-      shell: bash
-      run: |
-        cat << EOF >> user.bazelrc
-          startup --output_user_root=C:/tmp
-          startup --windows_enable_symlinks
-          build --enable_runfiles
-          build --color=yes
-          build --@rules_erlang//:ct_test_windows_logdir_drive_letter=z
-          build --jobs=1
-        EOF
-    - name: TEST
-      working-directory: test
-      shell: cmd
-      run: |
-        where erl > tmpFile
-        set /p ERL_PATH= < tmpFile
-        del tmpFile
-
-        set ERLANG_HOME=%ERL_PATH:\bin\erl.exe=%
-
-        bazelisk test //... --noenable_bzlmod
-    - name: RESOVLE TEST LOGS PATH
-      if: always()
-      working-directory: test
-      shell: bash
-      run: |
-        LOGS_TAR=$PWD/logs.tar
-        cd bazel-testlogs
-        tar -cf $LOGS_TAR *
-    - name: CAPTURE TEST LOGS
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: bazel-testlogs-windows-${{matrix.otp}}
-        path: test/logs.tar
   test-bzlmod:
     runs-on: ubuntu-20.04
     strategy:
@@ -151,18 +99,51 @@ jobs:
     - name: TEST
       working-directory: test
       run: |
-        bazelisk test //...
+        bazelisk test //... \
+          --color=yes
     - name: RESOVLE TEST LOGS PATH
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: bazel-testlogs-bzlmod-${{matrix.otp}}
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
+  test-bzlmod-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        otp:
+        - "26.2"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v4
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: TEST
+      working-directory: test
+      run: |
+        ERLANG_HOME="$(dirname $(dirname $(which erl)))"
+        bazelisk test //... \
+          --color=yes
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      working-directory: test
+      run: |
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: bazel-testlogs-${{matrix.otp}}
         path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
   test-bzlmod-windows:
     runs-on: windows-latest
@@ -240,7 +221,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -273,7 +254,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -342,7 +323,7 @@ jobs:
       if: always()
       working-directory: test
       run: |
-        echo "::set-output name=LOGS_PATH::$(readlink -f bazel-testlogs)"
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
       id: resolve-test-logs-path
     - name: CAPTURE TEST LOGS
       if: always()
@@ -355,8 +336,8 @@ jobs:
     - unit-test
     - unit-test-bzlmod
     - test
-    - test-windows
     - test-bzlmod
+    - test-bzlmod-macos
     - test-bzlmod-windows
     - test-bzlmod-internal-erlang
     - test-host-erlang-change-detected
