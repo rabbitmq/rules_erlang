@@ -334,10 +334,13 @@ jobs:
     - test-bzlmod-macos
     - test-bzlmod-windows
     - test-bzlmod-internal-erlang
+    - test-bzlmod-coverage
     - test-host-erlang-change-detected
     - test-gazelle-extension
     runs-on: ubuntu-latest
     steps:
     - name: SUMMARY
       run: |
-        echo "SUCCESS"
+        cat << 'EOF' | jq -e 'map(.result == "success") | all(.)'
+        ${{ toJson(needs) }}
+        EOF
