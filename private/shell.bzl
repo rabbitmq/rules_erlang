@@ -29,11 +29,9 @@ def _impl(ctx):
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
-#!/usr/bin/env
-set -euo pipefail
-{maybe_install_erlang}
+        script = """set -euo pipefail
 
+{maybe_install_erlang}
 
 export ERL_LIBS=$PWD/{erl_libs_path}
 
