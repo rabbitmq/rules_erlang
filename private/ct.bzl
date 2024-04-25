@@ -118,7 +118,10 @@ def _impl(ctx):
         log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
 
         output = ctx.actions.declare_file(ctx.label.name)
-        script = """set -eo pipefail
+        script = """\
+#!/usr/bin/env
+
+set -eo pipefail
 
 {maybe_install_erlang}
 
