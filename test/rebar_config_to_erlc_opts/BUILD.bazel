@@ -1,0 +1,43 @@
+load(
+    "@rules_erlang//:xref2.bzl",
+    "xref",
+)
+load(
+    "@rules_erlang//:dialyze.bzl",
+    "DEFAULT_PLT_APPS",
+    "dialyze",
+    "plt",
+)
+load(
+    "@rules_erlang//:ct.bzl",
+    "assert_suites2",
+    "ct_suite",
+)
+
+alias(
+    name = "erlang_app",
+    actual = "@rules_erlang//tools/rebar_config_to_erlc_opts:erlang_app",
+)
+
+alias(
+    name = "test_erlang_app",
+    actual = "@rules_erlang//tools/rebar_config_to_erlc_opts:test_erlang_app",
+)
+
+xref()
+
+plt(
+    name = "base_plt",
+    apps = DEFAULT_PLT_APPS,
+)
+
+dialyze(
+    plt = ":base_plt",
+)
+
+ct_suite(
+    name = "rebar_config_to_erlc_opts_SUITE",
+    size = "small",
+)
+
+assert_suites2()

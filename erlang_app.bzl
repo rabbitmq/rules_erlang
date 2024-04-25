@@ -1,11 +1,11 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load(":app_file.bzl", "app_file")
-load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
     ":erlang_app_info.bzl",
     "erlang_app_info",
     _ErlangAppInfo = "ErlangAppInfo",
 )
+load(":erlang_bytecode.bzl", "erlang_bytecode")
 load(
     ":util.bzl",
     "without",
@@ -59,6 +59,7 @@ def _erlang_app(
         license_files = None,
         test = False):
     if beam_files != None or hdrs != None or srcs != None or priv != None or license_files != None:
+        print("beam_files, hdrs, srcs, priv & license_files params are deprecated")
         if erlc_opts != None:
             fail("Cannot set beam_files, hdrs, srcs, priv or license_files AND erlc_opts")
         if len(extra_hdrs) > 0:

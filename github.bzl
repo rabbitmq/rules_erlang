@@ -1,5 +1,5 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load(":erlang_app.bzl", "DEFAULT_ERLC_OPTS")
+load("//bzlmod:erlang_package.bzl", "DEFAULT_BUILD_FILE_CONTENT")
 
 def github_erlang_app(
         name = None,
@@ -7,21 +7,13 @@ def github_erlang_app(
         repo = None,
         version = "master",
         ref = "refs/heads/master",
-        extra_apps = [],
-        deps = [],
-        runtime_deps = [],
-        erlc_opts = DEFAULT_ERLC_OPTS,
         strip_prefix = None,
+        testonly = False,
         **kwargs):
     if not ("build_file" in kwargs.keys() or "build_file_content" in kwargs.keys()):
-        kwargs.update(build_file_content = _BUILD_FILE_TEMPLATE.format(
+        kwargs.update(build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
             app_name = name,
-            version = version,
-            extra_apps = extra_apps,
-            deps = deps,
-            runtime_deps = runtime_deps,
-            erlc_opts = erlc_opts,
-            stamp = 0,
+            testonly = testonly,
         ))
 
     repo = name if repo == None else repo
@@ -33,15 +25,3 @@ def github_erlang_app(
         strip_prefix = strip_prefix,
         **kwargs
     )
-
-_BUILD_FILE_TEMPLATE = """load("@rules_erlang//:erlang_app.bzl", "erlang_app")
-
-erlang_app(
-    app_name = "{app_name}",
-    app_version = "{version}",
-    extra_apps = {extra_apps},
-    deps = {deps},
-    runtime_deps = {runtime_deps},
-    erlc_opts = {erlc_opts},
-)
-"""
