@@ -119,8 +119,7 @@ def _impl(ctx):
 
         output = ctx.actions.declare_file(ctx.label.name)
         script = """\
-#!/usr/bin/env
-
+#!/usr/bin/env bash
 set -eo pipefail
 
 {maybe_install_erlang}

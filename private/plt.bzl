@@ -90,7 +90,7 @@ def _impl(ctx):
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
     script = """\
-#!/usr/bin/env
+#!/usr/bin/env bash
 set -euo pipefail
 
 {maybe_install_erlang}
