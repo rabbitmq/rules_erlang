@@ -1,9 +1,4 @@
 load(
-    "//tools:erlang_toolchain.bzl",
-    "erlang_dirs",
-    "maybe_install_erlang",
-)
-load(
     "//:erlang_app_info.bzl",
     "ErlangAppInfo",
     "flat_deps",
@@ -11,6 +6,11 @@ load(
 load(
     "//:util.bzl",
     "path_join",
+)
+load(
+    "//tools:erlang_toolchain.bzl",
+    "erlang_dirs",
+    "maybe_install_erlang",
 )
 load(
     ":util.bzl",
@@ -40,21 +40,22 @@ def _impl(ctx):
                     archive_path = ""
                 else:
                     archive_path = path_join(lib_info.app_name, "ebin")
-            elif ctx.attr.flat:
-                archive_path = src.basename
             else:
-                archive_path = path_join(lib_info.app_name, "ebin", src.basename)
-            if archive_path in entries:
-                fail("Duplicate entry for", archive_path)
+                if ctx.attr.flat:
+                    archive_path = src.basename
+                else:
+                    archive_path = path_join(lib_info.app_name, "ebin", src.basename)
+                if archive_path in entries:
+                    fail("Duplicate entry for %s: '%s'" % (src, archive_path))
             entries[archive_path] = src
         for src in ([] if ctx.attr.drop_hrl else lib_info.include) + lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
             if ctx.attr.flat:
                 archive_path = src.basename
             else:
+                rp = additional_file_dest_relative_path(dep.label, src)
                 archive_path = path_join(lib_info.app_name, rp)
             if archive_path in entries:
-                fail("Duplicate entry for", archive_path)
+                fail("Duplicate entry for %s: '%s'" % (src, archive_path))
             entries[archive_path] = src
 
     commands = ["set -euo pipefail"]
@@ -62,12 +63,12 @@ def _impl(ctx):
         full_dest = path_join(contents_dir.path, dest)
         commands.append('mkdir -p $(dirname "{}")'.format(full_dest))
         if src.is_directory:
-            commands.append("cp -r {src}/ {dest}".format(
+            commands.append('mkdir -p "{dest}" && cp -r "{src}"/* "{dest}"'.format(
                 src = src.path,
                 dest = full_dest,
             ))
         else:
-            commands.append("cp {src} {dest}".format(
+            commands.append('cp "{src}" "{dest}"'.format(
                 src = src.path,
                 dest = full_dest,
             ))
