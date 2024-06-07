@@ -65,7 +65,7 @@ def erl_libs_contents(
         for src in lib_info.beam:
             if src.is_directory:
                 if len(lib_info.beam) != 1:
-                    fail("ErlangAppInfo.beam must be a collection of files, or a single ebin dir")
+                    fail("ErlangAppInfo.beam must be a collection of files, or a single ebin dir: {} {}".format(lib_info.app_name, lib_info.beam))
                 dest = ctx.actions.declare_directory(path_join(dep_path, "ebin"))
                 ctx.actions.run_shell(
                     inputs = [src],
@@ -89,7 +89,7 @@ def erl_libs_contents(
                 outputs = [dest],
                 command = "unzip -q {} -d {}".format(
                     ez.path,
-                    dest.path,
+                    dest.dirname,
                 ),
                 mnemonic = "RulesErlangCopyErlLibsExpandEz",
             )
