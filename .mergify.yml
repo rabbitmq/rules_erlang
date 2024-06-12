@@ -1,0 +1,11 @@
+pull_request_rules:
+  - name: Automatically backport to 3.15.x based on label
+    conditions:
+      - base=main
+      - label=backport-3.15.x
+    actions:
+      backport:
+        branches:
+          - 3.15.x
+        assignees:
+          - "{{ author }}"
