@@ -40,6 +40,7 @@ for f in ${{module_paths[@]}}; do
         mods+=( $(basename "$f" .beam) )
     fi
 done
+mods+={extra_modules}
 
 if [[ ${{#mods[@]}} -eq 0 ]]; then
     mods_term="[]"
@@ -61,6 +62,7 @@ EOF
             erlang_home = erlang_home,
             app_file_tool = app_file_tool_path,
             modules = modules,
+            extra_modules = shell.array_literal(ctx.attr.synthetic_module_names),
             src = ctx.files.app_src[0].path,
             out = app_file.path,
         )
@@ -140,6 +142,7 @@ for f in ${{module_paths[@]}}; do
         mods+=( $(basename "$f" .beam) )
     fi
 done
+mods+={extra_modules}
 
 if [[ ${{#mods[@]}} -eq 0 ]]; then
     mods_term="[]"
@@ -203,6 +206,7 @@ fi
             stamp_version_key = ctx.attr.stamp_version_key if stamp else "",
             version = ctx.attr.app_version,
             modules = modules,
+            extra_modules = shell.array_literal(ctx.attr.synthetic_module_names),
             registered = registered_list,
             applications = applications_list,
             optional_applications = optional_applications_list,
@@ -254,6 +258,7 @@ app_file = rule(
         "optional_applications": attr.string_list(),
         "app_src": attr.label_list(allow_files = [".app.src"]),
         "modules": attr.label_list(allow_files = [".beam"]),
+        "synthetic_module_names": attr.string_list(),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "out": attr.output(),
         "stamp": attr.int(default = -1),
