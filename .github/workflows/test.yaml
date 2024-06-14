@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - 3.15.x
       - bump-rbe
   pull_request:
 jobs:
