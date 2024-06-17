@@ -31,29 +31,22 @@ def _impl(ctx):
 
     entries = {}
     for f in ctx.files.srcs + ctx.files.hdrs + ctx.files.beam:
+        if f.basename in entries:
+            fail("Duplicate entry for %s: '%s'" % (f, f.basename))
         entries[f.basename] = f
     for dep in flat_deps([ctx.attr.app]):
         lib_info = dep[ErlangAppInfo]
         for src in lib_info.beam:
             if src.is_directory:
-                if ctx.attr.flat:
-                    archive_path = ""
-                else:
-                    archive_path = path_join(lib_info.app_name, "ebin")
+                archive_path = path_join(lib_info.app_name, "ebin")
             else:
-                if ctx.attr.flat:
-                    archive_path = src.basename
-                else:
-                    archive_path = path_join(lib_info.app_name, "ebin", src.basename)
-                if archive_path in entries:
-                    fail("Duplicate entry for %s: '%s'" % (src, archive_path))
+                archive_path = path_join(lib_info.app_name, "ebin", src.basename)
+            if archive_path in entries:
+                fail("Duplicate entry for %s: '%s'" % (src, archive_path))
             entries[archive_path] = src
         for src in ([] if ctx.attr.drop_hrl else lib_info.include) + lib_info.priv:
-            if ctx.attr.flat:
-                archive_path = src.basename
-            else:
-                rp = additional_file_dest_relative_path(dep.label, src)
-                archive_path = path_join(lib_info.app_name, rp)
+            rp = additional_file_dest_relative_path(dep.label, src)
+            archive_path = path_join(lib_info.app_name, rp)
             if archive_path in entries:
                 fail("Duplicate entry for %s: '%s'" % (src, archive_path))
             entries[archive_path] = src
@@ -92,9 +85,14 @@ ContentsDir = "{contents_dir}",
 ArchiveEntries = filelib:fold_files(
     ContentsDir, "", true,
     fun(Path, Entries) ->
-        Rel = string:prefix(Path, ContentsDir ++ "/"),
         {{ok, Bin}} = file:read_file(Path),
-        [{{Rel, Bin}} | Entries]
+        Dest = case {flat} of
+                   true ->
+                       filename:basename(Path);
+                   false ->
+                       string:prefix(Path, ContentsDir ++ "/")
+               end,
+        [{{Dest, Bin}} | Entries]
     end, []),
 ok = escript:create("{output}",
                     [{headers}
@@ -107,6 +105,7 @@ halt().
         erlang_home = erlang_home,
         contents_dir = contents_dir.path,
         name = name,
+        flat = str(ctx.attr.flat).lower(),
         headers = "".join(["{}, ".format(h) for h in ctx.attr.headers]),
         output = output.path,
     )
