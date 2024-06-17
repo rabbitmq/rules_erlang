@@ -82,18 +82,30 @@ def _impl(ctx):
     -noshell \\
     -eval 'io:format("Assembling {name} escript...~n", []),
 ContentsDir = "{contents_dir}",
-ArchiveEntries = filelib:fold_files(
+Entries = filelib:fold_files(
     ContentsDir, "", true,
     fun(Path, Entries) ->
         {{ok, Bin}} = file:read_file(Path),
+        Rel = string:prefix(Path, ContentsDir ++ "/"),
         Dest = case {flat} of
-                   true ->
-                       filename:basename(Path);
-                   false ->
-                       string:prefix(Path, ContentsDir ++ "/")
+                    true ->
+                        filename:basename(Path);
+                    false ->
+                        Rel
                end,
-        [{{Dest, Bin}} | Entries]
+        [{{Dest, Rel, Bin}} | Entries]
     end, []),
+UniqueEntries = lists:foldr(
+    fun ({{Dest, Rel, Bin}}, Acc) ->
+        case Acc of
+            #{{Dest := _}} ->
+                io:format("   dropping ~s (conflicting entry at ~s)~n", [Rel, Dest]),
+                halt(1);
+            _ ->
+                Acc#{{Dest => Bin}}
+        end
+    end, #{{}}, Entries),
+ArchiveEntries = maps:to_list(UniqueEntries),
 ok = escript:create("{output}",
                     [{headers}
                      {{archive, ArchiveEntries, []}}]),
