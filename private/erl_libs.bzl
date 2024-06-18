@@ -2,7 +2,7 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
 load(":compile_many.bzl", "CompileManyInfo")
 load(":erlang_app_sources.bzl", "ErlangAppSourcesInfo")
-load(":util.bzl", "additional_file_dest_relative_path", "copy")
+load(":util.bzl", "additional_file_dest_relative_path", "symlink")
 
 def _module_name(f):
     return f.basename.removesuffix(".erl")
@@ -31,7 +31,7 @@ def _impl(ctx):
                     command = "cp -RL \"{}\"/* \"{}\"".format(b.path, dest.path),
                 )
             else:
-                dest = copy(ctx, b, path_join(
+                dest = symlink(ctx, b, path_join(
                     ctx.label.name,
                     app_info.app_name,
                     "ebin",
@@ -42,7 +42,7 @@ def _impl(ctx):
 
         for hdr in app_info.include:
             rp = additional_file_dest_relative_path(app.label, hdr)
-            out = copy(ctx, hdr, path_join(
+            out = symlink(ctx, hdr, path_join(
                 ctx.label.name,
                 app_info.app_name,
                 rp,
