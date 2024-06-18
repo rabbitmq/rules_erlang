@@ -25,17 +25,11 @@ def additional_file_dest_relative_path(dep_label, f):
     else:
         return f.short_path
 
-def copy(ctx, source, dest):
+def symlink(ctx, source, dest):
     out = ctx.actions.declare_file(dest)
-    args = ctx.actions.args()
-    args.add(source)
-    args.add(out)
-    ctx.actions.run(
-        outputs = [out],
-        inputs = [source],
-        executable = "cp",
-        arguments = [args],
-        mnemonic = "RulesErlangCopyErlLibsContentsFile",
+    ctx.actions.symlink(
+        output = out,
+        target_file = source,
     )
     return out
 
@@ -52,7 +46,7 @@ def erl_libs_contents(
         dep_path = path_join(dir, target_info.app_name)
         for hdr in target_info.include:
             rp = additional_file_dest_relative_path(ctx.label, hdr)
-            dest = copy(ctx, hdr, path_join(dep_path, rp))
+            dest = symlink(ctx, hdr, path_join(dep_path, rp))
             erl_libs_files.append(dest)
     for dep in deps:
         lib_info = dep[ErlangAppInfo]
@@ -60,7 +54,7 @@ def erl_libs_contents(
         if headers:
             for hdr in lib_info.include:
                 rp = additional_file_dest_relative_path(dep.label, hdr)
-                dest = copy(ctx, hdr, path_join(dep_path, rp))
+                dest = symlink(ctx, hdr, path_join(dep_path, rp))
                 erl_libs_files.append(dest)
         for src in lib_info.beam:
             if src.is_directory:
@@ -74,11 +68,11 @@ def erl_libs_contents(
                     mnemonic = "RulesErlangCopyErlLibsContentsSubdir",
                 )
             else:
-                dest = copy(ctx, src, path_join(dep_path, "ebin", src.basename))
+                dest = symlink(ctx, src, path_join(dep_path, "ebin", src.basename))
             erl_libs_files.append(dest)
         for src in lib_info.priv:
             rp = additional_file_dest_relative_path(dep.label, src)
-            dest = copy(ctx, src, path_join(dep_path, rp))
+            dest = symlink(ctx, src, path_join(dep_path, rp))
             erl_libs_files.append(dest)
     for ez in ez_deps:
         if expand_ezs:
@@ -95,7 +89,7 @@ def erl_libs_contents(
             )
         else:
             dest = ctx.actions.declare_file(path_join(dir, ez.basename))
-            dest = copy(ctx, ez, path_join(dir, ez.basename))
+            dest = symlink(ctx, ez, path_join(dir, ez.basename))
         erl_libs_files.append(dest)
     return erl_libs_files
 
