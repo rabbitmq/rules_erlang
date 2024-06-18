@@ -159,6 +159,7 @@ tar --create \\
             post_configure_cmds = post_configure_cmds,
             extra_make_opts = extra_make_opts,
         ),
+        use_default_shell_env = True,
         mnemonic = "OTP",
         progress_message = "Compiling otp from source",
     )
