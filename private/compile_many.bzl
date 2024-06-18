@@ -149,7 +149,7 @@ compile_many = rule(
         "rules_erlang_compiler": attr.label(
             mandatory = True,
             executable = True,
-            cfg = "target",
+            cfg = "exec",
         ),
     },
     provides = [CompileManyInfo],

@@ -57,7 +57,7 @@ extract_many_transitive = rule(
         "extract_many_tool": attr.label(
             mandatory = True,
             executable = True,
-            cfg = "target",
+            cfg = "exec",
         ),
     },
 )
