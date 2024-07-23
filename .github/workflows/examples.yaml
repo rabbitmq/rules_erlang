@@ -1,0 +1,41 @@
+name: Examples
+on:
+  push:
+    branches:
+      - main
+      - 3.15.x
+      - 3.16.x
+      - bump-rbe
+  pull_request:
+jobs:
+  examples-basic:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        otp:
+        - "26.2"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v4
+    - name: CONFIGURE ERLANG
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: TEST
+      working-directory: examples/basic
+      run: |
+        bazelisk test //... \
+          --color=yes
+    - name: RESOVLE TEST LOGS PATH
+      if: always()
+      working-directory: examples/basic
+      run: |
+        echo "LOGS_PATH=$(readlink -f bazel-testlogs)" >> $GITHUB_OUTPUT
+      id: resolve-test-logs-path
+    - name: CAPTURE TEST LOGS
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: bazel-testlogs-examples-basic-${{matrix.otp}}
+        path: ${{ steps.resolve-test-logs-path.outputs.LOGS_PATH }}/*
