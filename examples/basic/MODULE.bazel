@@ -1,0 +1,14 @@
+module(
+    name = "basic_app",
+    version = "0.1.0",
+)
+
+bazel_dep(
+    name = "rules_erlang",
+    version = "4.0.0-beta.1",
+)
+
+local_path_override(
+    module_name = "rules_erlang",
+    path = "../../",
+)
