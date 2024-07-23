@@ -139,6 +139,16 @@ eunit(
 
 shell(
     name = "repl",
+    testonly = True,
+    data = glob([
+        "src/**/*.erl",
+        "test/**/*.erl",
+    ]) + [
+        ":test_helpers",
+    ],
+    extra_erl_args = [
+        "-pa test",
+    ],
     deps = [
         ":erlang_app",
     ],
