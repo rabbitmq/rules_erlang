@@ -14,33 +14,26 @@ APP_NAME = "basic"
 erlc_opts_file(
     name = "erlc_opts",
     out = "erlc_opts_file",
-    values = select({
-        "@rules_erlang//:debug_build": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
-        ],
+    values = [
+        "+debug_info",
+        "+recv_opt_info",
+        "+warn_export_vars",
+        "+warn_shadow_vars",
+        "+warn_obsolete_guard",
+    ] + select({
+        "@rules_erlang//:debug_build": [],
         "//conditions:default": [
-            "+debug_info",
-            "+recv_opt_info",
-            "+warn_export_vars",
-            "+warn_shadow_vars",
-            "+warn_obsolete_guard",
             "+deterministic",
         ],
     }),
 )
 
-TEST_ERLC_OPTS = select({
-    "@rules_erlang//:debug_build": [
-        "+debug_info",
-        "-DTEST=1",
-    ],
+TEST_ERLC_OPTS = [
+    "+debug_info",
+    "-DTEST=1",
+] + select({
+    "@rules_erlang//:debug_build": [],
     "//conditions:default": [
-        "+debug_info",
-        "-DTEST=1",
         "+deterministic",
     ],
 })
