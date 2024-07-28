@@ -1,0 +1,148 @@
+load("@rules_erlang//:compile_many.bzl", "compile_many")
+load("@rules_erlang//:dialyze.bzl", "DEFAULT_PLT_APPS", "dialyze", "plt")
+load("@rules_erlang//:erlang_app_sources.bzl", "erlang_app_sources")
+load("@rules_erlang//:erlang_bytecode2.bzl", "erlang_bytecode")
+load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
+load("@rules_erlang//:eunit2.bzl", "eunit")
+load("@rules_erlang//:shell.bzl", "shell")
+load("@rules_erlang//:xref.bzl", "xref")
+load("@rules_erlang//private:erlc_opts.bzl", "erlc_opts")
+load("@rules_erlang//private:extract_app.bzl", "extract_app")
+
+APP_NAME = "basic"
+
+erlc_opts_file(
+    name = "erlc_opts",
+    out = "erlc_opts_file",
+    values = [
+        "+debug_info",
+        "+recv_opt_info",
+        "+warn_export_vars",
+        "+warn_shadow_vars",
+        "+warn_obsolete_guard",
+    ] + select({
+        "@rules_erlang//:debug_build": [],
+        "//conditions:default": [
+            "+deterministic",
+        ],
+    }),
+)
+
+TEST_ERLC_OPTS = [
+    "+debug_info",
+    "-DTEST=1",
+] + select({
+    "@rules_erlang//:debug_build": [],
+    "//conditions:default": [
+        "+deterministic",
+    ],
+})
+
+erlc_opts_file(
+    name = "test_erlc_opts",
+    out = "test_erlc_opts_file",
+    values = TEST_ERLC_OPTS,
+)
+
+erlang_app_sources(
+    name = "%s_srcs" % APP_NAME,
+    app_name = APP_NAME,
+    app_src = ":app_src",
+    erlc_opts_file = ":erlc_opts_file",
+    visibility = ["//visibility:public"],
+)
+
+erlang_app_sources(
+    name = "test_%s_srcs" % APP_NAME,
+    app_name = APP_NAME,
+    app_src = ":app_src",
+    erlc_opts_file = ":test_erlc_opts_file",
+    visibility = ["//visibility:public"],
+)
+
+compile_many(
+    name = "apps",
+    apps = [
+        ":%s_srcs" % APP_NAME,
+    ],
+)
+
+compile_many(
+    name = "test_apps",
+    testonly = True,
+    apps = [
+        ":test_%s_srcs" % APP_NAME,
+    ],
+)
+
+extract_app(
+    name = "erlang_app",
+    app_name = APP_NAME,
+    erl_libs = ":apps",
+    visibility = ["//visibility:public"],
+)
+
+extract_app(
+    name = "test_erlang_app",
+    testonly = True,
+    app_name = APP_NAME,
+    beam_dest = "test",
+    erl_libs = ":test_apps",
+)
+
+xref(
+    name = "xref",
+)
+
+plt(
+    name = "deps_plt",
+    apps = DEFAULT_PLT_APPS,
+    for_target = ":erlang_app",
+)
+
+dialyze(
+    name = "dialyze",
+    plt = ":deps_plt",
+)
+
+erlc_opts(
+    name = "test_erlc_opts_",
+    testonly = True,
+    values = TEST_ERLC_OPTS,
+)
+
+erlang_bytecode(
+    name = "test_helpers",
+    testonly = True,
+    srcs = glob(
+        [
+            "test/**/*.erl",
+        ],
+        exclude = ["test/**/*_SUITE.erl"],
+    ),
+    dest = "test",
+    erlc_opts = ":test_erlc_opts_",
+)
+
+eunit(
+    name = "eunit",
+    compiled_suites = [":test_helpers"],
+    target = ":test_erlang_app",
+)
+
+shell(
+    name = "repl",
+    testonly = True,
+    data = glob([
+        "src/**/*.erl",
+        "test/**/*.erl",
+    ]) + [
+        ":test_helpers",
+    ],
+    extra_erl_args = [
+        "-pa test",
+    ],
+    deps = [
+        ":erlang_app",
+    ],
+)
