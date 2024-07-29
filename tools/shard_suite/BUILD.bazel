@@ -1,7 +1,10 @@
 load(
     "//:erlang_bytecode2.bzl",
     "erlang_bytecode",
-    "erlc_opts",
+)
+load(
+    "//:erlc_opts_file.bzl",
+    "erlc_opts_file",
 )
 load(
     "//private:escript_flat.bzl",
@@ -14,7 +17,7 @@ load(
 
 exports_files(["src/shard_suite.erl"])
 
-erlc_opts(
+erlc_opts_file(
     name = "erlc_opts",
     values = DEFAULT_ERLC_OPTS,
 )

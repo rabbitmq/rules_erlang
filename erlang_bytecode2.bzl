@@ -2,13 +2,6 @@ load(
     "//private:erlang_bytecode2.bzl",
     _erlang_bytecode = "erlang_bytecode",
 )
-load(
-    "//private:erlc_opts.bzl",
-    _ErlcOptsInfo = "ErlcOptsInfo",
-    _erlc_opts = "erlc_opts",
-)
-
-ErlcOptsInfo = _ErlcOptsInfo
 
 def erlang_bytecode(
         srcs = [],
@@ -32,9 +25,6 @@ def erlang_bytecode(
         outs = outs,
         **kwargs
     )
-
-def erlc_opts(**kwargs):
-    _erlc_opts(**kwargs)
 
 def _beam(p):
     (_, _, basename) = p.rpartition("/")

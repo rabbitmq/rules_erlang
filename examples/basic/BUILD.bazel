@@ -6,7 +6,6 @@ load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
 load("@rules_erlang//:eunit2.bzl", "eunit")
 load("@rules_erlang//:shell.bzl", "shell")
 load("@rules_erlang//:xref.bzl", "xref")
-load("@rules_erlang//private:erlc_opts.bzl", "erlc_opts")
 load("@rules_erlang//private:extract_app.bzl", "extract_app")
 
 APP_NAME = "basic"
@@ -28,20 +27,18 @@ erlc_opts_file(
     }),
 )
 
-TEST_ERLC_OPTS = [
-    "+debug_info",
-    "-DTEST=1",
-] + select({
-    "@rules_erlang//:debug_build": [],
-    "//conditions:default": [
-        "+deterministic",
-    ],
-})
-
 erlc_opts_file(
     name = "test_erlc_opts",
     out = "test_erlc_opts_file",
-    values = TEST_ERLC_OPTS,
+    values = [
+        "+debug_info",
+        "-DTEST=1",
+    ] + select({
+        "@rules_erlang//:debug_build": [],
+        "//conditions:default": [
+            "+deterministic",
+        ],
+    }),
 )
 
 erlang_app_sources(
@@ -105,12 +102,6 @@ dialyze(
     plt = ":deps_plt",
 )
 
-erlc_opts(
-    name = "test_erlc_opts_",
-    testonly = True,
-    values = TEST_ERLC_OPTS,
-)
-
 erlang_bytecode(
     name = "test_helpers",
     testonly = True,
@@ -121,7 +112,7 @@ erlang_bytecode(
         exclude = ["test/**/*_SUITE.erl"],
     ),
     dest = "test",
-    erlc_opts = ":test_erlc_opts_",
+    erlc_opts = ":test_erlc_opts",
 )
 
 eunit(

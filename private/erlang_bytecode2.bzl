@@ -1,7 +1,7 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load("//:util.bzl", "path_join")
 load(":erlang_bytecode.bzl", "unique_dirnames")
-load(":erlc_opts.bzl", "ErlcOptsInfo")
+load(":erlc_opts_file.bzl", "ErlcOptsInfo")
 load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
