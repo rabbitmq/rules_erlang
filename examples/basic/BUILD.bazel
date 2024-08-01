@@ -6,7 +6,7 @@ load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
 load("@rules_erlang//:eunit2.bzl", "eunit")
 load("@rules_erlang//:shell.bzl", "shell")
 load("@rules_erlang//:xref.bzl", "xref")
-load("@rules_erlang//private:extract_app.bzl", "extract_app")
+load("@rules_erlang//:extract_app.bzl", "extract_app")
 
 APP_NAME = "basic"
 
