@@ -317,13 +317,6 @@ def _erlang_package(module_ctx):
         test_apps = sorted(test_apps),
     )
 
-    direct_deps = ["deps"] if len(apps) > 0 else []
-    direct_dev_deps = ["test_deps"] if len(test_apps) > 0 else []
-    module_ctx.extension_metadata(
-        root_module_direct_deps = direct_deps,
-        root_module_direct_dev_deps = direct_dev_deps,
-    )
-
 hex_package_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
     "pkg": attr.string(),
