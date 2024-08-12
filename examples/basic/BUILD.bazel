@@ -44,7 +44,6 @@ erlc_opts_file(
 erlang_app_sources(
     name = "%s_srcs" % APP_NAME,
     app_name = APP_NAME,
-    app_src = ":app_src",
     erlc_opts_file = ":erlc_opts_file",
     visibility = ["//visibility:public"],
 )
@@ -52,7 +51,6 @@ erlang_app_sources(
 erlang_app_sources(
     name = "test_%s_srcs" % APP_NAME,
     app_name = APP_NAME,
-    app_src = ":app_src",
     erlc_opts_file = ":test_erlc_opts_file",
     visibility = ["//visibility:public"],
 )

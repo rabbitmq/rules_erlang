@@ -12,10 +12,10 @@ def erlang_app_sources(
         priv = None,
         license_files = None,
         **kwargs):
-
-    app_src_paths = native.glob(["src/%s.app.src" % app_name])
-    if len(app_src_paths) == 1:
-        app_src = app_src_paths[0]
+    if app_src == None:
+        app_src_paths = native.glob(["src/%s.app.src" % app_name])
+        if len(app_src_paths) == 1:
+            app_src = app_src_paths[0]
 
     if public_hdrs == None:
         public_hdrs = native.glob([
