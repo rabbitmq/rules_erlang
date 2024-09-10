@@ -4,28 +4,30 @@ shell_commands: &shell_commands
 - ./kerl update releases
 - ./kerl build ${ERLANG_VERSION}
 - ./kerl install ${ERLANG_VERSION} ~/kerl/${ERLANG_VERSION}
-- realpath ~/kerl/${ERLANG_VERSION}
 
 matrix:
   bazel:
-  - 6.x
   - 7.x
-platforms:
-  macos:
+tasks:
+  verify_targets_macos:
+    name: Verify build targets (macos)
+    platform: macos
+    bazel: ${{ bazel }}
     environment:
       ERLANG_VERSION: "26.2"
       ERLANG_HOME: /Users/buildkite/kerl/26.2
-    bazel: ${{ bazel }}
     shell_commands: *shell_commands
     build_flags:
     - --incompatible_strict_action_env
     build_targets:
     - '@rules_erlang//...'
-  ubuntu2004:
+  verify_targets_ubuntu:
+    name: Verify build targets (ubuntu2004)
+    platform: ubuntu2004
+    bazel: ${{ bazel }}
     environment:
       ERLANG_VERSION: "26.2"
       ERLANG_HOME: /var/lib/buildkite-agent/kerl/26.2
-    bazel: ${{ bazel }}
     shell_commands: *shell_commands
     build_flags:
     - --incompatible_strict_action_env
