@@ -1,8 +1,4 @@
 load(
-    "//private:util.bzl",
-    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
-)
-load(
     "//private:ct.bzl",
     _code_paths = "code_paths",
     _ct_test = "ct_test",

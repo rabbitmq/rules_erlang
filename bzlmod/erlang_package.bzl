@@ -22,6 +22,7 @@ HexPackage = provider(fields = [
     "patch_cmds",
     "testonly",
     "deps",
+    "has_metadata_file",
     "requirements",
     "f_fetch",
 ])
@@ -40,6 +41,8 @@ GitPackage = provider(fields = [
     "build_file_content",
     "patch_cmds",
     "testonly",
+    "deps",
+    "has_metadata_file",
     "f_fetch",
 ])
 
@@ -47,7 +50,7 @@ def log(ctx, msg):
     ctx.execute(["echo", "RULES_ERLANG: " + msg], timeout = 1, quiet = False)
 
 def hex_package(
-        _ctx,
+        ctx,
         module = None,
         dep = None):
     app_name = dep.pkg if dep.pkg != "" else dep.name
@@ -62,6 +65,8 @@ def hex_package(
         build_file = dep.build_file,
         build_file_content = dep.build_file_content,
         patches = dep.patches,
+        deps = dep.depends_on,
+        has_metadata_file = True,
         patch_args = dep.patch_args,
         patch_cmds = dep.patch_cmds,
         testonly = dep.testonly,
@@ -115,6 +120,8 @@ def git_package(
         build_file_content = dep.build_file_content,
         patch_cmds = dep.patch_cmds,
         testonly = dep.testonly,
+        deps = dep.depends_on,
+        has_metadata_file = False,
         f_fetch = _git_package_repo,
     )
 

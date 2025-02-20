@@ -1,16 +1,4 @@
 load(
-    ":erlang_package.bzl",
-    "git_package",
-    "hex_package",
-    "log",
-)
-load(
-    ":semver.bzl",
-    "compatible",
-    "lt",
-    "version_from_string",
-)
-load(
     "//:rules_erlang.bzl",
     "xref_runner_sources",
 )
@@ -21,17 +9,29 @@ load(
     _erlang_config_rule = "erlang_config",
 )
 load(
-    "//repositories:gmake_config.bzl",
-    _gmake_config_rule = "gmake_config",
-)
-load(
     "//repositories:erlang_packages.bzl",
     "erlang_packages",
+)
+load(
+    "//repositories:gmake_config.bzl",
+    _gmake_config_rule = "gmake_config",
 )
 load(
     "//tools:erlang.bzl",
     "DEFAULT_ERLANG_SHA256",
     "DEFAULT_ERLANG_VERSION",
+)
+load(
+    ":erlang_package.bzl",
+    "git_package",
+    "hex_package",
+    "log",
+)
+load(
+    ":semver.bzl",
+    "compatible",
+    "lt",
+    "version_from_string",
 )
 
 def _erlang_config(ctx):
@@ -297,24 +297,31 @@ def _erlang_package(module_ctx):
     for p in resolved:
         p.f_fetch(p)
 
-    apps = [
-        p.name
+    apps = {
+        p.name: p.deps
         for p in resolved
         if (not p.name == "thoas_rules_erlang") and (not p.testonly)
-    ]
+    }
 
-    test_apps = [
-        p.name
+    test_apps = {
+        p.name: p.deps
         for p in resolved
         if p.module.is_root and p.testonly
+    }
+
+    apps_with_metadata = [
+        p.name
+        for p in resolved
+        if p.has_metadata_file
     ]
 
     # should we make one of these for every module?
     # then we can hide transitive deps...
     erlang_packages(
         name = "erlang_packages",
-        apps = sorted(apps),
-        test_apps = sorted(test_apps),
+        apps = apps,
+        test_apps = test_apps,
+        apps_with_metadata = apps_with_metadata,
     )
 
 hex_package_tag = tag_class(attrs = {
@@ -328,6 +335,7 @@ hex_package_tag = tag_class(attrs = {
     "patch_args": attr.string_list(
         default = ["-p0"],
     ),
+    "depends_on": attr.string_list(),
     "patch_cmds": attr.string_list(),
     "testonly": attr.bool(),
 })
@@ -341,6 +349,7 @@ git_package_tag = tag_class(attrs = {
     "commit": attr.string(),
     "build_file": attr.label(),
     "build_file_content": attr.string(),
+    "depends_on": attr.string_list(),
     "patch_cmds": attr.string_list(),
     "testonly": attr.bool(),
 })

@@ -6,6 +6,7 @@ load(
     "use_netrc",
     "workspace_and_buildfile",
 )
+load("//repositories:hex_metadata_parser.bzl", "parse_term")
 
 _AUTH_PATTERN_DOC = """An optional dict mapping host names to custom authorization patterns.
 
@@ -19,7 +20,7 @@ in the netrc file for the same host name. After formatting, the result is set
 as the value for the <code>Authorization</code> field of the HTTP request.
 
 Example attribute and netrc for a http download to an oauth2 enabled API using a bearer token:
-    
+
 <pre>
 auth_patterns = {
     "storage.cloudprovider.com": "Bearer &lt;password&gt;"
@@ -81,6 +82,11 @@ def _impl(ctx):
         auth = auth,
     )
     ctx.extract("contents.tar.gz")
+
+    metadata_str = ctx.read("metadata.config")
+    metadata = parse_term(metadata_str)
+    ctx.file("metadata.bzl", "METADATA = {}\n".format(str(metadata)))
+
     workspace_and_buildfile(ctx)
     patch(ctx)
 
