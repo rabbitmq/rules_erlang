@@ -30,4 +30,4 @@ erlc_opts(RebarConfig) ->
             _ ->
                 ["+debug_info"]
         end,
-    lists:delete("+warnings_as_errors", lists:usort(["+deterministic" | ErlcOpts])).
+    lists:delete("+warnings_as_errors", lists:usort(["+deterministic", "+debug_info" | ErlcOpts])).

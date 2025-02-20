@@ -96,7 +96,7 @@ def _impl(ctx):
     targets_file = ctx.actions.declare_file(ctx.label.name + "_targets.json")
     ctx.actions.write(
         output = targets_file,
-        content = json.encode(compiler_flags),
+        content = json.indent(json.encode(compiler_flags)),
     )
 
     args_file = ctx.actions.declare_file(ctx.label.name + ".args_file")

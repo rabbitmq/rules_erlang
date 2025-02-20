@@ -3,6 +3,7 @@ def _impl(ctx):
 
 ABS_EXTRACT="$PWD/{extract}"
 ABS_OUT="$PWD/{out}"
+export PLATFORM=$(uname)
 
 cd $(dirname "{makefile}")
 {gmake} -f Makefile -f $ABS_EXTRACT erlc_opts_file {make_vars}

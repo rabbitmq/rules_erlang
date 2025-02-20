@@ -29,9 +29,9 @@ render(
                     Acc;
                 false ->
                     [
-                        io_lib:format("~p may depend on ~p but the application is not listed", [
+                        iolist_to_binary(io_lib:format("~p may depend on ~p but the application is not listed", [
                             AppName, Dep
-                        ])
+                        ]))
                         | Acc
                     ]
             end

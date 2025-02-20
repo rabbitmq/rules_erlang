@@ -320,8 +320,8 @@ compile_apps(
                         case dot_app_file:render(AppName, Props, DestDir) of
                             {ok, []} ->
                                 {ModulesSoFar ++ M, {ok, Warnings ++ [{AppName, W}]}};
-                            {ok, W} ->
-                                {ModulesSoFar ++ M, {ok, Warnings ++ [{AppName, W}] ++ W}}
+                            {ok, W1} ->
+                                {ModulesSoFar ++ M, {ok, Warnings ++ [{AppName, W}] ++ W1}}
                         end;
                     {error, M, Errors, []} ->
                         {ModulesSoFar ++ M, {error, {AppName, Errors}, Warnings}};
