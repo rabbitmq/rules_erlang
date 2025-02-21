@@ -8,16 +8,6 @@ load(
     "flat_deps",
 )
 load(
-    ":util.bzl",
-    "erl_libs_contents",
-    "to_erlang_string_list",
-)
-load(
-    ":eunit.bzl",
-    "package_relative_dirnames",
-    "short_dirname",
-)
-load(
     "//:util.bzl",
     "path_join",
     "windows_path",
@@ -26,6 +16,16 @@ load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
+)
+load(
+    ":eunit.bzl",
+    "package_relative_dirnames",
+    "short_dirname",
+)
+load(
+    ":util.bzl",
+    "erl_libs_contents",
+    "to_erlang_string_list",
 )
 
 def sanitize_sname(s):
@@ -67,7 +67,7 @@ def _impl(ctx):
 
     erl_libs_files = erl_libs_contents(
         ctx,
-        deps = flat_deps(ctx.attr.deps),
+        deps = flat_deps(ctx.attr.deps + ctx.attr.compiled_suites),
         ez_deps = ctx.files.ez_deps,
         dir = erl_libs_dir,
     )
@@ -184,7 +184,7 @@ set -x
     -no_auto_compile \\
     -noinput \\
     ${{FILTER}} \\
-    -dir test {pa_args} \\
+    -dir ebin {pa_args} \\
     -logdir "{log_dir}" \\
     -hidden \\
     -sname {sname} ${{COVER_ARGS}} {extra_args}
@@ -271,7 +271,7 @@ echo on
     -no_auto_compile ^
     -noinput ^
     %FILTER% ^
-    -dir test {pa_args} ^
+    -dir ebin {pa_args} ^
     -logdir {drive_letter}: ^
     -hidden ^
     -sname {sname} {extra_args}

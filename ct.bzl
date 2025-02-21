@@ -5,12 +5,16 @@ load(
     _sanitize_sname = "sanitize_sname",
 )
 load(
-    ":erlang_bytecode.bzl",
-    "erlang_bytecode",
+    "//private:util.bzl",
+    _additional_file_dest_relative_path = "additional_file_dest_relative_path",
 )
 load(
     ":erlang_app.bzl",
     "DEFAULT_TEST_ERLC_OPTS",
+)
+load(
+    ":erlang_bytecode.bzl",
+    "erlang_bytecode",
 )
 
 def additional_file_dest_relative_path(dep_label, f):
@@ -95,7 +99,7 @@ def ct_test(
     if suite_name == None or suite_name == "":
         suite_name = name
     if compiled_suites == None:
-        compiled_suites = [":{}_beam_files".format(suite_name)]
+        compiled_suites = []
     _ct_test(
         name = name,
         suite_name = suite_name,

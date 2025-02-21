@@ -8,14 +8,14 @@ load(
     "windows_path",
 )
 load(
-    ":util.bzl",
-    "erl_libs_contents",
-    "to_erlang_string_list",
-)
-load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
+)
+load(
+    ":util.bzl",
+    "erl_libs_contents",
+    "to_erlang_string_list",
 )
 
 def short_dirname(f):
@@ -49,25 +49,15 @@ def _quote(string_list_term):
     return string_list_term.replace('"', '\\"')
 
 def _impl(ctx):
-    if ctx.attr.eunit_mods == [] and ctx.attr.target == None:
-        fail("Either eunit_mods or target must be set")
-    if ctx.attr.eunit_mods != [] and ctx.attr.target != None:
-        fail("eunit_mods and target cannot be set simultaneously")
-
     deps = list(ctx.attr.deps)
-    eunit_mods = list(ctx.attr.eunit_mods)
-    if ctx.attr.target != None:
-        lib_info = ctx.attr.target[ErlangAppInfo]
-        deps.extend(lib_info.deps)
-        deps.append(ctx.attr.target)
-        for m in lib_info.beam:
-            if m.extension == "beam":
-                module_name = m.basename.removesuffix(".beam")
-                if not module_name.endswith("_tests"):
-                    eunit_mods.append(module_name)
-        for s in ctx.files.compiled_suites:
-            module_name = s.basename.removesuffix(".beam")
-            if not module_name.endswith("_tests"):
+    eunit_mods = []
+    lib_info = ctx.attr.target[ErlangAppInfo]
+    deps.extend(lib_info.deps)
+    deps.append(ctx.attr.target)
+    for m in lib_info.test_beam:
+        if m.extension == "beam":
+            module_name = m.basename.removesuffix(".beam")
+            if module_name.endswith("_tests"):
                 eunit_mods.append(module_name)
 
     erl_libs_dir = ctx.label.name + "_deps"
@@ -82,10 +72,6 @@ def _impl(ctx):
     package = ctx.label.package
 
     erl_libs_path = path_join(package, erl_libs_dir)
-
-    pa_args = []
-    for dir in package_relative_dirnames(package, ctx.files.compiled_suites):
-        pa_args.extend(["-pa", dir])
 
     apps_ebin_dirs = []
     if ctx.configuration.coverage_enabled:
@@ -137,7 +123,7 @@ if [ -n "${{COVERAGE}}" ]; then
 fi
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
-    {pa_args} {extra_args} \\
+    {extra_args} \\
     -eval "${{COVER_PRE}}case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, ${{COVER_POST}}halt()."
 set +x
 if [ -n "${{COVERAGE}}" ]; then
@@ -153,7 +139,6 @@ fi
             erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
             package = package,
             coverdata_to_lcov = coverdata_to_lcov_path,
-            pa_args = " ".join(pa_args),
             extra_args = " ".join(ctx.attr.erl_extra_args),
             eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
@@ -178,13 +163,12 @@ if NOT [{package}] == [] cd {package}
 
 echo on
 "{erlang_home}\\bin\\erl" +A1 -noinput -boot no_dot_erlang ^
-    {pa_args} {extra_args} ^
+    {extra_args} ^
     -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
 """.format(
             package = package,
             erlang_home = windows_path(erlang_home),
             erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
-            pa_args = " ".join(pa_args),
             extra_args = " ".join(ctx.attr.erl_extra_args),
             eunit_mods_term = _to_atom_list(eunit_mods),
             eunit_opts_term = eunit_opts_term,
@@ -198,7 +182,7 @@ echo on
 
     runfiles = runfiles.merge_all(
         [ctx.runfiles(
-            files = ctx.files.compiled_suites + ctx.files.data,
+            files = lib_info.test_data,
             transitive_files = depset(erl_libs_files),
         )] + ([coverdata_to_lcov[DefaultInfo].default_runfiles] if ctx.configuration.coverage_enabled else []) + [
             tool[DefaultInfo].default_runfiles
@@ -221,14 +205,10 @@ eunit_test = rule(
             cfg = "target",
         ),
         "is_windows": attr.bool(mandatory = True),
-        "compiled_suites": attr.label_list(
-            allow_files = [".beam"],
-        ),
         "eunit_mods": attr.string_list(),
         "target": attr.label(providers = [ErlangAppInfo]),
         "erl_extra_args": attr.string_list(),
         "eunit_opts": attr.string_list(),
-        "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "ez_deps": attr.label_list(
             allow_files = [".ez"],

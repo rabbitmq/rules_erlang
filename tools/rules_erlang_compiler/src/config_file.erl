@@ -28,7 +28,8 @@ conform_target(#{
     <<"erlc_opts_file">> := ErlcOptsFile,
     <<"app_src">> := AppSrc,
     <<"srcs">> := Srcs,
-    <<"outs">> := Outs
+    <<"outs">> := Outs,
+    <<"test_modules">> := TestModules
 }) ->
     #{
         src_path => binary_to_list(SrcPath),
@@ -39,7 +40,8 @@ conform_target(#{
                 _ -> binary_to_list(AppSrc)
             end,
         srcs => lists:map(fun binary_to_list/1, Srcs),
-        outs => lists:map(fun binary_to_list/1, Outs)
+        outs => lists:map(fun binary_to_list/1, Outs),
+        test_modules => lists:map(fun binary_to_list/1, TestModules)
     }.
 
 conform_targets(Targets) ->

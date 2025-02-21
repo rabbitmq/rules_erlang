@@ -9,6 +9,8 @@ def erlang_app_sources(
         public_hdrs = None,
         private_hdrs = None,
         srcs = None,
+        test_srcs = None,
+        test_data = None,
         priv = None,
         license_files = None,
         **kwargs):
@@ -32,6 +34,21 @@ def erlang_app_sources(
             "src/**/*.erl",
         ])
 
+    if test_srcs == None:
+        test_srcs = native.glob(
+            include = [
+                "test/**/*.erl",
+            ],
+            exclude = [
+                "test/data/**/*",
+            ],
+        )
+
+    if test_data == None:
+        test_data = native.glob([
+            "test/data/**/*",
+        ])
+
     if priv == None:
         priv = native.glob(
             ["priv/**/*"],
@@ -49,6 +66,8 @@ def erlang_app_sources(
         public_hdrs = public_hdrs,
         private_hdrs = private_hdrs,
         srcs = srcs,
+        test_srcs = test_srcs,
+        test_data = test_data,
         priv = priv,
         app_dir = ".",
         license_files = license_files,

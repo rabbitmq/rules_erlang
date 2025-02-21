@@ -7,7 +7,7 @@
 -spec render(atom(), target(), file:name()) -> {ok, warnings_list()}.
 render(
     AppName,
-    #{app_src := AppSrc, outs := Outs} = Target,
+    #{app_src := AppSrc, outs := Outs, test_modules := TestModules} = Target,
     DestDir
 ) ->
     Deps = maps:get(deps, Target, sets:new()),
@@ -44,7 +44,13 @@ render(
         fun(Out) ->
             case filename:extension(Out) of
                 ".beam" ->
-                    {true, list_to_atom(filename:basename(Out, ".beam"))};
+                    ModuleName = filename:basename(Out, ".beam"),
+                    case lists:member(ModuleName, TestModules) of
+                        true ->
+                            false;
+                        false ->
+                            {true, list_to_atom(ModuleName)}
+                    end;
                 _ ->
                     false
             end

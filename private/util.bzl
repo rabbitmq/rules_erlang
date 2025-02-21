@@ -56,7 +56,7 @@ def erl_libs_contents(
                 rp = additional_file_dest_relative_path(dep.label, hdr)
                 dest = symlink(ctx, hdr, path_join(dep_path, rp))
                 erl_libs_files.append(dest)
-        for src in lib_info.beam:
+        for src in lib_info.beam + lib_info.test_beam:
             if src.is_directory:
                 if len(lib_info.beam) != 1:
                     fail("ErlangAppInfo.beam must be a collection of files, or a single ebin dir: {} {}".format(lib_info.app_name, lib_info.beam))

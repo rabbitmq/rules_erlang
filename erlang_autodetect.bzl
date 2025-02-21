@@ -1,11 +1,11 @@
+load("@rules_erlang//:erlang_app_sources.bzl", "erlang_app_sources")
+load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
 load(
     "@rules_erlang//compat:erlang_mk.bzl",
     "app_src_from_erlang_mk_makefile",
     "erlc_opts_from_erlang_mk_makefile",
 )
 load("@rules_erlang//compat:rebar.bzl", "erlc_opts_from_rebar_config")
-load("@rules_erlang//:erlc_opts_file.bzl", "erlc_opts_file")
-load("@rules_erlang//:erlang_app_sources.bzl", "erlang_app_sources")
 
 def erlang_autodetect(name = None, testonly = False):
     app_src = None
@@ -51,5 +51,7 @@ def erlang_autodetect(name = None, testonly = False):
         app_src = app_src,
         erlc_opts_file = ":erlc_opts_file",
         testonly = testonly,
+        test_srcs = [],
+        test_data = [],
         visibility = ["//visibility:public"],
     )

@@ -30,7 +30,8 @@ def _impl(ctx):
         source_info = app[ErlangAppSourcesInfo]
         compiler_srcs = (source_info.public_hdrs +
                          source_info.private_hdrs +
-                         source_info.srcs)
+                         source_info.srcs +
+                         source_info.test_srcs)
         compiler_flags.targets[source_info.app_name] = {
             "src_path": path_join(app.label.workspace_root, app.label.package),
             "erlc_opts_file": source_info.erlc_opts_file.path,
@@ -41,11 +42,13 @@ def _impl(ctx):
         apps_inputs.extend(source_info.public_hdrs)
         apps_inputs.extend(source_info.private_hdrs)
         apps_inputs.extend(source_info.srcs)
+        apps_inputs.extend(source_info.test_srcs)
         apps_inputs.append(source_info.app_src)
         apps_inputs.append(source_info.erlc_opts_file)
 
         app_outs = []
-        for src in source_info.public_hdrs + source_info.private_hdrs + source_info.srcs:
+        for src in source_info.public_hdrs + source_info.private_hdrs + \
+                   source_info.srcs + source_info.test_srcs:
             if src.basename.endswith(".erl"):
                 module_name = src.basename.removesuffix(".erl")
                 out = ctx.actions.declare_file(path_join(
@@ -74,6 +77,8 @@ def _impl(ctx):
             o.path
             for o in app_outs
         ]
+        test_modules = [src.basename.removesuffix(".erl") for src in source_info.test_srcs]
+        compiler_flags.targets[source_info.app_name]["test_modules"] = test_modules
         apps[source_info.app_name] = struct(
             source_info = source_info,
             outs = app_outs,
