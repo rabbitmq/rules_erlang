@@ -1,11 +1,13 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
-load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
 )
+load(":compile_many.bzl", "CompileManyInfo")
+load(":erlang_app_sources.bzl", "ErlangGeneratedCodeInfo")
+load(":util.bzl", "erl_libs_contents")
 
 def unique_dirnames(files):
     dirs = []
@@ -15,25 +17,33 @@ def unique_dirnames(files):
             dirs.append(dirname)
     return dirs
 
-def _dirname(path):
-    return path.rpartition("/")[0]
-
 def _impl(ctx):
     package_dir = path_join(
         ctx.label.workspace_root,
         ctx.label.package,
     )
 
-    include_dirs = unique_dirnames(ctx.files.beams)
+    beams = []
+    for lib in ctx.attr.erl_libs:
+        for app in lib[CompileManyInfo].apps.values():
+            beams.extend([o for o in app.outs if o.path.endswith(".beam")])
+    include_dirs = unique_dirnames(beams)
 
     srcs = ctx.actions.args()
-    srcs.add_all([ctx.files.src])
+    srcs.add_all(ctx.files.srcs)
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    outputs = ctx.outputs.outs
+    src_outputs = []
+    include_outputs = []
+    for src in ctx.files.srcs:
+        fname = src.basename.removesuffix(".dia")
+        src_outputs.append(ctx.actions.declare_file(path_join("src", fname + ".erl")))
+        include_outputs.append(ctx.actions.declare_file(path_join("include", fname + ".hrl")))
 
-    script = """set -euo pipefail
+    script = """#!/usr/bin/env bash
+
+set -euo pipefail
 
 TMP=$(mktemp -d || mktemp -d -t bazel-tmp)
 test -d "$TMP"
@@ -41,62 +51,70 @@ trap "rm -fr '$TMP'" EXIT
 
 {maybe_install_erlang}
 
-mkdir -p {out_dirs}
+mkdir -p {src_out} {include_out}
 
-SRC_DICT="$1"
+SRC_DICTS="$@"
 INCLUDE_OPTS='{include_opts}'
 CODEC_OPTS='{codec_opts}'
 
+SRC_ERLLIST=$(for D in $SRC_DICTS; do echo "\\\"$D\\\","; done)
+SRC_ERLLIST=${{SRC_ERLLIST%,}}
+
+DIA_OPTS="[$CODEC_OPTS]++[$INCLUDE_OPTS]++[{{outdir,\\"$TMP\\"}}]"
+
 "{erlang_home}"/bin/erl \\
     -noshell \\
-    -eval "ok = diameter_make:codec(\\"$SRC_DICT\\", [$CODEC_OPTS]++[$INCLUDE_OPTS]++[{{outdir,\\"$TMP\\"}}])" \\
+    -eval "[ok = diameter_make:codec(Src, $DIA_OPTS) || Src <- [$SRC_ERLLIST]]" \\
     -s erlang halt
 
-for F in {out_files} ; do
-    SRC="$TMP/${{F##*/}}"
-    mv -v "$SRC" "$F"
+for SRC_DICT in $SRC_DICTS;
+do
+    FNAME="$(basename "${{SRC_DICT}}" .dia)"
+    mv "$TMP/$FNAME.erl" {src_out}
+    mv "$TMP/$FNAME.hrl" {include_out}
 done
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
-        out_dirs = " ".join(unique_dirnames(outputs)),
-        out_files = " ".join([f.path for f in outputs]),
+        src_out = src_outputs[0].dirname,
+        include_out = include_outputs[0].dirname,
         erl_libs_path = "",
         codec_opts = ",".join(ctx.attr.codec_opts),
         include_opts = ",".join(["{include,\"%s\"}" % d for d in include_dirs]),
     )
 
-    src = [S.path for S in ctx.files.src]
-
     inputs = depset(
-        direct = ctx.files.src + ctx.files.beams,
+        direct = ctx.files.srcs + beams,
         transitive = [runfiles.files],
     )
 
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = outputs,
+        outputs = src_outputs + include_outputs,
         command = script,
-        arguments = src,
+        arguments = [srcs],
         mnemonic = "ERLDIA",
     )
 
     return [
-        DefaultInfo(files = depset(outputs)),
+        ErlangGeneratedCodeInfo(
+            srcs = depset(src_outputs),
+            includes = depset(include_outputs),
+        ),
+        DefaultInfo(files = depset(src_outputs + include_outputs)),
     ]
 
 erlang_dia = rule(
     implementation = _impl,
     attrs = {
-        "app_name": attr.string(),
-        "src": attr.label(
+        "srcs": attr.label_list(
             mandatory = True,
-            doc = "The dia file to compile",
-            allow_single_file = [".dia"],
+            doc = "The dia files to compile",
+            allow_files = [".dia"],
         ),
-        "beams": attr.label_list(
-            doc = "The beam files for the inherited dictionaries",
-            allow_files = [".beam"],
+        "erl_libs": attr.label_list(
+            doc = "Compiled apps with beam files for the inherited dictionaries",
+            providers = [CompileManyInfo],
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
@@ -104,10 +122,7 @@ erlang_dia = rule(
         "codec_opts": attr.string_list(
             doc = "Transformation options for diameter_make:codec (only use 'name', 'prefix' or 'inherits' otions)",
         ),
-        "outs": attr.output_list(
-            doc = "The erl and hrl file to be created (same basename like the src)",
-            mandatory = True,
-        ),
     },
     toolchains = ["//tools:toolchain_type"],
+    provides = [ErlangGeneratedCodeInfo],
 )

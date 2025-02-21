@@ -15,15 +15,29 @@ ErlangAppSourcesInfo = provider(
     },
 )
 
+ErlangGeneratedCodeInfo = provider(
+    doc = "Code generated from e.g. ASN.1 files",
+    fields = {
+        "srcs": "Generated .erl files",
+        "includes": "Generated .hrl files",
+    },
+)
+
 def _impl(ctx):
+    srcs = depset(ctx.files.srcs)
+    public_hdrs = depset(ctx.files.public_hdrs)
+    for gen_srcs in ctx.attr.generated_srcs:
+        srcs = depset([], transitive = [gen_srcs[ErlangGeneratedCodeInfo].srcs, srcs])
+        public_hdrs = depset([], transitive = [gen_srcs[ErlangGeneratedCodeInfo].includes, public_hdrs])
+
     return [
         ErlangAppSourcesInfo(
             app_name = ctx.attr.app_name,
             erlc_opts_file = ctx.file.erlc_opts_file,
             app_src = ctx.file.app_src,
-            public_hdrs = ctx.files.public_hdrs,
+            public_hdrs = public_hdrs.to_list(),
             private_hdrs = ctx.files.private_hdrs,
-            srcs = ctx.files.srcs,
+            srcs = srcs.to_list(),
             priv = ctx.files.priv,
             license_files = ctx.files.license_files,
             # precompiled_beam = ctx.files.precompiled_beam,
@@ -62,6 +76,9 @@ erlang_app_sources = rule(
         ),
         "priv": attr.label_list(
             allow_files = True,
+        ),
+        "generated_srcs": attr.label_list(
+            providers = [ErlangGeneratedCodeInfo],
         ),
         "license_files": attr.label_list(
             allow_files = True,

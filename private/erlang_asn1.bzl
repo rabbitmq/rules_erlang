@@ -1,11 +1,12 @@
 load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
-load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
 )
+load(":erlang_app_sources.bzl", "ErlangAppSourcesInfo", "ErlangGeneratedCodeInfo")
+load(":util.bzl", "erl_libs_contents")
 
 def unique_dirnames(files):
     dirs = []
@@ -35,7 +36,12 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    outputs = ctx.outputs.outs
+    src_outputs = []
+    include_outputs = []
+    for src in ctx.files.srcs:
+        fname = src.basename.rsplit(".", 1)[0].removesuffix(".set")
+        src_outputs.append(ctx.actions.declare_file(path_join("src", fname + ".erl")))
+        include_outputs.append(ctx.actions.declare_file(path_join("include", fname + ".hrl")))
 
     script = """set -euo pipefail
 
@@ -45,13 +51,15 @@ trap "rm -fr '$TMP'" EXIT
 
 {maybe_install_erlang}
 
-mkdir -p {out_dirs}
+mkdir -p {src_out} {include_out}
+
+ERLC_OPTS="{erlc_opts}"
 
 "{erlang_home}"/bin/erlc \\
     +noobj \\
-    -v {include_args} \\
+    {include_args} \\
     -o "$TMP" \\
-    $@
+    $ERLC_OPTS $@
 
 wrap_ext() {{
     IS_EXT=0
@@ -77,21 +85,23 @@ wrap_ext() {{
     done
 }}
 
-for F in {out_files} ; do
-    SRC="$TMP/${{F##*/}}"
-    case "$SRC" in
-        *.hrl)
-            wrap_ext < "$SRC" > "$SRC.tmp"
-            mv "$SRC.tmp" "$SRC"
-            ;;
-    esac
-    mv -v "$SRC" "$F"
+for F in $@ ; do
+    FNAME=$(basename "${{F}}")
+    FNAME="${{FNAME%.*}}"
+    FNAME="$(basename "${{FNAME}}" .set)"
+    mv "$TMP/$FNAME.erl" "{src_out}/$FNAME.erl"
+    if [ -f "$TMP/$FNAME.hrl" ] ; then
+        wrap_ext < "$TMP/$FNAME.hrl" > "{include_out}/$FNAME.hrl"
+    else
+        echo '%% dummy' > "{include_out}/$FNAME.hrl"
+    fi
 done
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
-        out_dirs = " ".join(unique_dirnames(outputs)),
-        out_files = " ".join([f.path for f in outputs]),
+        erlc_opts = " ".join(ctx.attr.erlc_opts),
+        src_out = src_outputs[0].dirname,
+        include_out = include_outputs[0].dirname,
         erl_libs_path = "",
         include_args = " ".join(include_args),
     )
@@ -103,20 +113,23 @@ done
 
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = outputs,
+        outputs = src_outputs + include_outputs,
         command = script,
-        arguments = ctx.attr.erlc_opts + [srcs],
+        arguments = [srcs],
         mnemonic = "ERLCASN1",
     )
 
     return [
-        DefaultInfo(files = depset(outputs)),
+        ErlangGeneratedCodeInfo(
+            srcs = depset(src_outputs),
+            includes = depset(include_outputs),
+        ),
+        DefaultInfo(files = depset(src_outputs + include_outputs)),
     ]
 
 erlang_asn1 = rule(
     implementation = _impl,
     attrs = {
-        "app_name": attr.string(),
         "srcs": attr.label_list(
             mandatory = True,
             allow_files = [".asn", ".asn1"],
@@ -128,9 +141,7 @@ erlang_asn1 = rule(
             providers = [ErlangAppInfo],
         ),
         "erlc_opts": attr.string_list(),
-        "outs": attr.output_list(
-            mandatory = True,
-        ),
     },
     toolchains = ["//tools:toolchain_type"],
+    provides = [ErlangGeneratedCodeInfo],
 )

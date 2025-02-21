@@ -1,22 +1,10 @@
-load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load("//:util.bzl", "path_join")
-load(":util.bzl", "erl_libs_contents")
 load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
 )
-
-def unique_dirnames(files):
-    dirs = []
-    for f in files:
-        dirname = f.path if f.is_directory else f.dirname
-        if dirname not in dirs:
-            dirs.append(dirname)
-    return dirs
-
-def _dirname(path):
-    return path.rpartition("/")[0]
+load(":erlang_app_sources.bzl", "ErlangGeneratedCodeInfo")
 
 def _impl(ctx):
     package_dir = path_join(
@@ -24,27 +12,31 @@ def _impl(ctx):
         ctx.label.package,
     )
 
+    srcs = ctx.actions.args()
+    srcs.add_all(ctx.files.srcs)
+
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
 
-    outputs = ctx.outputs.outs
+    src_outputs = []
+    for src in ctx.files.srcs:
+        fname = src.basename.removesuffix(".xrl").removesuffix(".yrl")
+        src_outputs.append(ctx.actions.declare_file(path_join("src", fname + ".erl")))
 
-    out_dirs = unique_dirnames(outputs)
-    if len(out_dirs) > 1:
-        fail(ctx.attr.outs, "do not share a common parent directory")
-    out_dir = out_dirs[0]
+    script = """#!/usr/bin/env bash
 
-    script = """set -euo pipefail
+set -euo pipefail
 
+{maybe_install_erlang}
 
-mkdir -p {out_dir}
+mkdir -p {src_out}
 
 "{erlang_home}"/bin/erlc \\
-    -o "{out_dir}" \\
+    -o "{src_out}" \\
     "$@"
     """.format(
         maybe_install_erlang = maybe_install_erlang(ctx),
         erlang_home = erlang_home,
-        out_dir = out_dir,
+        src_out = src_outputs[0].dirname,
     )
 
     inputs = depset(
@@ -52,37 +44,31 @@ mkdir -p {out_dir}
         transitive = [runfiles.files],
     )
 
-    srcs = ctx.actions.args()
-    srcs.add_all(ctx.files.srcs)
-
     ctx.actions.run_shell(
         inputs = inputs,
-        outputs = outputs,
+        outputs = src_outputs,
         command = script,
         arguments = [srcs],
-        mnemonic = "ERLC",
+        mnemonic = "ERLXRLYRL",
     )
 
     return [
-        DefaultInfo(files = depset(outputs)),
+        ErlangGeneratedCodeInfo(
+            srcs = depset(src_outputs),
+            includes = depset([]),
+        ),
+        DefaultInfo(files = depset(src_outputs)),
     ]
 
 erlang_xrl_yrl = rule(
     implementation = _impl,
     attrs = {
-        "app_name": attr.string(),
         "srcs": attr.label_list(
             mandatory = True,
             doc = "The xrl or yrl files to compile",
             allow_files = [".xrl", ".yrl"],
         ),
-        "deps": attr.label_list(
-            providers = [ErlangAppInfo],
-        ),
-        "outs": attr.output_list(
-            doc = "The erl file to be created (same basename like the src)",
-            mandatory = True,
-        ),
     },
     toolchains = ["//tools:toolchain_type"],
+    provides = [ErlangGeneratedCodeInfo],
 )
