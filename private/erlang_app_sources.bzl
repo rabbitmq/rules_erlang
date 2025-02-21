@@ -10,6 +10,7 @@ ErlangAppSourcesInfo = provider(
         "srcs": "Source files",
         # "beam": "Compiled bytecode (.beam) files, or a single ebin directory",
         "priv": "Additional files",
+        "app_dir": "Root directory of the application",
         "license_files": "License files",
         # "precompiled_beam": "Precompiled bytecode",
     },
@@ -39,6 +40,7 @@ def _impl(ctx):
             private_hdrs = ctx.files.private_hdrs,
             srcs = srcs.to_list(),
             priv = ctx.files.priv,
+            app_dir = ctx.file.app_dir,
             license_files = ctx.files.license_files,
             # precompiled_beam = ctx.files.precompiled_beam,
         ),
@@ -76,6 +78,9 @@ erlang_app_sources = rule(
         ),
         "priv": attr.label_list(
             allow_files = True,
+        ),
+        "app_dir": attr.label(
+            allow_single_file = True,
         ),
         "generated_srcs": attr.label_list(
             providers = [ErlangGeneratedCodeInfo],

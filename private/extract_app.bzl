@@ -48,7 +48,18 @@ def _impl(ctx):
             else:
                 private_hdrs.append(dest)
 
-    outs = beam + app_info.source_info.priv
+    app_root = app_info.source_info.app_dir.short_path + "/"
+    privs = []
+    for p in app_info.source_info.priv:
+        rp = p.short_path.removeprefix(app_root)
+        dest = ctx.actions.declare_file(rp)
+        ctx.actions.symlink(
+            output = dest,
+            target_file = p,
+        )
+        privs.append(dest)
+
+    outs = beam + test_beam + privs
     if ctx.attr.copy_headers:
         outs += public_hdrs + private_hdrs
 
@@ -58,7 +69,7 @@ def _impl(ctx):
             extra_apps = ctx.attr.extra_apps,
             include = public_hdrs + private_hdrs,
             beam = beam,
-            priv = app_info.source_info.priv,
+            priv = privs,
             license_files = app_info.source_info.license_files,
             srcs = (app_info.source_info.public_hdrs +
                     app_info.source_info.private_hdrs +

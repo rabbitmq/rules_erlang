@@ -50,6 +50,7 @@ def erlang_app_sources(
         private_hdrs = private_hdrs,
         srcs = srcs,
         priv = priv,
+        app_dir = ".",
         license_files = license_files,
         **kwargs
     )
