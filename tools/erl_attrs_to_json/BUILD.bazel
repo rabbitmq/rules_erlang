@@ -8,10 +8,12 @@ erlang_app(
     name = "erlang_app",
     app_name = APP_NAME,
     app_version = APP_VERSION,
+    stamp = 0,
 )
 
 test_erlang_app(
     name = "test_erlang_app",
     app_name = APP_NAME,
     app_version = APP_VERSION,
+    stamp = 0,
 )

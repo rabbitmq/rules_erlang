@@ -19,6 +19,7 @@ erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
     extra_apps = EXTRA_APPS,
+    stamp = 0,
     deps = DEPS,
 )
 
@@ -27,6 +28,7 @@ test_erlang_app(
     app_name = APP_NAME,
     app_version = APP_VERSION,
     extra_apps = EXTRA_APPS,
+    stamp = 0,
     deps = DEPS,
 )
 
