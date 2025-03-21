@@ -66,9 +66,13 @@ def _impl(ctx):
     for p in app_info.source_info.priv:
         rp = p.short_path.removeprefix(app_root)
         dest = ctx.actions.declare_file(rp)
-        ctx.actions.symlink(
-            output = dest,
-            target_file = p,
+        ctx.actions.run_shell(
+            inputs = [p],
+            outputs = [dest],
+            command = "cp -RL {src} {dest}".format(
+                src = p.path,
+                dest = dest.path,
+            ),
         )
         privs.append(dest)
 
