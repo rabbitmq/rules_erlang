@@ -1,8 +1,15 @@
 load(
+    ":hex_pm.bzl",
+    "hex_package_info",
+    "satisfies",
+)
+load(
     ":erlang_package.bzl",
     "git_package",
     "hex_package",
+    "hex_tree",
     "log",
+    "without_requirement",
 )
 load(
     ":semver.bzl",
@@ -19,14 +26,6 @@ load(
     "INSTALLATION_TYPE_EXTERNAL",
     "INSTALLATION_TYPE_INTERNAL",
     _erlang_config_rule = "erlang_config",
-)
-load(
-    "//repositories:gmake_config.bzl",
-    _gmake_config_rule = "gmake_config",
-)
-load(
-    "//repositories:erlang_packages.bzl",
-    "erlang_packages",
 )
 load(
     "//tools:erlang.bzl",
@@ -162,50 +161,64 @@ erlang_config = module_extension(
     },
 )
 
-GMAKE_DEFAULT_TOOLCHAIN_NAME = "default"
+_RESOLVE_MAX_PASSES = 500
 
-def _gmake_config(module_ctx):
-    gmakes = {}
-
-    for mod in module_ctx.modules:
-        for gmake in mod.tags.gmake:
-            if gmake.name not in gmakes:
-                gmakes[gmake.name] = gmake.path
-            else:
-                module_ctx.report_progress("Ignoring duplicate gmake: {}".format(gmake))
-
-    if "MAKE" in module_ctx.os.environ:
-        gmake_path = module_ctx.os.environ["MAKE"]
-        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = gmake_path
-        log(module_ctx, "Using gnu make from env var MAKE: {}".for_target(gmake_path))
-    elif module_ctx.which("make") != None:
-        gmake_path = module_ctx.which("make")
-        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = str(gmake_path)
-        log(module_ctx, "Found gnu make at {}".format(gmake_path))
+def _resolve_pass(ctx, packages):
+    all_requirements = []
+    for p in packages:
+        # print("checking reqs for", p.name)
+        all_requirements.extend(getattr(p, "requirements", []))
+    if len(all_requirements) == 0:
+        # no unmet requirements, end recursion
+        return (True, packages)
     else:
-        gmakes[GMAKE_DEFAULT_TOOLCHAIN_NAME] = "make"
+        # at least one unmet requirement exists...
+        name = all_requirements[0]["app"]
+        requirements = []
+        for r in all_requirements:
+            if r["app"] == name:
+                requirements.append(r["requirement"])
+        requirers = []
+        for p in packages:
+            for r in getattr(p, "requirements", []):
+                if r["app"] == name:
+                    requirers.append(p.name)
 
-    _gmake_config_rule(
-        name = "gmake_config",
-        gmakes = gmakes,
-    )
+        # check if it's already in our package list
+        for p in packages:
+            if p.name == name:
+                if not all([satisfies(p.version, r) for r in requirements]):
+                    log(ctx, "Ignoring conflicting requirements for {}, {} does not satisfy {} as required by {}".format(
+                        name,
+                        p.version,
+                        requirements,
+                        requirers,
+                    ))
+                return (False, [without_requirement(name, p) for p in packages])
 
-    module_ctx.extension_metadata(
-        root_module_direct_deps = gmakes.keys(),
-        root_module_direct_dev_deps = [],
-    )
+        # check if a version exists on hex
+        log(ctx, "Fetching package info for {} from hex.pm".format(name))
+        package_info = hex_package_info(ctx, name)
+        for release in package_info["releases"]:
+            if all([satisfies(release["version"], r) for r in requirements]):
+                log(ctx, "Using {}@{} required by {} satisfying {}".format(
+                    name,
+                    release["version"],
+                    requirers,
+                    requirements,
+                ))
+                hp = hex_package(ctx, name, release["version"], "", "")
+                return (False, [without_requirement(name, p) for p in packages] + [hp])
 
-gmake = tag_class(attrs = {
-    "name": attr.string(),
-    "path": attr.string(),
-})
+        fail("Unable to find a version of {} satisfying".format(name), requirements)
 
-gmake_config = module_extension(
-    implementation = _gmake_config,
-    tag_classes = {
-        "gmake": gmake,
-    },
-)
+def _resolve_hex_pm(ctx, packages):
+    resolved = packages
+    for i in range(0, _RESOLVE_MAX_PASSES):
+        (done, resolved) = _resolve_pass(ctx, resolved)
+        if done:
+            return resolved
+    fail("Dependencies were not resolved after {} passes.".format(_RESOLVE_MAX_PASSES))
 
 def _newest(a, b):
     if a.version == b.version:
@@ -243,7 +256,7 @@ def _dedupe_by_version(packages):
         by_version[p.version] = p
     return by_version.values()
 
-def resolve_local(ctx, packages):
+def _resolve_local(ctx, packages):
     deduped = []
     packages_by_name = {}
     for p in packages:
@@ -265,57 +278,66 @@ def resolve_local(ctx, packages):
             ))
     return deduped
 
-def _erlang_package(module_ctx):
+def _erlang_package(ctx):
     xref_runner_sources()
 
     packages = []
-    for mod in module_ctx.modules:
+    for mod in ctx.modules:
+        for dep in mod.tags.hex_package_tree:
+            packages.append(hex_tree(
+                ctx,
+                module = mod,
+                name = dep.name,
+                pkg = dep.pkg,
+                version = dep.version,
+            ))
         for dep in mod.tags.hex_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
+            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
+                fail("testonly has no effect when build_file or build_file_content is set:", dep.name)
             packages.append(hex_package(
-                module_ctx,
+                ctx,
                 module = mod,
-                dep = dep,
+                name = dep.name,
+                pkg = dep.pkg,
+                version = dep.version,
+                sha256 = dep.sha256,
+                build_file = dep.build_file,
+                build_file_content = dep.build_file_content,
+                patches = dep.patches,
+                patch_args = dep.patch_args,
+                patch_cmds = dep.patch_cmds,
+                testonly = dep.testonly,
             ))
         for dep in mod.tags.git_package:
             if dep.build_file != None and dep.build_file_content != "":
                 fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
+            if dep.testonly and (dep.build_file != None or dep.build_file_content != ""):
+                fail("testonly has no effect when build_file or build_file_content is set:", dep.remote, dep.repository)
             packages.append(git_package(
-                module_ctx,
+                ctx,
                 module = mod,
                 dep = dep,
             ))
 
-    resolved = resolve_local(module_ctx, packages)
+    deduped = _resolve_local(ctx, packages)
+
+    resolved = _resolve_hex_pm(ctx, deduped)
 
     if len(resolved) > 0:
-        log(module_ctx, "Final package list:")
+        log(ctx, "Final package list:")
     for p in resolved:
-        log(module_ctx, "    {}@{}".format(p.name, p.version))
+        log(ctx, "    {}@{}".format(p.name, p.version))
 
     for p in resolved:
         p.f_fetch(p)
 
-    apps = [
-        p.name
-        for p in resolved
-        if (not p.name == "thoas_rules_erlang") and (not p.testonly)
-    ]
-
-    test_apps = [
-        p.name
-        for p in resolved
-        if p.module.is_root and p.testonly
-    ]
-
-    # should we make one of these for every module?
-    # then we can hide transitive deps...
-    erlang_packages(
-        name = "erlang_packages",
-        apps = sorted(apps),
-        test_apps = sorted(test_apps),
-    )
+hex_package_tree_tag = tag_class(attrs = {
+    "name": attr.string(mandatory = True),
+    "pkg": attr.string(),
+    "version": attr.string(mandatory = True),
+})
 
 hex_package_tag = tag_class(attrs = {
     "name": attr.string(mandatory = True),
@@ -349,6 +371,7 @@ erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
         "hex_package": hex_package_tag,
+        "hex_package_tree": hex_package_tree_tag,
         "git_package": git_package_tag,
     },
 )

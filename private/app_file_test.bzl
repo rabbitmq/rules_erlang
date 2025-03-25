@@ -6,9 +6,10 @@ def _app_file_test_impl(ctx):
     env = analysistest.begin(ctx)
 
     target_under_test = analysistest.target_under_test(env)
-    asserts.true(
+    asserts.equals(
         env,
-        target_under_test[DefaultInfo].files.to_list()[0].short_path.endswith(path_join(ctx.label.package, "basic.app")),
+        expected = path_join(ctx.label.package, "basic.app"),
+        actual = target_under_test[DefaultInfo].files.to_list()[0].short_path,
     )
 
     return analysistest.end(env)

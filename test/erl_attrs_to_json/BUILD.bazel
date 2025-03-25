@@ -16,12 +16,12 @@ load(
 
 alias(
     name = "erlang_app",
-    actual = "@rules_erlang//tools/erl_attrs_to_json:erlang_app",
+    actual = "@rules_erlang//gazelle/erl_attrs_to_json:erlang_app",
 )
 
 alias(
     name = "test_erlang_app",
-    actual = "@rules_erlang//tools/erl_attrs_to_json:test_erlang_app",
+    actual = "@rules_erlang//gazelle/erl_attrs_to_json:test_erlang_app",
 )
 
 xref()
@@ -29,6 +29,7 @@ xref()
 plt(
     name = "base_plt",
     apps = DEFAULT_PLT_APPS,
+    deps = ["@thoas//:erlang_app"],
 )
 
 dialyze(

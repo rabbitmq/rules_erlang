@@ -24,7 +24,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "rbe",
-    commit = "2d13aeca4aabfcb189c0183edc41099c24672808",  # linux-rbe branch
+    commit = "1e49cf3f990358f770310f6a5a6501b96aafdb1f",  # linux-rbe branch
     remote = "https://github.com/rabbitmq/rbe-erlang-platform.git",
 )
 
@@ -40,6 +40,10 @@ rules_erlang_internal_deps()
 load("@rules_erlang//:internal_setup.bzl", "rules_erlang_internal_setup")
 
 rules_erlang_internal_setup()
+
+load("@rules_erlang//gazelle:deps.bzl", "gazelle_deps")
+
+gazelle_deps()
 
 load(
     "@rules_erlang//:rules_erlang.bzl",

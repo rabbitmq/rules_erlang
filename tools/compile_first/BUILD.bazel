@@ -1,10 +1,7 @@
 load(
     "//:erlang_bytecode2.bzl",
     "erlang_bytecode",
-)
-load(
-    "//:erlc_opts_file.bzl",
-    "erlc_opts_file",
+    "erlc_opts",
 )
 load(
     "//private:escript_flat.bzl",
@@ -15,7 +12,7 @@ load(
     "DEFAULT_ERLC_OPTS",
 )
 
-erlc_opts_file(
+erlc_opts(
     name = "erlc_opts",
     values = DEFAULT_ERLC_OPTS,
 )

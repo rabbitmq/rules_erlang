@@ -1,6 +1,7 @@
 load(
     "//:erlang_app_info.bzl",
     "ErlangAppInfo",
+    "flat_deps",
 )
 load(
     "//:util.bzl",

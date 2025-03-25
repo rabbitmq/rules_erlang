@@ -2,11 +2,79 @@
 
 Bazel rules for Erlang sources
 
-## Examples
+## Minimal Example
 
-See [basic](examples/basic/)
+### `WORKSPACE` file
 
-## Typical rules
+```starlark
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "af87959afe497dc8dfd4c6cb66e1279cb98ccc84284619ebfec27d9c09a903de",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.0/bazel-skylib-1.2.0.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+http_archive(
+    name = "rules_erlang",
+    strip_prefix = "rules_erlang-3.16.0",
+    urls = ["https://github.com/rabbitmq/rules_erlang/archive/refs/tags/3.16.0.zip"],
+)
+
+load(
+    "@rules_erlang//:rules_erlang.bzl",
+    "erlang_config",
+    "rules_erlang_dependencies",
+)
+
+erlang_config()
+
+rules_erlang_dependencies()
+
+load("@erlang_config//:defaults.bzl", "register_defaults")
+
+register_defaults()
+
+```
+
+### `BUILD` file
+
+```starlark
+load("@rules_erlang//:erlang_app.bzl", "erlang_app", "test_erlang_app")
+load("@rules_erlang//:xref.bzl", "xref")
+load("@rules_erlang//:dialyze.bzl", "dialyze", "plt")
+load("@rules_erlang//:ct.bzl", "ct_suite", "assert_suites2")
+
+APP_NAME = "my_cool_app"
+APP_VERSION = "0.1.0"
+
+erlang_app(
+    app_name = APP_NAME,
+    app_version = APP_VERSION,
+)
+
+test_erlang_app(
+    app_name = APP_NAME,
+    app_version = APP_VERSION,
+)
+
+xref()
+
+dialyze()
+
+ct_suite(
+    name = "unit_SUITE",
+)
+
+assert_suites2()
+```
 
 ### Compile and run all tests
 
