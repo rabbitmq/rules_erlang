@@ -4,6 +4,11 @@ load(
     "new_git_repository",
 )
 load(
+    "@bazel_tools//tools/build_defs/repo:local.bzl",
+    "local_repository",
+    "new_local_repository",
+)
+load(
     "//:hex_archive.bzl",
     "hex_archive",
 )
@@ -44,6 +49,20 @@ GitPackage = provider(fields = [
     "deps",
     "has_metadata_file",
     "f_fetch",
+])
+
+LocalPackage = provider(fields = [
+    "module",
+    "name",
+    "path",
+    "build_file",
+    "build_file_content",
+    "patch_cmds",
+    "testonly",
+    "deps",
+    "has_metadata_file",
+    "f_fetch",
+    "version",
 ])
 
 def log(ctx, msg):
@@ -125,6 +144,29 @@ def git_package(
         f_fetch = _git_package_repo,
     )
 
+def local_package(
+        _ctx,
+        module = None,
+        dep = None):
+    if dep.path == "":
+        fail("'path' is required for local_package")
+
+    name = dep.name if dep.name != "" else dep.path.rsplit("/", 1)[-1]
+
+    return LocalPackage(
+        module = module,
+        name = name,
+        path = dep.path,
+        version = "local",
+        build_file = dep.build_file,
+        build_file_content = dep.build_file_content,
+        patch_cmds = dep.patch_cmds,
+        testonly = dep.testonly,
+        deps = dep.depends_on,
+        has_metadata_file = False,
+        f_fetch = _local_package_repo,
+    )
+
 def _hex_package_repo(hex_package):
     if hex_package.build_file != None:
         hex_archive(
@@ -196,6 +238,29 @@ def _git_package_repo(git_package):
                 testonly = git_package.testonly,
             ),
             patch_cmds = git_package.patch_cmds,
+        )
+
+def _local_package_repo(local_package):
+    if local_package.build_file != None:
+        new_local_repository(
+            name = local_package.name,
+            path = local_package.path,
+            build_file = local_package.build_file,
+        )
+    elif local_package.build_file_content != "":
+        new_local_repository(
+            name = local_package.name,
+            path = local_package.path,
+            build_file_content = local_package.build_file_content,
+        )
+    else:
+        new_local_repository(
+            name = local_package.name,
+            path = local_package.path,
+            build_file_content = DEFAULT_BUILD_FILE_CONTENT.format(
+                app_name = local_package.name,
+                testonly = local_package.testonly,
+            ),
         )
 
 DEFAULT_BUILD_FILE_CONTENT = """\

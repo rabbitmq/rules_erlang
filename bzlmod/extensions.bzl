@@ -25,6 +25,7 @@ load(
     ":erlang_package.bzl",
     "git_package",
     "hex_package",
+    "local_package",
     "log",
 )
 load(
@@ -286,6 +287,14 @@ def _erlang_package(module_ctx):
                 module = mod,
                 dep = dep,
             ))
+        for dep in mod.tags.local_package:
+            if dep.build_file != None and dep.build_file_content != "":
+                fail("build_file and build_file_content cannot be set simultaneously for", dep.name)
+            packages.append(local_package(
+                module_ctx,
+                module = mod,
+                dep = dep,
+            ))
 
     resolved = resolve_local(module_ctx, packages)
 
@@ -354,10 +363,22 @@ git_package_tag = tag_class(attrs = {
     "testonly": attr.bool(),
 })
 
+local_package_tag = tag_class(attrs = {
+    "name": attr.string(mandatory = True),
+    "path": attr.string(mandatory = True),
+    "version" : attr.string(),
+    "build_file": attr.label(),
+    "build_file_content": attr.string(),
+    "depends_on": attr.string_list(),
+    "patch_cmds": attr.string_list(),
+    "testonly": attr.bool(),
+})
+
 erlang_package = module_extension(
     implementation = _erlang_package,
     tag_classes = {
         "hex_package": hex_package_tag,
         "git_package": git_package_tag,
+        "local_package": local_package_tag,
     },
 )
