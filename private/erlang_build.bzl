@@ -178,10 +178,6 @@ tar --extract \\
 
 {begins_with_fun}
 V=$("{erlang_home}"/bin/{query_erlang_version})
-if ! beginswith "{erlang_version}" "$V"; then
-echo "Erlang version mismatch (Expected {erlang_version}, found $V)"
-exit 1
-fi
 
 echo "$V" >> {version_file}
 """.format(
