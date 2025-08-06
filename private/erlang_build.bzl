@@ -171,7 +171,7 @@ tar --create \\
         outputs = [version_file],
         command = """set -euo pipefail
 
-mkdir -p "{install_path}"
+mkdir -p "{install_path}" || true
 tar --extract \\
     --directory "{install_path}" \\
     --file {erlang_release_tar}
