@@ -213,7 +213,7 @@ package(
 
 constraint_setting(
     name = "erlang_internal_external",
-    default_constraint_value = ":erlang_internal",
+    default_constraint_value = ":erlang_external",
 )
 
 constraint_value(
