@@ -34,7 +34,7 @@ jobs:
           https://github.com/${{ github.repository }}/archive/${{ github.ref }}.tar.gz
     - name: CREATE RELEASE
       id: create-release
-      uses: ncipollo/release-action@v1.16.0
+      uses: ncipollo/release-action@v1.19.1
       with:
         name: rules_erlang ${{ steps.versions.outputs.version }}
         allowUpdates: true
