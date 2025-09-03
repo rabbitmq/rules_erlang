@@ -1,6 +1,16 @@
 # rules_erlang
 
-Bazel rules for Erlang sources
+Bazel rules for Erlang sources.
+
+## Maintenance Status
+
+Team RabbitMQ were using Bazel heavily alongside `erlang.mk` for a few years for its parallel
+builds and caching features.
+
+However, `erlang.mk` has caught up and Bazel fell out of use.
+
+Therefore, **this project is not actively maintained**. You are welcome to fork it,
+or become a new maintainer.
 
 ## Examples
 
