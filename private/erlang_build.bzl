@@ -57,7 +57,7 @@ def _erlang_build_impl(ctx):
         # otp installations are not relocatable, so the install_prefix
         # must be absolute to build a predictable location
         fail("install_prefix must be absolute")
-    install_path = path_join(ctx.attr.install_prefix, ctx.label.name + "_" + str(hash(str(ctx.label))))
+    install_path = path_join(ctx.attr.install_prefix, ctx.label.name + "_" + ctx.configuration.hash)
     install_root = _install_root(ctx.attr.install_prefix)
 
     # At one point this rule recevied the erlang sources as a
