@@ -23,6 +23,8 @@
     handle_cast/2
 ]).
 
+-define(TIMEOUT, timer:seconds(10)).
+
 -record(?MODULE, {
     src_analysis :: ets:table(),
     beam_file_contents :: ets:table()
@@ -48,7 +50,7 @@ terminate(shutdown, #?MODULE{
 
 -spec get_analysis(binary(), fun(() -> analysis_result())) -> analysis_result().
 get_analysis(Key, ContentsFun) ->
-    gen_server:call(?MODULE, {get_analysis, Key, ContentsFun}).
+    gen_server:call(?MODULE, {get_analysis, Key, ContentsFun}, ?TIMEOUT).
 
 -spec src_analysis_stats() ->
     #{
@@ -57,15 +59,15 @@ get_analysis(Key, ContentsFun) ->
         size := non_neg_integer()
     }.
 src_analysis_stats() ->
-    gen_server:call(?MODULE, analysis_stats).
+    gen_server:call(?MODULE, analysis_stats, ?TIMEOUT).
 
 -spec get_beam_file_contents(binary()) -> compilation_result() | none.
 get_beam_file_contents(Key) ->
-    gen_server:call(?MODULE, {get_beam, Key}).
+    gen_server:call(?MODULE, {get_beam, Key}, ?TIMEOUT).
 
 -spec put_beam_file_contents(binary(), compilation_result()) -> compilation_result().
 put_beam_file_contents(Key, Contents) ->
-    gen_server:call(?MODULE, {put_beam, Key, Contents}).
+    gen_server:call(?MODULE, {put_beam, Key, Contents}, ?TIMEOUT).
 
 -spec beam_file_stats() ->
     #{
@@ -74,7 +76,7 @@ put_beam_file_contents(Key, Contents) ->
         size := non_neg_integer()
     }.
 beam_file_stats() ->
-    gen_server:call(?MODULE, beam_stats).
+    gen_server:call(?MODULE, beam_stats, ?TIMEOUT).
 
 handle_call({get_analysis, Key, ContentsFun}, _, #?MODULE{src_analysis = Table} = S) ->
     R =
