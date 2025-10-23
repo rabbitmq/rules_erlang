@@ -343,6 +343,7 @@ git_package_tag = tag_class(attrs = {
     "build_file_content": attr.string(),
     "patch_cmds": attr.string_list(),
     "testonly": attr.bool(),
+    "strip_prefix": attr.string(),
 })
 
 erlang_package = module_extension(

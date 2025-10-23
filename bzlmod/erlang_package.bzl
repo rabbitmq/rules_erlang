@@ -40,6 +40,7 @@ GitPackage = provider(fields = [
     "build_file_content",
     "patch_cmds",
     "testonly",
+    "strip_prefix",
     "f_fetch",
 ])
 
@@ -115,6 +116,7 @@ def git_package(
         build_file_content = dep.build_file_content,
         patch_cmds = dep.patch_cmds,
         testonly = dep.testonly,
+        strip_prefix = dep.strip_prefix,
         f_fetch = _git_package_repo,
     )
 
@@ -166,6 +168,7 @@ def _git_package_repo(git_package):
             commit = git_package.commit,
             build_file = git_package.build_file,
             patch_cmds = git_package.patch_cmds,
+            strip_prefix = git_package.strip_prefix,
         )
     elif git_package.build_file_content != "":
         new_git_repository(
@@ -176,6 +179,7 @@ def _git_package_repo(git_package):
             commit = git_package.commit,
             build_file_content = git_package.build_file_content,
             patch_cmds = git_package.patch_cmds,
+            strip_prefix = git_package.strip_prefix,
         )
     else:
         git_repository(
@@ -189,6 +193,7 @@ def _git_package_repo(git_package):
                 testonly = git_package.testonly,
             ),
             patch_cmds = git_package.patch_cmds,
+            strip_prefix = git_package.strip_prefix,
         )
 
 DEFAULT_BUILD_FILE_CONTENT = """\
