@@ -18,7 +18,7 @@ jobs:
         - "26.2"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -39,7 +39,7 @@ jobs:
         - "26.2"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -59,7 +59,7 @@ jobs:
         - "26.2"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -93,7 +93,7 @@ jobs:
         - "26.2"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -119,7 +119,7 @@ jobs:
     runs-on: macos-latest
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       run: |
         brew install erlang
@@ -150,7 +150,7 @@ jobs:
         - "25.3"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:
@@ -190,7 +190,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE BAZEL
       working-directory: test
       run: |
@@ -229,7 +229,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     # - name: INSTALL LCOV
     #   run: |
     #     sudo apt-get install -y lcov
@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:

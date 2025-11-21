@@ -17,7 +17,7 @@ jobs:
         - "26.2"
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: CONFIGURE ERLANG
       uses: erlef/setup-beam@v1
       with:

@@ -8,11 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: CHECKOUT
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         path: rules_erlang
     - name: CHECKOUT rabbitmq/bazel-central-registry@erlang-packages
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: rabbitmq/bazel-central-registry
         path: bazel-central-registry
