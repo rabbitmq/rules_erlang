@@ -11,6 +11,7 @@ _ERLANG_VERSION_UNKNOWN = "UNKNOWN"
 
 INSTALLATION_TYPE_EXTERNAL = "external"
 INSTALLATION_TYPE_INTERNAL = "internal"
+INSTALLATION_TYPE_PREBUILT = "prebuilt"
 
 def _parse_maybe_semver(version_string):
     parts = version_string.split(".", 2)
@@ -57,6 +58,21 @@ def _impl(repository_ctx):
                     "%{ERLANG_NAME}": name,
                     "%{ERLANG_HOME}": props.erlang_home,
                     "%{ERLANG_VERSION}": props.version,
+                    "%{ERLANG_MAJOR}": props.major,
+                    "%{ERLANG_MINOR}": props.minor,
+                    "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,
+                },
+                False,
+            )
+        elif props.type == INSTALLATION_TYPE_PREBUILT:
+            repository_ctx.template(
+                "{}/BUILD.bazel".format(name),
+                Label("//repositories:BUILD_prebuilt.tpl"),
+                {
+                    "%{ERLANG_NAME}": name,
+                    "%{ERLANG_VERSION}": props.version,
+                    "%{URL}": props.url,
+                    "%{SHA_256}": props.sha256 or "",
                     "%{ERLANG_MAJOR}": props.major,
                     "%{ERLANG_MINOR}": props.minor,
                     "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,

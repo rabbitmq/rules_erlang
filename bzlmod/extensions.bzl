@@ -6,6 +6,7 @@ load(
     "//repositories:erlang_config.bzl",
     "INSTALLATION_TYPE_EXTERNAL",
     "INSTALLATION_TYPE_INTERNAL",
+    "INSTALLATION_TYPE_PREBUILT",
     _erlang_config_rule = "erlang_config",
 )
 load(
@@ -107,6 +108,25 @@ def _erlang_config(ctx):
             extra_make_optss[erlang.name] = erlang.extra_make_opts
             owners_by_name[erlang.name] = mod
 
+        for erlang in mod.tags.internal_erlang_from_prebuilt:
+            if erlang.name in types:
+                fail("{} declares an erlang installation named {}, but the name is already used by {}".format(
+                    mod.name,
+                    erlang.name,
+                    owners_by_name[erlang.name].name,
+                ))
+            url = "https://github.com/omnicate/erlang-linux-builds/releases/download/OTP-{v}/erlang-{v}-{arch}-{libc}.tar.gz".format(
+                v = erlang.version,
+                arch = erlang.arch,
+                libc = erlang.libc,
+            )
+
+            types[erlang.name] = INSTALLATION_TYPE_PREBUILT
+            versions[erlang.name] = erlang.version
+            urls[erlang.name] = url
+            sha256s[erlang.name] = erlang.sha256
+            owners_by_name[erlang.name] = mod
+
     _erlang_config_rule(
         name = "erlang_config",
         rules_erlang_workspace = "@rules_erlang",
@@ -154,12 +174,29 @@ internal_erlang_from_github_release = tag_class(attrs = {
     "extra_make_opts": attr.string_list(),
 })
 
+internal_erlang_from_prebuilt = tag_class(attrs = {
+    "name": attr.string(
+        default = "internal",
+    ),
+    "version": attr.string(
+        default = "28.2",
+    ),
+    "arch": attr.string(
+        default = "x64",
+    ),
+    "libc": attr.string(
+        default = "glibc",
+    ),
+    "sha256": attr.string(),
+})
+
 erlang_config = module_extension(
     implementation = _erlang_config,
     tag_classes = {
         "external_erlang_from_path": external_erlang_from_path,
         "internal_erlang_from_http_archive": internal_erlang_from_http_archive,
         "internal_erlang_from_github_release": internal_erlang_from_github_release,
+        "internal_erlang_from_prebuilt": internal_erlang_from_prebuilt,
     },
 )
 

@@ -297,3 +297,120 @@ erlang_external = rule(
         "erlang_version": attr.string(),
     },
 )
+
+def _erlang_prebuilt_impl(ctx):
+    (_, _, filename) = ctx.attr.url.rpartition("/")
+    downloaded_archive = ctx.actions.declare_file(filename)
+    release_dir_tar = ctx.actions.declare_file(ctx.label.name + "_release.tar")
+    version_file = ctx.actions.declare_file(ctx.label.name + "_version")
+
+    if not ctx.attr.install_prefix.startswith("/"):
+        fail("install_prefix must be absolute")
+
+    target_cpu = ctx.var.get("TARGET_CPU", "")
+    compilation_mode = ctx.var.get("COMPILATION_MODE", "")
+    suffix = "{}-{}".format(compilation_mode, target_cpu)
+    label_hash = str(hash(str(ctx.label)))
+    install_path = path_join(ctx.attr.install_prefix, ctx.label.name + "_" + suffix + "_" + label_hash)
+
+    ctx.actions.run_shell(
+        inputs = [],
+        outputs = [downloaded_archive],
+        command = """set -euo pipefail
+curl -L "{archive_url}" -o {archive_path}
+""".format(
+            archive_url = ctx.attr.url,
+            archive_path = downloaded_archive.path,
+        ),
+        mnemonic = "OTP",
+        progress_message = "Downloading {}".format(ctx.attr.url),
+    )
+
+    sha256file = sha256(ctx, downloaded_archive)
+
+    # Prebuilt archives have bin/, lib/, erts-*/ at root level.
+    # We repackage to match the expected structure.
+    ctx.actions.run_shell(
+        inputs = [downloaded_archive, sha256file],
+        outputs = [release_dir_tar],
+        command = """set -euo pipefail
+
+if [ -n "{sha256}" ]; then
+    if [ "{sha256}" != "$(cat "{sha256file}")" ]; then
+        echo "ERROR: Checksum mismatch. $(basename "{archive_path}") $(cat "{sha256file}") != {sha256}"
+        exit 1
+    fi
+fi
+
+ABS_RELEASE_DIR_TAR=$PWD/{release_path}
+ABS_EXTRACT_DIR="$(mktemp -d)"
+
+tar --extract \\
+    --file "{archive_path}" \\
+    --directory "$ABS_EXTRACT_DIR"
+
+cd "$ABS_EXTRACT_DIR"
+tar --create \\
+    --file "$ABS_RELEASE_DIR_TAR" \\
+    *
+""".format(
+            sha256 = ctx.attr.sha256v,
+            sha256file = sha256file.path,
+            archive_path = downloaded_archive.path,
+            release_path = release_dir_tar.path,
+        ),
+        mnemonic = "OTP",
+        progress_message = "Extracting prebuilt otp",
+    )
+
+    erlang_home = install_path
+
+    ctx.actions.run_shell(
+        inputs = [release_dir_tar],
+        outputs = [version_file],
+        command = """set -euo pipefail
+
+mkdir -p "{install_path}" || true
+tar --extract \\
+    --directory "{install_path}" \\
+    --file {erlang_release_tar}
+
+{begins_with_fun}
+V=$("{erlang_home}"/bin/{query_erlang_version})
+
+echo "$V" >> {version_file}
+""".format(
+            install_path = install_path,
+            begins_with_fun = BEGINS_WITH_FUN,
+            query_erlang_version = QUERY_ERL_VERSION,
+            erlang_home = erlang_home,
+            erlang_release_tar = release_dir_tar.path,
+            version_file = version_file.path,
+        ),
+        mnemonic = "OTP",
+        progress_message = "Validating prebuilt otp at {}".format(erlang_home),
+    )
+
+    return [
+        DefaultInfo(
+            files = depset([release_dir_tar, version_file]),
+        ),
+        OtpInfo(
+            version = ctx.attr.version,
+            release_dir_tar = release_dir_tar,
+            install_path = install_path,
+            erlang_home = erlang_home,
+            version_file = version_file,
+        ),
+    ]
+
+erlang_prebuilt = rule(
+    implementation = _erlang_prebuilt_impl,
+    attrs = {
+        "version": attr.string(mandatory = True),
+        "url": attr.string(mandatory = True),
+        "sha256v": attr.string(),
+        "install_prefix": attr.string(default = DEFAULT_INSTALL_PREFIX),
+        "sha256": tools["sha256"],
+    },
+)
