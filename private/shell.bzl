@@ -25,7 +25,7 @@ def _impl(ctx):
 
     erl_libs_path = path_join(package, erl_libs_dir)
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)

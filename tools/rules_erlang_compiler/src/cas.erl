@@ -23,7 +23,7 @@
     handle_cast/2
 ]).
 
--define(TIMEOUT, timer:seconds(10)).
+-define(TIMEOUT, timer:minutes(5)).
 
 -record(?MODULE, {
     src_analysis :: ets:table(),

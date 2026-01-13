@@ -101,7 +101,7 @@ def _impl(ctx):
         arg = to_erlang_atom_list(ctx.attr.checks),
     )
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)
@@ -204,7 +204,7 @@ def _query_impl(ctx):
         arg = "\"$QUERY\"",
     )
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)

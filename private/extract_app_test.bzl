@@ -28,7 +28,7 @@ def _impl(ctx):
         for dep in app_info.direct_deps
     ]
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     assert_applications = ctx.attr.assert_applications
     assert_applications_path = assert_applications[DefaultInfo].files_to_run.executable.short_path

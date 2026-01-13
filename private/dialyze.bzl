@@ -38,7 +38,7 @@ def _impl(ctx):
     dirs = code_paths(ctx.attr.target)
     dirs.extend(unique_short_dirnames(ctx.files.beam))
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     if not ctx.attr.is_windows:
         output = ctx.actions.declare_file(ctx.label.name)

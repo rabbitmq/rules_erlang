@@ -9,6 +9,11 @@ bazel_dep(
     version = "1.7.1",
 )
 
+bazel_dep(
+    name = "platforms",
+    version = "0.0.10",
+)
+
 erlang_package = use_extension(
     "//bzlmod:extensions.bzl",
     "erlang_package",

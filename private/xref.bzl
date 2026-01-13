@@ -44,7 +44,7 @@ def _impl(ctx):
         content = xref_config,
     )
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     xrefr = ctx.attr.xrefr
     xrefr_path = xrefr[DefaultInfo].files_to_run.executable.short_path

@@ -102,7 +102,7 @@ def _impl(ctx):
                     "ebin",
                 ))
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     shard_suite = ctx.attr.shard_suite
     shard_suite_path = shard_suite[DefaultInfo].files_to_run.executable.short_path

@@ -85,7 +85,7 @@ def _impl(ctx):
                     "ebin",
                 ))
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     eunit_opts_term = "[" + ",".join(ctx.attr.eunit_opts) + "]"
 

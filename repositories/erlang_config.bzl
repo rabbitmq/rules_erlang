@@ -23,6 +23,42 @@ def _parse_maybe_semver(version_string):
 def _to_string_list(strings):
     return "[%s]" % ",".join(['"%s"' % s.replace('"', '\\"') for s in strings])
 
+def _generate_url_select(urls_json):
+    """Generate a select() expression for multi-arch URLs or a simple string for single-arch."""
+    urls_dict = json.decode(urls_json) if urls_json else {}
+    if not urls_dict:
+        return '""'
+
+    # If there's only one CPU and we want backwards compat, we could just return the URL
+    # But for consistency, always generate select() when using prebuilt
+    cpus = urls_dict.keys()
+    if len(cpus) == 1:
+        # Single CPU - just return the quoted URL
+        return '"%s"' % list(urls_dict.values())[0]
+
+    # Multiple CPUs - generate select()
+    select_cases = []
+    for cpu, url in urls_dict.items():
+        select_cases.append('        "@platforms//cpu:%s": "%s"' % (cpu, url))
+    return "select({\n%s,\n    })" % ",\n".join(select_cases)
+
+def _generate_sha256_select(sha256s_json):
+    """Generate a select() expression for multi-arch sha256s or a simple string for single-arch."""
+    sha256s_dict = json.decode(sha256s_json) if sha256s_json else {}
+    if not sha256s_dict:
+        return '""'
+
+    cpus = sha256s_dict.keys()
+    if len(cpus) == 1:
+        # Single CPU - just return the quoted sha256
+        return '"%s"' % list(sha256s_dict.values())[0]
+
+    # Multiple CPUs - generate select()
+    select_cases = []
+    for cpu, sha256 in sha256s_dict.items():
+        select_cases.append('        "@platforms//cpu:%s": "%s"' % (cpu, sha256))
+    return "select({\n%s,\n    })" % ",\n".join(select_cases)
+
 def _impl(repository_ctx):
     rules_erlang_workspace = repository_ctx.attr.rules_erlang_workspace
 
@@ -65,14 +101,17 @@ def _impl(repository_ctx):
                 False,
             )
         elif props.type == INSTALLATION_TYPE_PREBUILT:
+            # For prebuilt, url and sha256 are JSON-encoded dicts of cpu -> value
+            url_expr = _generate_url_select(props.url)
+            sha256_expr = _generate_sha256_select(props.sha256)
             repository_ctx.template(
                 "{}/BUILD.bazel".format(name),
                 Label("//repositories:BUILD_prebuilt.tpl"),
                 {
                     "%{ERLANG_NAME}": name,
                     "%{ERLANG_VERSION}": props.version,
-                    "%{URL}": props.url,
-                    "%{SHA_256}": props.sha256 or "",
+                    "%{URL}": url_expr,
+                    "%{SHA_256}": sha256_expr,
                     "%{ERLANG_MAJOR}": props.major,
                     "%{ERLANG_MINOR}": props.minor,
                     "%{RULES_ERLANG_WORKSPACE}": rules_erlang_workspace,

@@ -115,16 +115,17 @@ def _erlang_config(ctx):
                     erlang.name,
                     owners_by_name[erlang.name].name,
                 ))
-            url = "https://github.com/omnicate/erlang-linux-builds/releases/download/OTP-{v}/erlang-{v}-{arch}-{libc}.tar.gz".format(
-                v = erlang.version,
-                arch = erlang.arch,
-                libc = erlang.libc,
-            )
+
+            if not erlang.urls:
+                fail("urls is required for internal_erlang_from_prebuilt")
+
+            urls_json = json.encode(erlang.urls)
+            sha256s_json = json.encode(erlang.sha256s) if erlang.sha256s else "{}"
 
             types[erlang.name] = INSTALLATION_TYPE_PREBUILT
             versions[erlang.name] = erlang.version
-            urls[erlang.name] = url
-            sha256s[erlang.name] = erlang.sha256
+            urls[erlang.name] = urls_json
+            sha256s[erlang.name] = sha256s_json
             owners_by_name[erlang.name] = mod
 
     _erlang_config_rule(
@@ -178,16 +179,11 @@ internal_erlang_from_prebuilt = tag_class(attrs = {
     "name": attr.string(
         default = "internal",
     ),
-    "version": attr.string(
-        default = "28.2",
-    ),
-    "arch": attr.string(
-        default = "x64",
-    ),
-    "libc": attr.string(
-        default = "glibc",
-    ),
-    "sha256": attr.string(),
+    "version": attr.string(),
+    # Dict of cpu (x86_64, aarch64) -> url
+    "urls": attr.string_dict(),
+    # Dict of cpu (x86_64, aarch64) -> sha256
+    "sha256s": attr.string_dict(),
 })
 
 erlang_config = module_extension(

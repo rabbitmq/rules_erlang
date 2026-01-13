@@ -9,9 +9,9 @@ def _impl(ctx):
         "OTP_VERSION": otpinfo.version,
         "ERLANG_HOME": otpinfo.erlang_home,
     }
-    if otpinfo.release_dir_tar != None:
-        vars["ERLANG_RELEASE_TAR_PATH"] = otpinfo.release_dir_tar.path
-        vars["ERLANG_RELEASE_TAR_SHORT_PATH"] = otpinfo.release_dir_tar.short_path
+    if otpinfo.release_dir != None:
+        vars["ERLANG_RELEASE_DIR_PATH"] = otpinfo.release_dir.path
+        vars["ERLANG_RELEASE_DIR_SHORT_PATH"] = otpinfo.release_dir.short_path
     return [
         platform_common.ToolchainInfo(otpinfo = otpinfo),
         platform_common.TemplateVariableInfo(vars),
@@ -38,36 +38,35 @@ erlang_toolchain = rule(
 def _build_info(ctx):
     return ctx.toolchains["//tools:toolchain_type"].otpinfo
 
-def erlang_dirs(ctx):
+def erlang_dirs(ctx, short_path = False):
+    """Returns (erlang_home, release_dir, runfiles) for the Erlang toolchain.
+    
+    Args:
+        ctx: The rule context
+        short_path: If True, return short_path for erlang_home (for runfiles/tests).
+                   If False (default), return full path (for build actions).
+    """
     info = _build_info(ctx)
-    if info.release_dir_tar != None:
+    if info.release_dir != None:
         runfiles = ctx.runfiles([
-            info.release_dir_tar,
+            info.release_dir,
             info.version_file,
         ])
+        if short_path:
+            erlang_home = info.release_dir.short_path
+        else:
+            erlang_home = info.release_dir.path
     else:
         runfiles = ctx.runfiles([
             info.version_file,
         ])
-    return (info.erlang_home, info.release_dir_tar, runfiles)
+        # For external erlang, always use the absolute path
+        erlang_home = info.erlang_home
+    return (erlang_home, info.release_dir, runfiles)
 
 def maybe_install_erlang(ctx, short_path = False):
-    info = _build_info(ctx)
-    release_dir_tar = info.release_dir_tar
-    if release_dir_tar == None:
-        return ""
-    else:
-        return """\
-mkdir -p $(dirname "{install_path}")
-if mkdir "{install_path}"; then
-    tar --extract \\
-        --directory "{install_path}" \\
-        --file {release_tar}
-fi\
-""".format(
-            release_tar = release_dir_tar.short_path if short_path else release_dir_tar.path,
-            install_path = info.install_path,
-        )
+    # No longer needed - release_dir is already an extracted directory
+    return ""
 
 def version_file(ctx):
     info = _build_info(ctx)

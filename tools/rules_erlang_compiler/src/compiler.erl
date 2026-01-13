@@ -74,17 +74,17 @@ init([AppName, AppDir, Targets, CodePaths, ModuleIndex, MappedInputs]) ->
 
 -spec compile(digraph:graph()) -> #{string() := compilation_result()}.
 compile(SrcGraph) ->
-    gen_server:call(?MODULE, {compile, SrcGraph}, timer:minutes(3)).
+    gen_server:call(?MODULE, {compile, SrcGraph}, timer:minutes(5)).
 
 -spec all_compiled([string()]) -> boolean().
 all_compiled([]) ->
     true;
 all_compiled(Deps) ->
-    gen_server:call(?MODULE, {all_compiled, Deps}, timer:minutes(3)).
+    gen_server:call(?MODULE, {all_compiled, Deps}, timer:minutes(5)).
 
 -spec any_errors() -> boolean().
 any_errors() ->
-    gen_server:call(?MODULE, any_errors, timer:minutes(3)).
+    gen_server:call(?MODULE, any_errors, timer:minutes(5)).
 
 handle_call({compile, SrcGraph}, From, #?MODULE{app_dir = AppDir} = S) ->
     Srcs = digraph:vertices(SrcGraph),

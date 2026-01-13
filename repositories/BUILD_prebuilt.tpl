@@ -12,8 +12,8 @@ load(
 erlang_prebuilt(
     name = "otp-%{ERLANG_NAME}",
     version = "%{ERLANG_VERSION}",
-    url = "%{URL}",
-    sha256v = "%{SHA_256}",
+    url = %{URL},
+    sha256v = %{SHA_256},
 )
 
 erlang_toolchain(
