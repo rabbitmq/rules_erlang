@@ -67,7 +67,19 @@ def erlang_dirs(ctx, short_path = False):
     return (erlang_home, info.release_dir, runfiles)
 
 def maybe_install_erlang(ctx, short_path = False):
-    # No longer needed - release_dir is already an extracted directory
+    """Returns shell commands to set up the Erlang environment.
+    
+    For internal/prebuilt Erlang, this sets ROOTDIR to help Erlang find its libraries.
+    """
+    info = _build_info(ctx)
+    if info.release_dir != None:
+        if short_path:
+            # Set ROOTDIR to tell Erlang where its installation is
+            # This prevents Erlang from using resolved symlink paths
+            rootdir = "${TEST_SRCDIR:-$RUNFILES_DIR}/${TEST_WORKSPACE:-_main}/" + info.release_dir.short_path
+            return 'export ROOTDIR="' + rootdir + '"'
+        else:
+            return 'export ROOTDIR="' + info.release_dir.path + '"'
     return ""
 
 def version_file(ctx):
