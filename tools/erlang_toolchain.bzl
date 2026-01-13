@@ -53,7 +53,9 @@ def erlang_dirs(ctx, short_path = False):
             info.version_file,
         ])
         if short_path:
-            erlang_home = info.release_dir.short_path
+            # For runfiles (tests use $TEST_SRCDIR/$TEST_WORKSPACE, run uses $RUNFILES_DIR)
+            # Use a shell expression that works for both cases
+            erlang_home = "${TEST_SRCDIR:-$RUNFILES_DIR}/${TEST_WORKSPACE:-_main}/" + info.release_dir.short_path
         else:
             erlang_home = info.release_dir.path
     else:

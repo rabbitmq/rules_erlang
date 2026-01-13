@@ -9,7 +9,7 @@ DEFAULT_PATH = "bin/erl"
 def _impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name)
 
-    (erlang_home, _, runfiles) = erlang_dirs(ctx)
+    (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
     ctx.actions.write(
         output = out,
