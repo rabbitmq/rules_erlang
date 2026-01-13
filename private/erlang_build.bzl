@@ -19,11 +19,13 @@ OtpInfo = provider(
     fields = {
         "version": """The version that this build contains.
 May be a prefix of the exact version found in the version_file.""",
-        "release_dir": """Directory containing the erlang installation.
-This is a TreeArtifact (declared directory) that can be used
-directly as erlang_home. May be None for external erlang.""",
-        "erlang_home": """Path to the erlang installation.
-For internal/prebuilt erlang, this is the path to release_dir.
+        "release_dir_tar": """Tar file containing the erlang installation.
+If this value is not None, it must be extracted to install_path
+before use. May be None for external erlang.""",
+        "install_path": """Fixed absolute path where release_dir_tar should be extracted.
+This ensures path consistency across sandboxed actions.""",
+        "erlang_home": """Absolute path to the erlang installation.
+For internal/prebuilt erlang, this is install_path.
 For external erlang, this is the absolute path to the system installation.""",
         "version_file": """A file containing the version of this
 erlang, used to correctly invalidate the cache when an
@@ -31,14 +33,28 @@ external erlang is used""",
     },
 )
 
+DEFAULT_INSTALL_PREFIX = "/tmp/bazel/erlang"
+
+def _install_path_for_label(ctx, install_prefix = DEFAULT_INSTALL_PREFIX):
+    """Generate a consistent install path for an erlang installation."""
+    target_cpu = ctx.var.get("TARGET_CPU", "k8")
+    compilation_mode = ctx.var.get("COMPILATION_MODE", "fastbuild")
+    label_hash = str(hash(str(ctx.label)))
+    return "{}/{}_{}_{}_{}".format(
+        install_prefix,
+        ctx.label.name,
+        compilation_mode,
+        target_cpu,
+        label_hash,
+    )
+
 def _erlang_build_impl(ctx):
     (_, _, filename) = ctx.attr.url.rpartition("/")
     downloaded_archive = ctx.actions.declare_file(filename)
 
     build_dir_tar = ctx.actions.declare_file(ctx.label.name + "_build.tar")
     build_log = ctx.actions.declare_file(ctx.label.name + "_build.log")
-    # Use a directory artifact instead of a tar - Erlang is relocatable
-    release_dir = ctx.actions.declare_directory(ctx.label.name + "_release")
+    release_dir_tar = ctx.actions.declare_file(ctx.label.name + "_release.tar")
 
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
 
@@ -47,18 +63,12 @@ def _erlang_build_impl(ctx):
     post_configure_cmds = "\n".join(ctx.attr.post_configure_cmds)
     extra_make_opts = " ".join(ctx.attr.extra_make_opts)
 
-    # At one point this rule received the erlang sources as a
-    # label_list attribute, which had been fetched with a repository
-    # rule. This had the unfortunate side effect of stripping out
-    # empty directories which are expected to be present by the
-    # otp makefiles. Instead this rule fetches the sources directly,
-    # which also avoids unnecessarily fetching sources when they are
-    # unused (such as when "external" erlang is used).
+    install_path = _install_path_for_label(ctx)
+
     ctx.actions.run_shell(
         inputs = [],
         outputs = [downloaded_archive],
         command = """set -euo pipefail
-
 curl -L "{archive_url}" -o {archive_path}
 """.format(
             archive_url = ctx.attr.url,
@@ -70,22 +80,16 @@ curl -L "{archive_url}" -o {archive_path}
 
     sha256file = sha256(ctx, downloaded_archive)
 
-    # zipper = ctx.executable._zipper
-
     strip_prefix = ctx.attr.strip_prefix
     if strip_prefix != "":
         strip_prefix += "\\/"
 
-    # Build and install directly to the output directory.
-    # Since Erlang is relocatable (OTP 23+), we use a temporary prefix during
-    # configure and then copy the result to our output directory.
     ctx.actions.run_shell(
         inputs = [downloaded_archive, sha256file],
         outputs = [
             build_dir_tar,
             build_log,
-            release_dir,
-            version_file,
+            release_dir_tar,
         ],
         command = """set -euo pipefail
 
@@ -97,14 +101,11 @@ if [ -n "{sha256}" ]; then
 fi
 
 ABS_BUILD_DIR_TAR=$PWD/{build_path}
-ABS_RELEASE_DIR=$PWD/{release_dir}
+ABS_RELEASE_DIR_TAR=$PWD/{release_path}
 ABS_LOG=$PWD/{build_log}
-ABS_VERSION_FILE=$PWD/{version_file}
 
 ABS_BUILD_DIR="$(mktemp -d)"
 ABS_DEST_DIR="$(mktemp -d)"
-# Use a simple prefix - Erlang is relocatable so the actual path doesn't matter
-INSTALL_PREFIX="/erlang"
 
 tar --extract \\
     --transform 's/{strip_prefix}//' \\
@@ -126,7 +127,7 @@ catch() {{
 
 cd "$ABS_BUILD_DIR"
 {pre_configure_cmds}
-./configure --prefix="$INSTALL_PREFIX" {extra_configure_opts} >> "$ABS_LOG" 2>&1
+./configure --prefix={install_path} {extra_configure_opts} >> "$ABS_LOG" 2>&1
 {post_configure_cmds}
 echo "    configure finished"
 ${{MAKE:=make}} {extra_make_opts} >> "$ABS_LOG" 2>&1
@@ -134,46 +135,69 @@ echo "    make finished"
 ${{MAKE}} install DESTDIR="$ABS_DEST_DIR" >> "$ABS_LOG" 2>&1
 echo "    make install finished"
 
-# Copy the installed files to the output directory
-# The structure is $ABS_DEST_DIR/$INSTALL_PREFIX/lib/erlang/...
-# We want the erlang_home to be the release_dir itself
-cp -r "$ABS_DEST_DIR$INSTALL_PREFIX/lib/erlang/"* "$ABS_RELEASE_DIR/"
-
-{begins_with_fun}
-V=$("$ABS_RELEASE_DIR"/bin/{query_erlang_version})
-echo "$V" >> "$ABS_VERSION_FILE"
+cd "$ABS_DEST_DIR"/{install_path}
+tar --create \\
+    --file "$ABS_RELEASE_DIR_TAR" \\
+    *
 """.format(
             sha256 = ctx.attr.sha256v,
             sha256file = sha256file.path,
             archive_path = downloaded_archive.path,
             strip_prefix = strip_prefix,
             build_path = build_dir_tar.path,
-            release_dir = release_dir.path,
+            release_path = release_dir_tar.path,
+            install_path = install_path,
             build_log = build_log.path,
-            version_file = version_file.path,
             extra_configure_opts = extra_configure_opts,
             pre_configure_cmds = pre_configure_cmds,
             post_configure_cmds = post_configure_cmds,
             extra_make_opts = extra_make_opts,
-            begins_with_fun = BEGINS_WITH_FUN,
-            query_erlang_version = QUERY_ERL_VERSION,
         ),
         use_default_shell_env = True,
         mnemonic = "OTP",
         progress_message = "Compiling otp from source",
     )
 
+    erlang_home = path_join(install_path, "lib", "erlang")
+
+    ctx.actions.run_shell(
+        inputs = [release_dir_tar],
+        outputs = [version_file],
+        command = """set -euo pipefail
+
+mkdir -p "{install_path}" || true
+tar --extract \\
+    --directory "{install_path}" \\
+    --file {erlang_release_tar}
+
+{begins_with_fun}
+V=$("{erlang_home}"/bin/{query_erlang_version})
+
+echo "$V" >> {version_file}
+""".format(
+            install_path = install_path,
+            begins_with_fun = BEGINS_WITH_FUN,
+            query_erlang_version = QUERY_ERL_VERSION,
+            erlang_home = erlang_home,
+            erlang_release_tar = release_dir_tar.path,
+            version_file = version_file.path,
+        ),
+        mnemonic = "OTP",
+        progress_message = "Validating otp at {}".format(erlang_home),
+    )
+
     return [
         DefaultInfo(
             files = depset([
-                release_dir,
+                release_dir_tar,
                 version_file,
             ]),
         ),
         OtpInfo(
             version = ctx.attr.version,
-            release_dir = release_dir,
-            erlang_home = release_dir.path,
+            release_dir_tar = release_dir_tar,
+            install_path = install_path,
+            erlang_home = erlang_home,
             version_file = version_file,
         ),
     ]
@@ -234,7 +258,8 @@ echo "$V" >> {version_file}
         ),
         OtpInfo(
             version = erlang_version,
-            release_dir = None,
+            release_dir_tar = None,
+            install_path = None,
             erlang_home = erlang_home,
             version_file = version_file,
         ),
@@ -253,9 +278,10 @@ erlang_external = rule(
 def _erlang_prebuilt_impl(ctx):
     (_, _, filename) = ctx.attr.url.rpartition("/")
     downloaded_archive = ctx.actions.declare_file(filename)
-    # Use a directory artifact instead of a tar - Erlang is relocatable
-    release_dir = ctx.actions.declare_directory(ctx.label.name + "_release")
+    release_dir_tar = ctx.actions.declare_file(ctx.label.name + "_release.tar")
     version_file = ctx.actions.declare_file(ctx.label.name + "_version")
+
+    install_path = _install_path_for_label(ctx)
 
     ctx.actions.run_shell(
         inputs = [],
@@ -272,10 +298,10 @@ curl -L "{archive_url}" -o {archive_path}
 
     sha256file = sha256(ctx, downloaded_archive)
 
-    # Extract directly to the output directory
+    # Extract to temp dir and create tar, then validate version
     ctx.actions.run_shell(
         inputs = [downloaded_archive, sha256file],
-        outputs = [release_dir, version_file],
+        outputs = [release_dir_tar, version_file],
         command = """set -euo pipefail
 
 if [ -n "{sha256}" ]; then
@@ -285,22 +311,41 @@ if [ -n "{sha256}" ]; then
     fi
 fi
 
+ABS_RELEASE_TAR=$PWD/{release_tar}
+ABS_VERSION_FILE=$PWD/{version_file}
+TMP_DIR="$(mktemp -d)"
+
 tar --extract \\
     --file "{archive_path}" \\
-    --directory "{release_dir}"
+    --directory "$TMP_DIR"
+
+# Repackage as tar (the prebuilt archive is already in the right format)
+cd "$TMP_DIR"
+tar --create \\
+    --file "$ABS_RELEASE_TAR" \\
+    *
+
+# Extract to install_path for version check
+mkdir -p "{install_path}"
+tar --extract \\
+    --directory "{install_path}" \\
+    --file "$ABS_RELEASE_TAR"
 
 {begins_with_fun}
-V=$("{release_dir}"/bin/{query_erlang_version})
+V=$("{install_path}"/bin/{query_erlang_version})
 
-echo "$V" >> {version_file}
+echo "$V" >> "$ABS_VERSION_FILE"
+
+rm -rf "$TMP_DIR"
 """.format(
             sha256 = ctx.attr.sha256v,
             sha256file = sha256file.path,
             archive_path = downloaded_archive.path,
-            release_dir = release_dir.path,
+            release_tar = release_dir_tar.path,
+            install_path = install_path,
+            version_file = version_file.path,
             begins_with_fun = BEGINS_WITH_FUN,
             query_erlang_version = QUERY_ERL_VERSION,
-            version_file = version_file.path,
         ),
         mnemonic = "OTP",
         progress_message = "Extracting prebuilt otp",
@@ -308,12 +353,13 @@ echo "$V" >> {version_file}
 
     return [
         DefaultInfo(
-            files = depset([release_dir, version_file]),
+            files = depset([release_dir_tar, version_file]),
         ),
         OtpInfo(
             version = ctx.attr.version,
-            release_dir = release_dir,
-            erlang_home = release_dir.path,
+            release_dir_tar = release_dir_tar,
+            install_path = install_path,
+            erlang_home = install_path,
             version_file = version_file,
         ),
     ]

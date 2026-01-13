@@ -6,8 +6,9 @@ ERLANG_VARS_ENV_MAP = {
 }
 
 ERLANG_VARS_ENV_MAP_INTERNAL = ERLANG_VARS_ENV_MAP | {
-    "ERLANG_RELEASE_DIR_PATH": "$(ERLANG_RELEASE_DIR_PATH)",
-    "ERLANG_RELEASE_DIR_SHORT_PATH": "$(ERLANG_RELEASE_DIR_SHORT_PATH)",
+    "ERLANG_RELEASE_TAR_PATH": "$(ERLANG_RELEASE_TAR_PATH)",
+    "ERLANG_RELEASE_TAR_SHORT_PATH": "$(ERLANG_RELEASE_TAR_SHORT_PATH)",
+    "ERLANG_INSTALL_PATH": "$(ERLANG_INSTALL_PATH)",
 }
 
 def _impl(ctx):
@@ -18,9 +19,10 @@ def _impl(ctx):
         "OTP_VERSION_FILE_SHORT_PATH": otpinfo.version_file.short_path,
         "ERLANG_HOME": otpinfo.erlang_home,
     }
-    if otpinfo.release_dir != None:
-        vars["ERLANG_RELEASE_DIR_PATH"] = otpinfo.release_dir.path
-        vars["ERLANG_RELEASE_DIR_SHORT_PATH"] = otpinfo.release_dir.short_path
+    if otpinfo.release_dir_tar != None:
+        vars["ERLANG_RELEASE_TAR_PATH"] = otpinfo.release_dir_tar.path
+        vars["ERLANG_RELEASE_TAR_SHORT_PATH"] = otpinfo.release_dir_tar.short_path
+        vars["ERLANG_INSTALL_PATH"] = otpinfo.install_path
 
     return [
         platform_common.TemplateVariableInfo(vars),
