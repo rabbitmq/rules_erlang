@@ -2,7 +2,6 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo")
 load(
     "//:util.bzl",
     "path_join",
-    "windows_path",
 )
 load(":ct.bzl", "code_paths")
 load(
@@ -49,9 +48,8 @@ def _impl(ctx):
     xrefr = ctx.attr.xrefr
     xrefr_path = xrefr[DefaultInfo].files_to_run.executable.short_path
 
-    if not ctx.attr.is_windows:
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -67,22 +65,11 @@ set -x
 "{erlang_home}"/bin/escript {xrefr} \\
     --config {config_path}
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            xrefr = xrefr_path,
-            config_path = config_file.short_path,
-        )
-    else:
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-echo on
-"{erlang_home}\\bin\\escript" {xrefr} ^
-    --config {config_path} || exit /b 1
-""".format(
-            erlang_home = windows_path(erlang_home),
-            xrefr = windows_path(xrefr_path),
-            config_path = windows_path(config_file.short_path),
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        xrefr = xrefr_path,
+        config_path = config_file.short_path,
+    )
 
     ctx.actions.write(
         output = output,
@@ -112,7 +99,6 @@ xref_test = rule(
             executable = True,
             cfg = "target",
         ),
-        "is_windows": attr.bool(mandatory = True),
         "target": attr.label(
             providers = [ErlangAppInfo],
             mandatory = True,

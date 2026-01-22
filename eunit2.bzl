@@ -7,9 +7,5 @@ def eunit(
     eunit_test(
         name = name,
         coverdata_to_lcov = coverdata_to_lcov,
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
         **kwargs
     )

@@ -20,9 +20,5 @@ def extract_app(
         extract_app_test(
             name = "%s_assert_dot_app" % name,
             app = ":%s" % name,
-            is_windows = select({
-                "@bazel_tools//src/conditions:host_windows": True,
-                "//conditions:default": False,
-            }),
             assert_applications = Label("@rules_erlang//tools/assert_applications:assert_applications"),
         )

@@ -2,7 +2,6 @@ load("//:erlang_app_info.bzl", "ErlangAppInfo", "flat_deps")
 load(
     "//:util.bzl",
     "path_join",
-    "windows_path",
 )
 load(":util.bzl", "erl_libs_contents")
 load(
@@ -27,9 +26,8 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
-    if not ctx.attr.is_windows:
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -40,24 +38,11 @@ export ERL_LIBS=$PWD/{erl_libs_path}
 set -x
 "{erlang_home}"/bin/erl {extra_erl_args} $@
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            erl_libs_path = erl_libs_path,
-            extra_erl_args = " ".join(ctx.attr.extra_erl_args),
-        )
-    else:
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-
-set ERL_LIBS=%cd%\\{erl_libs_path}
-
-echo on
-"{erlang_home}\\bin\\erl" {extra_erl_args} %* || exit /b 1
-""".format(
-            erlang_home = windows_path(erlang_home),
-            erl_libs_path = windows_path(erl_libs_path),
-            extra_erl_args = " ".join(ctx.attr.extra_erl_args),
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        erl_libs_path = erl_libs_path,
+        extra_erl_args = " ".join(ctx.attr.extra_erl_args),
+    )
 
     ctx.actions.write(
         output = output,
@@ -77,7 +62,6 @@ echo on
 shell = rule(
     implementation = _impl,
     attrs = {
-        "is_windows": attr.bool(mandatory = True),
         "deps": attr.label_list(providers = [ErlangAppInfo]),
         "ez_deps": attr.label_list(
             allow_files = [".ez"],

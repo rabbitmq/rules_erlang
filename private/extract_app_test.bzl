@@ -3,10 +3,6 @@ load(
     "ErlangAppInfo",
 )
 load(
-    "//:util.bzl",
-    "windows_path",
-)
-load(
     "//tools:erlang_toolchain.bzl",
     "erlang_dirs",
     "maybe_install_erlang",
@@ -33,9 +29,8 @@ def _impl(ctx):
     assert_applications = ctx.attr.assert_applications
     assert_applications_path = assert_applications[DefaultInfo].files_to_run.executable.short_path
 
-    if not ctx.attr.is_windows:
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """#!/usr/bin/env bash
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -45,21 +40,12 @@ set -euo pipefail
     "{app_file}" \\
     {expected}
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            assert_applications = assert_applications_path,
-            app_file = app_file.short_path,
-            expected = " ".join(expected_apps),
-        )
-    else:
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-
-"{erlang_home}\\bin\\erl" ^
-    -eval "halt(1)."
-""".format(
-            erlang_home = windows_path(erlang_home),
-        )
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        assert_applications = assert_applications_path,
+        app_file = app_file.short_path,
+        expected = " ".join(expected_apps),
+    )
 
     ctx.actions.write(
         output = output,
@@ -81,7 +67,6 @@ set -euo pipefail
 extract_app_test = rule(
     implementation = _impl,
     attrs = {
-        "is_windows": attr.bool(mandatory = True),
         "app": attr.label(
             mandatory = True,
             providers = [ErlangAppInfo],

@@ -76,10 +76,6 @@ def ct_suite_variant(
         coverdata_to_lcov = Label("@rules_erlang//tools/coverdata_to_lcov:coverdata_to_lcov"),
         name = name,
         suite_name = suite_name,
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
         compiled_suites = [":{}_beam_files".format(suite_name)] + additional_beam,
         data = data_dir_files + data,
         deps = [":test_erlang_app"] + deps + runtime_deps,
@@ -107,10 +103,6 @@ def ct_test(
         deps = deps,
         shard_suite = shard_suite,
         coverdata_to_lcov = coverdata_to_lcov,
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
         **kwargs
     )
 

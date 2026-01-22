@@ -5,7 +5,6 @@ load(
 load(
     "//:util.bzl",
     "path_join",
-    "windows_path",
 )
 load(
     "//tools:erlang_toolchain.bzl",
@@ -55,18 +54,12 @@ def _impl(ctx):
     deps.append(ctx.attr.target)
 
     # Use the eunit_mods attribute if provided, otherwise calculate from test_beam
-    # Note: when eunit_mods is not provided, we need to include both:
-    # - source modules (which may contain -ifdef(TEST) tests)
-    # - *_tests modules from test_beam
+    # Note: EUnit auto-discovers tests in source modules when running the corresponding *_tests module
+    # So we only include *_tests modules in the test list
     if ctx.attr.eunit_mods:
         eunit_mods = list(ctx.attr.eunit_mods)
     else:
         eunit_mods = []
-        # Include source modules (they may have embedded tests)
-        for m in lib_info.beam:
-            if m.extension == "beam":
-                module_name = m.basename.removesuffix(".beam")
-                eunit_mods.append(module_name)
         # Include *_tests modules from test_beam
         for m in lib_info.test_beam:
             if m.extension == "beam":
@@ -106,13 +99,12 @@ def _impl(ctx):
     coverdata_to_lcov = ctx.attr.coverdata_to_lcov
     coverdata_to_lcov_path = coverdata_to_lcov[DefaultInfo].files_to_run.executable.short_path
 
-    if not ctx.attr.is_windows:
-        test_env_commands = []
-        for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("export {}=\"{}\"".format(k, v))
+    test_env_commands = []
+    for k, v in ctx.attr.test_env.items():
+        test_env_commands.append("export {}=\"{}\"".format(k, v))
 
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -eo pipefail
 
@@ -147,47 +139,17 @@ if [ -n "${{COVERAGE}}" ]; then
         > ${{TEST_UNDECLARED_OUTPUTS_DIR}}/coverdata_to_lcov.log
 fi
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            apps_ebin_dirs_term = _quote(to_erlang_string_list(apps_ebin_dirs)),
-            erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
-            package = package,
-            coverdata_to_lcov = coverdata_to_lcov_path,
-            extra_args = " ".join(ctx.attr.erl_extra_args),
-            eunit_mods_term = _to_atom_list(eunit_mods),
-            eunit_opts_term = eunit_opts_term,
-            test_env = "\n".join(test_env_commands),
-        )
-    else:
-        test_env_commands = []
-        for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("set {}={}".format(k, v))
-
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-if [{erl_libs_path}] == [] goto :env
-REM TEST_SRCDIR is provided by bazel but with unix directory separators
-set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
-set ERL_LIBS=%ERL_LIBS:/=\\%
-:env
-
-{test_env}
-
-if NOT [{package}] == [] cd {package}
-
-echo on
-"{erlang_home}\\bin\\erl" +A1 -noinput -boot no_dot_erlang ^
-    {extra_args} ^
-    -eval "case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, halt()" || exit /b 1
-""".format(
-            package = package,
-            erlang_home = windows_path(erlang_home),
-            erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
-            extra_args = " ".join(ctx.attr.erl_extra_args),
-            eunit_mods_term = _to_atom_list(eunit_mods),
-            eunit_opts_term = eunit_opts_term,
-            test_env = "\n".join(test_env_commands),
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        apps_ebin_dirs_term = _quote(to_erlang_string_list(apps_ebin_dirs)),
+        erl_libs_path = erl_libs_path if len(erl_libs_files) > 0 else "",
+        package = package,
+        coverdata_to_lcov = coverdata_to_lcov_path,
+        extra_args = " ".join(ctx.attr.erl_extra_args),
+        eunit_mods_term = _to_atom_list(eunit_mods),
+        eunit_opts_term = eunit_opts_term,
+        test_env = "\n".join(test_env_commands),
+    )
 
     ctx.actions.write(
         output = output,
@@ -218,7 +180,6 @@ eunit_test = rule(
             executable = True,
             cfg = "target",
         ),
-        "is_windows": attr.bool(mandatory = True),
         "eunit_mods": attr.string_list(),
         "target": attr.label(providers = [ErlangAppInfo]),
         "erl_extra_args": attr.string_list(),

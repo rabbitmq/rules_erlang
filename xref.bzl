@@ -11,10 +11,6 @@ def xref(
         xrefr = Label("@rules_erlang//tools/xref_runner:xrefr"),
         name = name,
         target = target,
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
         tags = tags + [XREF_TAG],
         **kwargs
     )

@@ -33,10 +33,6 @@ def dialyze(
     dialyze_test(
         name = name,
         target = target,
-        is_windows = select({
-            "@bazel_tools//src/conditions:host_windows": True,
-            "//conditions:default": False,
-        }),
         tags = tags + [DIALYZE_TAG],
         **kwargs
     )

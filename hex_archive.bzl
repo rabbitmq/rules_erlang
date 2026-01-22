@@ -47,15 +47,9 @@ def _get_auth(ctx, urls):
         netrc = read_netrc(ctx, ctx.attr.netrc)
         return use_netrc(netrc, urls, ctx.attr.auth_patterns)
 
-    if "HOME" in ctx.os.environ and not ctx.os.name.startswith("windows"):
+    if "HOME" in ctx.os.environ:
         netrcfile = "%s/.netrc" % (ctx.os.environ["HOME"])
         if ctx.execute(["test", "-f", netrcfile]).return_code == 0:
-            netrc = read_netrc(ctx, netrcfile)
-            return use_netrc(netrc, urls, ctx.attr.auth_patterns)
-
-    if "USERPROFILE" in ctx.os.environ and ctx.os.name.startswith("windows"):
-        netrcfile = "%s/.netrc" % (ctx.os.environ["USERPROFILE"])
-        if ctx.path(netrcfile).exists:
             netrc = read_netrc(ctx, netrcfile)
             return use_netrc(netrc, urls, ctx.attr.auth_patterns)
 
@@ -141,13 +135,7 @@ unless it was added to the cache by a request with the same canonical id.
     ),
     "patch_cmds": attr.string_list(
         default = [],
-        doc = "Sequence of Bash commands to be applied on Linux/Macos after patches are applied.",
-    ),
-    "patch_cmds_win": attr.string_list(
-        default = [],
-        doc = "Sequence of Powershell commands to be applied on Windows after patches are " +
-              "applied. If this attribute is not set, patch_cmds will be executed on Windows, " +
-              "which requires Bash binary to exist.",
+        doc = "Sequence of Bash commands to be applied after patches are applied.",
     ),
     "build_file": attr.label(
         allow_single_file = True,

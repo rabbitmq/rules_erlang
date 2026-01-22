@@ -10,7 +10,6 @@ load(
 load(
     "//:util.bzl",
     "path_join",
-    "windows_path",
 )
 load(
     "//tools:erlang_toolchain.bzl",
@@ -50,10 +49,7 @@ def code_paths(dep):
 def _expand_locations_short_paths(ctx, s):
     expanded = ctx.expand_location(s, [])
     if expanded != s:
-        if not ctx.attr.is_windows:
-            return expanded.replace(ctx.bin_dir.path, "$TEST_SRCDIR/$TEST_WORKSPACE")
-        else:
-            return expanded.replace(ctx.bin_dir.path, "%TEST_SRCDIR%/%TEST_WORKSPACE%")
+        return expanded.replace(ctx.bin_dir.path, "$TEST_SRCDIR/$TEST_WORKSPACE")
     return s
 
 def sname(ctx):
@@ -110,15 +106,14 @@ def _impl(ctx):
     coverdata_to_lcov = ctx.attr.coverdata_to_lcov
     coverdata_to_lcov_path = coverdata_to_lcov[DefaultInfo].files_to_run.executable.short_path
 
-    if not ctx.attr.is_windows:
-        test_env_commands = []
-        for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("export {}=\"{}\"".format(k, _expand_locations_short_paths(ctx, v)))
+    test_env_commands = []
+    for k, v in ctx.attr.test_env.items():
+        test_env_commands.append("export {}=\"{}\"".format(k, _expand_locations_short_paths(ctx, v)))
 
-        log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
+    log_dir = ct_logdir if ct_logdir != "" else "${TEST_UNDECLARED_OUTPUTS_DIR}"
 
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -eo pipefail
 
@@ -196,104 +191,23 @@ if [ -n "${{COVERAGE}}" ]; then
         > ${{TEST_UNDECLARED_OUTPUTS_DIR}}/coverdata_to_lcov.log
 fi
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            app_name = app_name,
-            apps_ebin_dirs_term = to_erlang_string_list(apps_ebin_dirs),
-            erlang_home = erlang_home,
-            package = package,
-            erl_libs_path = erl_libs_path,
-            shard_suite = shard_suite_path,
-            sharding_method = ctx.attr.sharding_method,
-            coverdata_to_lcov = coverdata_to_lcov_path,
-            suite_name = ctx.attr.suite_name,
-            pa_args = " ".join(pa_args),
-            dir = path_join(package, "test"),
-            log_dir = log_dir,
-            sname = sname(ctx),
-            extra_args = " ".join(extra_args),
-            test_env = "\n".join(test_env_commands),
-        )
-    else:
-        test_env_commands = []
-        for k, v in ctx.attr.test_env.items():
-            test_env_commands.append("set {}={}".format(k, _expand_locations_short_paths(ctx, v)))
-
-        log_dir = ct_logdir if ct_logdir != "" else "%TEST_UNDECLARED_OUTPUTS_DIR%"
-
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-SETLOCAL EnableDelayedExpansion
-if [{shard_suite}] == [] set "TEST_SHARD_STATUS_FILE="
-if defined TEST_SHARD_STATUS_FILE type nul > !TEST_SHARD_STATUS_FILE!
-
-set logdir={log_dir}
-set logdir=%logdir:/=\\%
-subst {drive_letter}: %logdir%
-
-REM TEST_SRCDIR is provided by bazel but with unix directory separators
-set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
-set ERL_LIBS=%ERL_LIBS:/=\\%
-
-{test_env}
-
-if NOT defined FOCUS goto :no_focus
-if NOT defined TEST_SHARD_STATUS_FILE goto :focus_no_shard
-:focus_shard
-if [%TEST_SHARD_INDEX%] == [0] set FILTER=-suite {suite_name} %FOCUS% else goto :skip_test
-goto :run_test
-:focus_no_shard
-set FILTER=-suite {suite_name} %FOCUS%
-goto :run_test
-:no_focus
-if NOT defined TEST_SHARD_STATUS_FILE goto :no_focus_no_shard
-:no_focus_shard
-set SHARD_SUITE_CODE_PATHS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{dir}
-set SHARD_SUITE_CODE_PATHS=%SHARD_SUITE_CODE_PATHS:/=\\%
-set shard_suite_tool_path=%TEST_SRCDIR%/%TEST_WORKSPACE%/{shard_suite}
-set shard_suite_tool_path=%shard_suite_tool_path:/=\\%
-"{erlang_home}"\\bin\\escript %shard_suite_tool_path% ^
-    -{sharding_method} {suite_name} %TEST_SHARD_INDEX% %TEST_TOTAL_SHARDS% ^
-    > shard.tmp
-set /p FILTER= < shard.tmp
-DEL shard.tmp
-goto :run_test
-:no_focus_no_shard
-set FILTER=-suite {suite_name}
-
-:run_test
-
-if NOT [{package}] == [] cd {package}
-
-if not exist "{drive_letter}:" mkdir {drive_letter}:
-
-echo on
-"{erlang_home}\\bin\\ct_run" ^
-    -no_auto_compile ^
-    -noinput ^
-    %FILTER% ^
-    -dir ebin {pa_args} ^
-    -logdir {drive_letter}: ^
-    -hidden ^
-    -sname {sname} {extra_args}
-set CT_RUN_ERRORLEVEL=%ERRORLEVEL%
-subst {drive_letter}: /d
-exit /b %CT_RUN_ERRORLEVEL%
-:skip_test
-""".format(
-            package = package,
-            erlang_home = windows_path(erlang_home),
-            erl_libs_path = erl_libs_path,
-            shard_suite = shard_suite_path,
-            sharding_method = ctx.attr.sharding_method,
-            suite_name = ctx.attr.suite_name,
-            pa_args = " ".join(pa_args),
-            dir = path_join(package, "test"),
-            log_dir = log_dir,
-            drive_letter = ctx.attr._windows_logdir_drive_letter[BuildSettingInfo].value,
-            sname = sname(ctx),
-            extra_args = " ".join(extra_args),
-            test_env = "\n".join(test_env_commands),
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        app_name = app_name,
+        apps_ebin_dirs_term = to_erlang_string_list(apps_ebin_dirs),
+        erlang_home = erlang_home,
+        package = package,
+        erl_libs_path = erl_libs_path,
+        shard_suite = shard_suite_path,
+        sharding_method = ctx.attr.sharding_method,
+        coverdata_to_lcov = coverdata_to_lcov_path,
+        suite_name = ctx.attr.suite_name,
+        pa_args = " ".join(pa_args),
+        dir = path_join(package, "test"),
+        log_dir = log_dir,
+        sname = sname(ctx),
+        extra_args = " ".join(extra_args),
+        test_env = "\n".join(test_env_commands),
+    )
 
     ctx.actions.write(
         output = output,
@@ -318,9 +232,6 @@ exit /b %CT_RUN_ERRORLEVEL%
 ct_test = rule(
     implementation = _impl,
     attrs = {
-        "_windows_logdir_drive_letter": attr.label(
-            default = Label("//:ct_test_windows_logdir_drive_letter"),
-        ),
         "_ct_logdir": attr.label(
             default = Label("//:ct_logdir"),
         ),
@@ -332,7 +243,6 @@ ct_test = rule(
             executable = True,
             cfg = "target",
         ),
-        "is_windows": attr.bool(mandatory = True),
         "app_name": attr.string(),  # should be mandatory
         "suite_name": attr.string(mandatory = True),
         "compiled_suites": attr.label_list(

@@ -6,7 +6,6 @@ load(
 load(
     "//:util.bzl",
     "path_join",
-    "windows_path",
 )
 load(
     ":util.bzl",
@@ -103,9 +102,8 @@ def _impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
-    if not ctx.attr.is_windows:
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -123,31 +121,12 @@ fi
     -eval "{xref_erl}" \\
     -pa ebin/
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            erl_libs_path = erl_libs_path,
-            package = ctx.label.package,
-            xref_erl = xref_erl,
-        )
-    else:
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-
-set ERL_LIBS=%TEST_SRCDIR%/%TEST_WORKSPACE%/{erl_libs_path}
-set ERL_LIBS=%ERL_LIBS:/=\\%
-
-if NOT [{package}] == [] cd {package}
-
-"{erlang_home}\\bin\\erl" ^
-    -noshell ^
-    -eval "{xref_erl}" ^
-    -pa ebin/
-""".format(
-            erlang_home = windows_path(erlang_home),
-            erl_libs_path = erl_libs_path,
-            xref_erl = xref_erl,
-            package = ctx.label.package,
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        erl_libs_path = erl_libs_path,
+        package = ctx.label.package,
+        xref_erl = xref_erl,
+    )
 
     ctx.actions.write(
         output = output,
@@ -166,7 +145,6 @@ if NOT [{package}] == [] cd {package}
 ALLOWED_SCOPES = ["app", "apps", "deps", "otp"]
 
 _XREF_ATTRS = {
-    "is_windows": attr.bool(mandatory = True),
     "target": attr.label(
         providers = [ErlangAppInfo],
         mandatory = True,
@@ -206,9 +184,8 @@ def _query_impl(ctx):
 
     (erlang_home, _, runfiles) = erlang_dirs(ctx, short_path = True)
 
-    if not ctx.attr.is_windows:
-        output = ctx.actions.declare_file(ctx.label.name)
-        script = """\
+    output = ctx.actions.declare_file(ctx.label.name)
+    script = """\
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -227,32 +204,12 @@ export QUERY="$1"
     -eval "{xref_erl}" \\
     -pa ebin/
 """.format(
-            maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
-            erlang_home = erlang_home,
-            erl_libs_path = erl_libs_path,
-            package = ctx.label.package,
-            xref_erl = xref_erl,
-        )
-    else:
-        output = ctx.actions.declare_file(ctx.label.name + ".bat")
-        script = """@echo off
-
-set ERL_LIBS=%cd%/{erl_libs_path}
-
-if NOT [{package}] == [] cd {package}
-
-set QUERY=%1%
-
-"{erlang_home}\\bin\\erl" ^
-    -noshell ^
-    -eval "{xref_erl}" ^
-    -pa ebin/
-""".format(
-            erlang_home = windows_path(erlang_home),
-            erl_libs_path = windows_path(erl_libs_path),
-            package = ctx.label.package,
-            xref_erl = xref_erl,
-        ).replace("\n", "\r\n")
+        maybe_install_erlang = maybe_install_erlang(ctx, short_path = True),
+        erlang_home = erlang_home,
+        erl_libs_path = erl_libs_path,
+        package = ctx.label.package,
+        xref_erl = xref_erl,
+    )
 
     ctx.actions.write(
         output = output,
