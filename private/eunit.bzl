@@ -50,15 +50,29 @@ def _quote(string_list_term):
 
 def _impl(ctx):
     deps = list(ctx.attr.deps)
-    eunit_mods = []
     lib_info = ctx.attr.target[ErlangAppInfo]
     deps.extend(lib_info.deps)
     deps.append(ctx.attr.target)
-    for m in lib_info.test_beam:
-        if m.extension == "beam":
-            module_name = m.basename.removesuffix(".beam")
-            if module_name.endswith("_tests"):
+
+    # Use the eunit_mods attribute if provided, otherwise calculate from test_beam
+    # Note: when eunit_mods is not provided, we need to include both:
+    # - source modules (which may contain -ifdef(TEST) tests)
+    # - *_tests modules from test_beam
+    if ctx.attr.eunit_mods:
+        eunit_mods = list(ctx.attr.eunit_mods)
+    else:
+        eunit_mods = []
+        # Include source modules (they may have embedded tests)
+        for m in lib_info.beam:
+            if m.extension == "beam":
+                module_name = m.basename.removesuffix(".beam")
                 eunit_mods.append(module_name)
+        # Include *_tests modules from test_beam
+        for m in lib_info.test_beam:
+            if m.extension == "beam":
+                module_name = m.basename.removesuffix(".beam")
+                if module_name.endswith("_tests"):
+                    eunit_mods.append(module_name)
 
     erl_libs_dir = ctx.label.name + "_deps"
 
