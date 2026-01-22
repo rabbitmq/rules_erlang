@@ -60,7 +60,7 @@ jobs:
 
         git diff
     - name: CREATE PULL REQUEST
-      uses: peter-evans/create-pull-request@v8.0.0
+      uses: peter-evans/create-pull-request@v8.1.0
       with:
         token: ${{ secrets.REPO_SCOPED_TOKEN }}
         path: bazel-central-registry
