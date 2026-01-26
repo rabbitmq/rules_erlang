@@ -125,7 +125,8 @@ COVER_PRE=
 COVER_POST=
 if [ -n "${{COVERAGE}}" ]; then
     COVER_PRE="[case cover:compile_beam_directory(D) of {{error, _}} -> halt(1); _ -> ok end || D <- {apps_ebin_dirs_term}], "
-    COVER_POST="cover:export(\\"${{COVERAGE_OUTPUT_FILE}}\\"), "
+    # Export coverdata to TEST_UNDECLARED_OUTPUTS_DIR so it persists after the test
+    COVER_POST="cover:export(\\"${{TEST_UNDECLARED_OUTPUTS_DIR}}/all.coverdata\\"), "
 fi
 set -x
 "{erlang_home}"/bin/erl +A1 -noinput -boot no_dot_erlang \\
@@ -133,8 +134,9 @@ set -x
     -eval "${{COVER_PRE}}case eunit:test({eunit_mods_term},{eunit_opts_term}) of ok -> ok; error -> halt(2) end, ${{COVER_POST}}halt()."
 set +x
 if [ -n "${{COVERAGE}}" ]; then
+    # Convert the persisted coverdata to LCOV format for Bazel's coverage report
     "{erlang_home}"/bin/escript $TEST_SRCDIR/$TEST_WORKSPACE/{coverdata_to_lcov} \\
-        ${{COVERAGE_OUTPUT_FILE}} \\
+        ${{TEST_UNDECLARED_OUTPUTS_DIR}}/all.coverdata \\
         ${{COVERAGE_OUTPUT_FILE}} \\
         > ${{TEST_UNDECLARED_OUTPUTS_DIR}}/coverdata_to_lcov.log
 fi
