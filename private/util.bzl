@@ -71,8 +71,18 @@ def erl_libs_contents(
                 dest = symlink(ctx, src, path_join(dep_path, "ebin", src.basename))
             erl_libs_files.append(dest)
         for src in lib_info.priv:
-            rp = additional_file_dest_relative_path(dep.label, src)
-            dest = symlink(ctx, src, path_join(dep_path, rp))
+            if src.is_directory:
+                # Handle directory artifacts (e.g., from openapi_erlang_server)
+                dest = ctx.actions.declare_directory(path_join(dep_path, "priv"))
+                ctx.actions.run_shell(
+                    inputs = [src],
+                    outputs = [dest],
+                    command = "cp -RL \"{}\"/* \"{}\"".format(src.path, dest.path),
+                    mnemonic = "RulesErlangCopyPrivContentsSubdir",
+                )
+            else:
+                rp = additional_file_dest_relative_path(dep.label, src)
+                dest = symlink(ctx, src, path_join(dep_path, rp))
             erl_libs_files.append(dest)
     for ez in ez_deps:
         if expand_ezs:
