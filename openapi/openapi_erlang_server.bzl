@@ -29,7 +29,20 @@ def _impl(ctx):
     spec_deps = ctx.files.spec_deps
     package_name = ctx.attr.package_name
     docker_image = ctx.attr.docker_image
-    java_path = ctx.attr.java_path
+
+    # Determine Java path - prefer explicit path, then toolchain
+    if ctx.attr.java_path != "java":
+        # User provided explicit path
+        java_path = ctx.attr.java_path
+        java_runtime_files = []
+    elif ctx.attr._jdk:
+        # Use Java toolchain
+        java_runtime = ctx.attr._jdk[java_common.JavaRuntimeInfo]
+        java_path = "%s/bin/java" % java_runtime.java_home
+        java_runtime_files = ctx.attr._jdk.files.to_list()
+    else:
+        java_path = "java"
+        java_runtime_files = []
 
     # Determine generator JAR path - prefer label over string path
     if ctx.file.generator_jar_file:
@@ -285,8 +298,12 @@ fi
         transitive = [runfiles.files],
     )
 
+    # Tools include the Java runtime (needed for java executable)
+    tools = depset(java_runtime_files)
+
     ctx.actions.run_shell(
         inputs = inputs,
+        tools = tools,
         outputs = [out_dir, ebin_dir, priv_dir, erl_libs_dir],
         command = script,
         mnemonic = "OpenAPIErlangServer",
@@ -371,7 +388,12 @@ openapi_erlang_server = rule(
         ),
         "java_path": attr.string(
             default = "java",
-            doc = "Path to java executable. Use full path if java is not in Bazel's sandbox PATH.",
+            doc = "Path to java executable. If 'java' (default), uses the Bazel Java toolchain. Set explicit path to override.",
+        ),
+        "_jdk": attr.label(
+            default = Label("@bazel_tools//tools/jdk:current_host_java_runtime"),
+            providers = [java_common.JavaRuntimeInfo],
+            doc = "Java runtime toolchain for running openapi-generator-cli.jar at build time.",
         ),
         "deps": attr.label_list(
             providers = [ErlangAppInfo],
@@ -383,5 +405,5 @@ openapi_erlang_server = rule(
         ),
     },
     provides = [ErlangAppInfo, DefaultInfo],
-    toolchains = ["//tools:toolchain_type"],
+    toolchains = ["//tools:toolchain_type", "@bazel_tools//tools/jdk:runtime_toolchain_type"],
 )
