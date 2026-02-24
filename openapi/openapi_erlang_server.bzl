@@ -29,8 +29,13 @@ def _impl(ctx):
     spec_deps = ctx.files.spec_deps
     package_name = ctx.attr.package_name
     docker_image = ctx.attr.docker_image
-    generator_jar = ctx.attr.generator_jar
     java_path = ctx.attr.java_path
+
+    # Determine generator JAR path - prefer label over string path
+    if ctx.file.generator_jar_file:
+        generator_jar = ctx.file.generator_jar_file.path
+    else:
+        generator_jar = ctx.attr.generator_jar
 
     # Get erlang toolchain
     (erlang_home, _, runfiles) = erlang_dirs(ctx)
@@ -270,8 +275,13 @@ fi
         generator_command = generator_command,
     )
 
+    # Build input files list - include JAR if provided as label
+    direct_inputs = [spec_file] + spec_deps + erl_libs_files
+    if ctx.file.generator_jar_file:
+        direct_inputs.append(ctx.file.generator_jar_file)
+
     inputs = depset(
-        direct = [spec_file] + spec_deps + erl_libs_files,
+        direct = direct_inputs,
         transitive = [runfiles.files],
     )
 
@@ -353,7 +363,11 @@ openapi_erlang_server = rule(
         ),
         "generator_jar": attr.string(
             default = "",
-            doc = "Path to local openapi-generator-cli.jar. If set, uses java -jar instead of Docker.",
+            doc = "Path to local openapi-generator-cli.jar. If set, uses java -jar instead of Docker. Prefer generator_jar_file for downloaded JARs.",
+        ),
+        "generator_jar_file": attr.label(
+            allow_single_file = [".jar"],
+            doc = "Label for openapi-generator-cli.jar (e.g., from http_file). Takes precedence over generator_jar string.",
         ),
         "java_path": attr.string(
             default = "java",
