@@ -90,128 +90,9 @@ export ERL_LIBS="$ERL_LIBS_DIR"
 # Step 1: Generate Erlang code
 {generator_command}
 
-# Step 2: Apply patches to generated code for hjon compatibility
-# These patches adapt the new generator output to work with the hjon codebase
-# The new generator has different architecture - fewer patches needed
-
-ROUTER_FILE="$OUT_DIR/src/{package_name}_router.erl"
-PKG_NAME="{package_name}"
-
-echo "=== Applying patches for $PKG_NAME ==="
-
-# Patch 4: Add v1 route support for ts29503_Nudm_SDM
-# Match ts29503_Nudm_SDM package
-if echo "${{PKG_NAME}}" | grep -q "^ts29503_Nudm_SDM"; then
-    echo "Adding v1 route support for ts29503_Nudm_SDM..."
-    ROUTER_FILE="$OUT_DIR/src/${{PKG_NAME}}_router.erl"
-    if [ -f "$ROUTER_FILE" ]; then
-        # Replace base_path with version-aware path construction
-        sed -i 's|base_path => "/nudm-sdm/v2"|base_path => "/nudm-sdm/" ++ Version|g' "$ROUTER_FILE"
-        sed -i 's/^get_operations() ->$/get_operations(Version) ->/' "$ROUTER_FILE"
-
-        awk '
-/^group_paths[(][)] ->$/ {{
-    print "group_paths() ->"
-    print "    Versions = [\\"v1\\", \\"v2\\"],"
-    print "    FoldFun = fun(OperationID, #{{base_path := BasePath, path := Path, method := Method, handler := Handler}}, Acc) ->"
-    print "        FullPath = BasePath ++ Path,"
-    print "        case maps:find(FullPath, Acc) of"
-    print "            {{ok, PathInfo0 = #{{operations := Operations0}}}} ->"
-    print "                Operations = Operations0#{{Method => OperationID}},"
-    print "                PathInfo = PathInfo0#{{operations => Operations}},"
-    print "                Acc#{{FullPath => PathInfo}};"
-    print "            error ->"
-    print "                Operations = #{{Method => OperationID}},"
-    print "                PathInfo = #{{handler => Handler, operations => Operations}},"
-    print "                Acc#{{FullPath => PathInfo}}"
-    print "        end"
-    print "    end,"
-    print "    lists:foldl("
-    print "        fun(Version, AccOuter) ->"
-    print "            maps:fold(FoldFun, AccOuter, get_operations(Version))"
-    print "        end,"
-    print "        #{{}},"
-    print "        Versions"
-    print "    )."
-    print ""
-    while ((getline line) > 0) {{
-        if (line ~ /^get_operations[(]Version[)]/) {{
-            print line
-            break
-        }}
-    }}
-    next
-}}
-{{ print }}
-' "$ROUTER_FILE" > "$ROUTER_FILE.tmp" && mv "$ROUTER_FILE.tmp" "$ROUTER_FILE"
-    fi
-fi
-
-# Patch 5: Fix AccessToken API - use schema validation
-if [ "${{PKG_NAME}}" = "ts29510_Nnrf_AccessToken" ]; then
-    echo "Fixing AccessToken API validation..."
-    API_FILE="$OUT_DIR/src/${{PKG_NAME}}_api.erl"
-
-    awk '
-/^request_params[(]'"'"'AccessTokenRequest'"'"'[)] ->$/ {{
-    print "request_params('"'"'AccessTokenRequest'"'"') ->"
-    print "    ['"'"'AccessTokenReq'"'"'];"
-    print ""
-    while ((getline line) > 0) {{
-        if (line ~ /^request_params[(]/) {{
-            print line
-            break
-        }}
-    }}
-    next
-}}
-/^request_param_info[(]OperationID, Name[)] ->$/ {{
-    print "request_param_info('"'"'AccessTokenRequest'"'"', '"'"'AccessTokenReq'"'"') ->"
-    print "    #{{"
-    print "        source =>   body,"
-    print "        rules => ["
-    print "            {{schema, object, <<\\"#/components/schemas/AccessTokenReq\\">>}},"
-    print "            required"
-    print "        ]"
-    print "    }};"
-    print ""
-    print $0
-    next
-}}
-{{ print }}
-' "$API_FILE" > "$API_FILE.tmp" && mv "$API_FILE.tmp" "$API_FILE"
-fi
-
-# Patch 6: Fix NFManagement API - change 'list' to 'PatchItem'
-# Match ts29510_Nnrf_NFManagement package
-if echo "${{PKG_NAME}}" | grep -q "^ts29510_Nnrf_NFManagement"; then
-    echo "Fixing NFManagement API validation for UpdateNFInstance..."
-    API_FILE="$OUT_DIR/src/${{PKG_NAME}}_api.erl"
-
-    sed -i "s/'list'/'PatchItem'/g" "$API_FILE"
-
-    # Add array validation support for PatchItem
-    awk '
-/^validate[(]Rule = [{{]schema,/ {{
-    print "validate(Rule, Name, Value, ValidatorState) when is_list(Value) ->"
-    print "    case lists:filter(fun(Item) -> validate(Rule, Name, Item, ValidatorState) =/= ok end, Value) of"
-    print "        [] -> ok;"
-    print "        _ -> validation_error(Rule, Name, Value)"
-    print "    end;"
-    print ""
-    print $0
-    next
-}}
-{{ print }}
-' "$API_FILE" > "$API_FILE.tmp" && mv "$API_FILE.tmp" "$API_FILE"
-
-    # Skip NFProfile schema validation - the anyOf schema is too strict
-    # Replace schema validation with passing validation for NFProfile
-    echo "Skipping strict NFProfile schema validation..."
-    sed -i 's|{{schema, object, <<"#/components/schemas/NFProfile">>}}|not_required|g' "$API_FILE"
-fi
-
-echo "=== Patches applied successfully ==="
+# Step 2: Apply patches to generated code
+# If a patch_script is provided, run it with OUT_DIR and PKG_NAME as environment variables
+{patch_script_command}
 
 # Step 3: Compile the generated code
 mkdir -p "$OUT_DIR/ebin"
@@ -274,6 +155,22 @@ fi
             package_name = package_name,
         )
 
+    # Generate patch script command if a patch_script is provided
+    if ctx.file.patch_script:
+        patch_script_command = """
+PKG_NAME="{package_name}"
+echo "=== Running patch script for $PKG_NAME ==="
+export OUT_DIR
+export PKG_NAME
+"{patch_script}"
+echo "=== Patch script completed ==="
+""".format(
+            package_name = package_name,
+            patch_script = ctx.file.patch_script.path,
+        )
+    else:
+        patch_script_command = "# No patch script provided"
+
     script = script.format(
         spec_dir = spec_dir,
         spec_filename = spec_filename,
@@ -286,12 +183,15 @@ fi
         erlang_home = erlang_home,
         erl_libs_setup = _erl_libs_setup(ctx.attr.deps, erl_libs_dir.path),
         generator_command = generator_command,
+        patch_script_command = patch_script_command,
     )
 
     # Build input files list - include JAR if provided as label
     direct_inputs = [spec_file] + spec_deps + erl_libs_files
     if ctx.file.generator_jar_file:
         direct_inputs.append(ctx.file.generator_jar_file)
+    if ctx.file.patch_script:
+        direct_inputs.append(ctx.file.patch_script)
 
     inputs = depset(
         direct = direct_inputs,
@@ -385,6 +285,10 @@ openapi_erlang_server = rule(
         "generator_jar_file": attr.label(
             allow_single_file = [".jar"],
             doc = "Label for openapi-generator-cli.jar (e.g., from http_file). Takes precedence over generator_jar string.",
+        ),
+        "patch_script": attr.label(
+            allow_single_file = [".sh"],
+            doc = "Shell script to apply patches to generated code. Script receives OUT_DIR and PKG_NAME as environment variables.",
         ),
         "java_path": attr.string(
             default = "java",
