@@ -169,9 +169,21 @@ fi
         content = script,
     )
 
+    # Collect source files from all deps for coverage
+    source_files = []
+    if ctx.configuration.coverage_enabled:
+        # Include source files from the target app
+        source_files.extend(lib_info.srcs)
+        source_files.extend(lib_info.test_srcs)
+        # Include source files from all workspace dependencies
+        for dep in deps:
+            if dep.label.workspace_name == "":
+                source_files.extend(dep[ErlangAppInfo].srcs)
+                source_files.extend(dep[ErlangAppInfo].test_srcs)
+
     runfiles = runfiles.merge_all(
         [ctx.runfiles(
-            files = lib_info.test_data,
+            files = lib_info.test_data + source_files,
             transitive_files = depset(erl_libs_files),
         )] + ([coverdata_to_lcov[DefaultInfo].default_runfiles] if ctx.configuration.coverage_enabled else []) + [
             tool[DefaultInfo].default_runfiles
