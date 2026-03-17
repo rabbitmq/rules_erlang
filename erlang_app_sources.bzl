@@ -41,12 +41,14 @@ def erlang_app_sources(
             ],
             exclude = [
                 "test/data/**/*",
+                "test/*_SUITE_data/**/*",
             ],
         )
 
     if test_data == None:
         test_data = native.glob([
             "test/data/**/*",
+            "test/*_SUITE_data/**/*",
         ])
 
     if priv == None:
