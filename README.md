@@ -9,8 +9,7 @@ builds and caching features.
 
 However, `erlang.mk` has caught up and Bazel fell out of use.
 
-Therefore, **this project is not actively maintained**. You are welcome to fork it,
-or become a new maintainer.
+Therefore, **this project is not actively maintained**. It has been forked, and an actively maintained version is located at [marvin-hansen/rules_elixir](https://github.com/marvin-hansen/rules_erlang).
 
 ## Examples
 
